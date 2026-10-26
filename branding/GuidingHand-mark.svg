@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 108 108" role="img" aria-labelledby="title desc">
+  <title id="title">GuidingHand</title>
+  <desc id="desc">A patient pointing hand follows a single highlighted waypoint. Guidance, while the person stays in control.</desc>
+  <rect width="108" height="108" rx="25" fill="#192A30"/>
+  <path d="M40 65V40C40 34 49 34 49 40V56C51 50 59 50 61 56C66 51 74 54 74 61V69C74 82 66 90 54 90H50C43 90 38 85 34 79L25 65C22 60 28 56 32 60L40 68" fill="none" stroke="#FFD35E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="44.5" cy="18" r="6" fill="#FFD35E"/>
+  <circle cx="44.5" cy="18" r="10" fill="none" stroke="#F7F5EF" stroke-width="2"/>
+</svg>

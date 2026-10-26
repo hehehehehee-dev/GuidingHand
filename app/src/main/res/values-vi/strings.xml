@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GuidingHand</string>
+    <string name="settings_label">Gia đình và tùy chọn</string>
+    <string name="service_description">Hiện bong bóng trợ giúp và chỉ từng bước khi được gọi. Người dùng tự bấm. Dữ liệu màn hình ở trong máy. Dừng ở mật khẩu và thanh toán.</string>
+</resources>

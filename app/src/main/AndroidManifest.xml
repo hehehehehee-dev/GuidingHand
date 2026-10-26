@@ -1,0 +1,25 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <queries>
+        <package android:name="com.zing.zalo" />
+        <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
+        <intent><action android:name="android.speech.RecognitionService" /></intent>
+        <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.HOME" /></intent>
+        <intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent>
+        <intent><action android:name="android.intent.action.DIAL" /><data android:scheme="tel" /></intent>
+    </queries>
+    <application android:theme="@style/GuidingHandAppTheme" android:label="@string/app_name" android:icon="@drawable/guidinghand_icon" android:allowBackup="false" android:dataExtractionRules="@xml/guidinghand_data_rules" android:supportsRtl="true">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity>
+        <activity android:name=".AssistantActivity" android:exported="false" android:taskAffinity="" android:excludeFromRecents="true" android:theme="@style/GuidingHandAssistantTheme" />
+        <activity android:name=".SettingsActivity" android:exported="true" android:label="@string/settings_label">
+            <intent-filter><action android:name="android.intent.action.APPLICATION_PREFERENCES" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>
+        </activity>
+        <service android:name=".GuidingHandService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true" android:label="GuidingHand">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/guidinghand_accessibility" />
+        </service>
+    </application>
+</manifest>

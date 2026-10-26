@@ -1,0 +1,10 @@
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewClicked|typeViewSelected|typeViewTextChanged|typeViewScrolled|typeViewFocused"
+    android:accessibilityFeedbackType="feedbackSpoken"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows|flagIncludeNotImportantViews"
+    android:canRetrieveWindowContent="true"
+    android:canTakeScreenshot="true"
+    android:canPerformGestures="true"
+    android:notificationTimeout="100"
+    android:settingsActivity="vn.guidinghand.SettingsActivity"
+    android:description="@string/service_description" />

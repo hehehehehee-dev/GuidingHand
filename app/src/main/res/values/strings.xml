@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GuidingHand</string>
+    <string name="settings_label">Family and preferences</string>
+    <string name="service_description">Shows a floating guide and points out the next step when asked. You do every tap. Screen data stays on this device. Guidance pauses at passwords and payments.</string>
+</resources>
