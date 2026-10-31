@@ -622,3 +622,9 @@ because SAM accuracy has not yet been re-certified. This candidate is built only
 installed or phone-certified in this entry. Verified package metadata is
 `vn.guidinghand.candidate`, `versionName=1.5.26-candidate`, `versionCode=35`; APK SHA256:
 `6335e2719b3c073638a098174abd4fbe1a1e0e6df96a29cb10d24ea72f5adb60`.
+
+GitHub verification run `41184048906` independently passed all three jobs: the 72-test backend
+suite, the Android candidate build/lint/test plus package/version assertions, and a Linux container
+build followed by a live `/healthz` request with fixture-only environment values. The health check
+made no provider call. This supplies container-build evidence despite Docker being unavailable on
+the Windows workstation; it is not evidence of a production cloud deployment or phone task pass.
