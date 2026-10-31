@@ -190,6 +190,12 @@ class GuideOverlay(
     private var busyLabel: String? = null
     private var bubbleHasHand: Boolean? = null
 
+    private fun bubbleBounds(): GuideBox? {
+        if (!bubbleAttached) return null
+        val p = bubble.layoutParams as? WindowManager.LayoutParams ?: return null
+        return GuideBox(p.x, p.y, p.x + bubble.width.coerceAtLeast(p.width), p.y + bubble.height.coerceAtLeast(p.height))
+    }
+
     data class Measurement(val panel: GuideBox?, val pointedArea: GuideBox?, val coverage: Double,
                            val collapsed: Boolean, val scrollContent: Boolean, val pointingClipped: Boolean = false)
     var lastMeasurement: Measurement? = null; private set
@@ -284,7 +290,6 @@ class GuideOverlay(
 
     fun showBubble() {
         if (!DeviceVisibility.allowed(context)) return
-        if (cardAttached) { removeBubble(); return }
         val label = when {
             busyLabel != null -> busyLabel!!
             autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Gọi người thân", "Call family")
@@ -341,7 +346,9 @@ class GuideOverlay(
             userCollapsed = false; autoCollapsed = false; draggedCard = null; lastRejectedFrame = null; clearCard(); showBubble(); return
         }
         if (state.status == GuideStatus.SAFETY_PAUSED && previousStatus != GuideStatus.SAFETY_PAUSED) userCollapsed = false
-        removeBubble()
+        // Keep Help visible as the movable anchor while the card is open. The card is placed
+        // beside this anchor and follows it, so the elder never loses the way back to Help.
+        showBubble()
         instruction.text = state.instructionVi
         instruction.accessibilityLiveRegion = when (state.status) {
             GuideStatus.SAFETY_PAUSED, GuideStatus.UNAVAILABLE, GuideStatus.ASKING ->
@@ -449,7 +456,8 @@ class GuideOverlay(
         // Cap screen coverage, not text size. Large text and choices scroll inside a solid card;
         // Repeat/Stop stay outside the scroll area. Accessibility minima win over the cap.
         val desiredHeight = minOf(naturalHeight, maxOf(minimumHeight, (safe.height * GuideDesign.CARD_SCREEN_FRACTION).toInt()))
-        val placement = GuidePanelLayout.place(safe, width, desiredHeight, minimumHeight, pointedBox(), dp(8), draggedCard)
+        val placement = GuidePanelLayout.place(safe, width, desiredHeight, minimumHeight, pointedBox(), dp(8), draggedCard,
+            anchor = bubbleBounds())
         if (placement == null) {
             clearCard(); autoCollapsed = true; showBubble(); recordMeasurement(null, false, state); return
         }
@@ -492,7 +500,12 @@ class GuideOverlay(
                         if (pointedBox()?.inflate(dp(8))?.intersects(candidate) != true) {
                             p.x = left; p.y = top; wm.updateViewLayout(window, p)
                             if (window === card) { draggedCard = candidate; savedState?.let { recordMeasurement(candidate, scroll.height < content.height, it) } }
-                            else draggedBubble = candidate
+                        else {
+                            draggedBubble = candidate
+                            // Help is the anchor. Move the card in the same frame so it never
+                            // lags behind or becomes detached from the control being dragged.
+                            if (window === bubble && cardAttached) savedState?.let { layoutCard(it) }
+                        }
                         }
                     }
                     true

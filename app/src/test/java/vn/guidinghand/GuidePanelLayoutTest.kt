@@ -106,5 +106,13 @@ class GuidePanelLayoutTest {
         assertEquals(180f, bottom.rotationDegrees)
         assertTrue(display.contains(bottom.bounds))
     }
+    @Test fun panelStaysAttachedToHelpAnchorWhenSpaceAllows() {
+        val safe = GuideBox(0, 0, 1080, 1920)
+        val anchor = GuideBox(760, 1200, 960, 1280)
+        val placement = GuidePanelLayout.place(safe, 344, 520, 240, null, 16, anchor = anchor)!!
+        assertFalse(placement.bounds.intersects(anchor.inflate(16)))
+        assertTrue(placement.bounds.bottom == anchor.top - 16 || placement.bounds.top == anchor.bottom + 16 ||
+            placement.bounds.right == anchor.left - 16 || placement.bounds.left == anchor.right + 16)
+    }
 }
 

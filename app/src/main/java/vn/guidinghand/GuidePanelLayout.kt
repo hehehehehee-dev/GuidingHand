@@ -89,15 +89,38 @@ object GuideRingGeometry {
 object GuidePanelLayout {
     /** A missing result means collapse safely rather than obscure the pointed region or clip controls. */
     fun place(safe: GuideBox, desiredWidth: Int, desiredHeight: Int, minimumHeight: Int,
-              target: GuideBox?, gap: Int, preferred: GuideBox? = null): GuidePlacement? {
+              target: GuideBox?, gap: Int, preferred: GuideBox? = null, anchor: GuideBox? = null): GuidePlacement? {
         require(desiredWidth > 0 && desiredHeight > 0 && minimumHeight > 0 && gap >= 0)
         if (safe.width <= 0 || safe.height < minimumHeight) return null
         val width = minOf(desiredWidth, safe.width)
-        val exclusion = target?.inflate(gap)
+        val exclusions = listOfNotNull(target?.inflate(gap), anchor?.inflate(gap))
+        fun valid(box: GuideBox) = safe.contains(box) && exclusions.none { it.intersects(box) }
+        if (anchor != null) {
+            val near = listOf(
+                GuideBox(anchor.left, anchor.bottom + gap, anchor.left + width, anchor.bottom + gap + desiredHeight),
+                GuideBox(anchor.left, anchor.top - gap - desiredHeight, anchor.left + width, anchor.top - gap),
+                GuideBox(anchor.right + gap - width, anchor.top, anchor.right + gap, anchor.top + desiredHeight),
+                GuideBox(anchor.left - gap - width, anchor.top, anchor.left - gap, anchor.top + desiredHeight)
+            ).map { box ->
+                val dx = when {
+                    box.right > safe.right -> safe.right - box.right
+                    box.left < safe.left -> safe.left - box.left
+                    else -> 0
+                }
+                val dy = when {
+                    box.bottom > safe.bottom -> safe.bottom - box.bottom
+                    box.top < safe.top -> safe.top - box.top
+                    else -> 0
+                }
+                GuideBox(box.left + dx, box.top + dy, box.right + dx, box.bottom + dy)
+            }
+            near.firstOrNull { valid(it) }?.let { return GuidePlacement(it, it.height < desiredHeight) }
+        }
         if (preferred != null && preferred.width == width && preferred.height == minOf(desiredHeight, safe.height) &&
-            safe.contains(preferred) && exclusion?.intersects(preferred) != true)
+            valid(preferred))
             return GuidePlacement(preferred, preferred.height < desiredHeight)
         val lanes = mutableListOf(safe)
+        val exclusion = target?.inflate(gap)
         if (exclusion != null && safe.intersects(exclusion)) {
             lanes.clear()
             // Prefer the lower space when a full panel fits; otherwise choose the largest usable lane.
@@ -110,7 +133,7 @@ object GuidePanelLayout {
         val lane = candidates.firstOrNull { it.height >= desiredHeight } ?: candidates.maxByOrNull { it.height } ?: return null
         val height = minOf(desiredHeight, lane.height)
         val box = GuideBox(lane.right - width, lane.bottom - height, lane.right, lane.bottom)
-        check(safe.contains(box) && exclusion?.intersects(box) != true)
+        if (!valid(box)) return null
         return GuidePlacement(box, height < desiredHeight)
     }
 

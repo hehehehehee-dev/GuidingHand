@@ -572,3 +572,14 @@ Xiaomi rejected unattended ADB installation with `INSTALL_FAILED_USER_RESTRICTED
 was copied to `Downloads/GuidingHand-1.5.23-candidate.apk` and the package installer opened.
 Installation and the physical no-reappearance check remain pending the user's tap. No provider
 request or target-app action was made.
+
+## Candidate 1.5.24 anchored Help card — October 31 local time
+
+The compact Help control remains visible while a guide card is open. The card is now laid out
+next to the Help control, avoids both the target ring and the anchor, and repositions during the
+same drag frame when the elder moves Help. This keeps the way back to the assistant visible and
+prevents a detached card from covering the control that opened it.
+
+Candidate **1.5.24/code33** builds as package `vn.guidinghand.candidate`; Android unit tests pass.
+APK SHA256: `5883e87f5cf680a81adfccdbb2380dbddf1536cdb81cb878a89949c93b4bf296`.
+Physical installation and visual verification remain pending.

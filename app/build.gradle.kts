@@ -10,8 +10,8 @@ android {
         applicationId = "vn.guidinghand"
         minSdk = 30
         targetSdk = 36
-        versionCode = 32
-        versionName = "1.5.23"
+        versionCode = 33
+        versionName = "1.5.24"
         buildConfigField("int", "DEV_BACKEND_PORT", "8766")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
