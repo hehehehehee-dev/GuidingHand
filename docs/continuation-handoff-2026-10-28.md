@@ -641,3 +641,10 @@ worker exits or crashes, while concurrent workers still serialize reservations. 
 terminated worker from leaving the deployed backend permanently stuck in `budget_locked`. A stale
 lock-file regression test raises the backend suite to **73/73**; Android remains **84/84** with
 lint/assemble passing.
+
+Submission evidence now keeps trace provenance separate from the source revision being verified.
+Every report records the trace filename and SHA-256 and defaults its candidate version to `TBD`
+unless collection evidence supplies one, so an older phone trace cannot be presented as current
+1.5.26 performance. The read-only collector also now reads package/version metadata from
+`vn.guidinghand.candidate` rather than accidentally reporting the original app. The backend suite
+is **74/74**; Android remains **84/84** with lint/assemble passing.

@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 from benchmark_snapshot_profiles import parse_profiles
-from generate_submission_report import junit_summary, markdown, read_trace, source_revision, summarize
+from generate_submission_report import junit_summary, markdown, read_trace, source_revision, summarize, trace_provenance
 
 
 class SubmissionToolsTests(unittest.TestCase):
@@ -42,6 +42,14 @@ class SubmissionToolsTests(unittest.TestCase):
     def test_source_revision_is_tbd_outside_git(self):
         with tempfile.TemporaryDirectory() as directory:
             self.assertEqual('TBD', source_revision(directory))
+
+    def test_trace_provenance_separates_historical_trace_from_current_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory, 'trace.json'); path.write_text('[]', encoding='utf-8')
+            result = trace_provenance(path, 'October phone trace')
+            self.assertEqual('trace.json', result['file'])
+            self.assertEqual(64, len(result['sha256']))
+            self.assertIn('not tied', result['candidate_version'])
 
 
 if __name__ == '__main__':

@@ -41,8 +41,9 @@ def main():
             if re.fullmatch(r'[A-Za-z0-9_=., ():-]+', value):
                 geometry.append(value)
     (output/'panel-geometry.txt').write_text('\n'.join(geometry), encoding='utf-8')
-    installed = run(['shell', 'dumpsys', 'package', 'vn.guidinghand']).stdout.decode('utf-8', errors='replace')
+    installed = run(['shell', 'dumpsys', 'package', package]).stdout.decode('utf-8', errors='replace')
     version = re.search(r'versionName=(\S+)', installed)
+    version_code = re.search(r'versionCode=(\d+)', installed)
     metrics = [{'stage': row['event'], 'duration_ms': row['duration_ms'], 'request_id': row.get('request_id')}
                for row in events if 'duration_ms' in row and row.get('event') in
                ('capture_encode', 'backend_roundtrip', 'provider_spark', 'provider_sam', 'provider_total', 'transcribe', 'screen_step')]
@@ -51,7 +52,8 @@ def main():
     stale = sum(1 for row in events if row.get('event') == 'stale_result')
     panel = [row.get('value') for row in events if row.get('event') == 'panel_layout' and isinstance(row.get('value'), int)]
     summary = {'overall_result': 'TBD: manual send-photo test not certified by log collection',
-        'original_phone_version': version.group(1) if version else 'TBD',
+        'candidate_phone_version': version.group(1) if version else 'TBD',
+        'candidate_version_code': int(version_code.group(1)) if version_code else 'TBD',
         'candidate_trace_events': len(events), 'observed_native_done': any(row.get('code') == 'DONE' for row in events),
         'ring_accuracy_per_button': 'TBD: human review required', 'measured_durations': metrics or 'TBD',
         'panel_geometry_records': len(geometry), 'panel_target_coverage_ppm': panel or 'TBD',

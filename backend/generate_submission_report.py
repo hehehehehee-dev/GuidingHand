@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -42,6 +43,16 @@ def source_revision(repo):
         return 'TBD'
 
 
+def trace_provenance(path, label='unlabeled historical trace', version=None):
+    source = Path(path)
+    return {
+        'label': label,
+        'file': source.name,
+        'sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+        'candidate_version': version or 'TBD: trace is not tied to the current candidate build'
+    }
+
+
 def percentile(values, fraction):
     if not values:
         return 'TBD'
@@ -63,7 +74,7 @@ def read_trace(path):
     return rows
 
 
-def summarize(events, verification=None):
+def summarize(events, verification=None, provenance=None):
     latency = {}
     for name in LATENCY_EVENTS:
         values = [row['duration_ms'] for row in events if row.get('event') == name and type(row.get('duration_ms')) is int]
@@ -84,7 +95,9 @@ def summarize(events, verification=None):
         'ring_accuracy': 'TBD: requires human review of the pointed control',
         'real_phone_task_result': 'TBD: a DONE state or trace alone is not certification',
         'privacy': 'No screen text, image, audio, recipient, goal or credential is read by this report.',
-        'verification': verification or {'source': 'TBD', 'android_unit_tests': 'TBD', 'backend_unit_tests': 'TBD'}
+        'verification': verification or {'source': 'TBD', 'android_unit_tests': 'TBD', 'backend_unit_tests': 'TBD'},
+        'trace_provenance': provenance or {'label': 'TBD', 'file': 'TBD', 'sha256': 'TBD',
+                                          'candidate_version': 'TBD: trace is not tied to the current candidate build'}
     }
 
 
@@ -95,6 +108,7 @@ def markdown(summary):
     android_label = 'TBD' if android == 'TBD' else f"{android['tests']} tests, {android['failures'] + android['errors']} failed, {android['skipped']} skipped"
     backend = summary['verification']['backend_unit_tests']
     backend_label = 'TBD' if backend == 'TBD' else f"{backend['tests']} tests, {backend['failures']} failed"
+    provenance = summary['trace_provenance']
     lines = ['# GuidingHand submission evidence', '',
              '> Generated from privacy-safe diagnostic events. Missing evidence remains TBD.', '',
              f"- Trace events: **{summary['trace_events']}**",
@@ -102,6 +116,11 @@ def markdown(summary):
              f"- Recovery states observed: **{summary['recovery_states_observed']}**",
              f"- Safety pauses observed: **{summary['safety_pauses_observed']}**",
              f"- Real-phone task result: **{summary['real_phone_task_result']}**", '',
+             '## Trace provenance', '',
+             f"- Label: `{provenance['label']}`",
+             f"- Trace file: `{provenance['file']}`",
+             f"- SHA-256: `{provenance['sha256']}`",
+             f"- Candidate version: `{provenance['candidate_version']}`", '',
              '## Reproducible verification', '',
              f"- Source: `{source_label}`",
              f"- Android unit tests: `{android_label}`",
@@ -123,6 +142,8 @@ def main():
     parser.add_argument('--output', required=True, help='output directory')
     parser.add_argument('--repo', default=str(Path(__file__).resolve().parents[1]), help='repository root')
     parser.add_argument('--backend-tests', type=int, help='backend test count from a passing test run')
+    parser.add_argument('--trace-label', default='unlabeled historical trace', help='human-reviewed trace description')
+    parser.add_argument('--trace-version', help='installed candidate version reported when this trace was collected')
     args = parser.parse_args()
     output = Path(args.output); output.mkdir(parents=True, exist_ok=True)
     revision = source_revision(args.repo)
@@ -132,7 +153,8 @@ def main():
         'android_unit_tests': android,
         'backend_unit_tests': {'tests': args.backend_tests, 'failures': 0} if args.backend_tests is not None else 'TBD'
     }
-    summary = summarize(read_trace(args.trace), verification)
+    summary = summarize(read_trace(args.trace), verification,
+                        trace_provenance(args.trace, args.trace_label, args.trace_version))
     (output / 'submission-evidence.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
     (output / 'submission-evidence.md').write_text(markdown(summary), encoding='utf-8')
     print(json.dumps({'output': str(output), 'trace_events': summary['trace_events']}))
