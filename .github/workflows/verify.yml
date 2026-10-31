@@ -46,21 +46,33 @@ jobs:
       - uses: actions/checkout@v5
       - name: Build backend container
         run: docker build -t guidinghand-backend:verify backend
-      - name: Verify public liveness without a provider call
+      - name: Verify liveness and authenticated app contract without a provider call
         run: |
+          SESSION_TOKEN=ci-session-token-000000000000000000000000
           docker run -d --name guidinghand-health -p 18080:8080 \
             -e MODEL_API_KEY=ci-fixture-not-a-real-key \
-            -e GUIDINGHAND_APP_SESSION_TOKEN=ci-session-token-000000000000000000000000 \
+            -e GUIDINGHAND_APP_SESSION_TOKEN=$SESSION_TOKEN \
             -e GUIDINGHAND_PROJECT_BUDGET_USD=5 \
+            -e GUIDINGHAND_TRUST_PROXY_HEADERS=true \
             guidinghand-backend:verify
           for attempt in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:18080/healthz | grep -q '"status": "ok"'; then
-              exit 0
+              break
             fi
+            test "$attempt" != 20 || { docker logs guidinghand-health; exit 1; }
             sleep 1
           done
-          docker logs guidinghand-health
-          exit 1
+          test "$(curl --silent --output /tmp/direct.json --write-out '%{http_code}' \
+            http://127.0.0.1:18080/core/capabilities)" = 400
+          grep -q 'https_required' /tmp/direct.json
+          test "$(curl --silent --output /tmp/unauthorized.json --write-out '%{http_code}' \
+            -H 'X-Forwarded-Proto: https' http://127.0.0.1:18080/core/capabilities)" = 401
+          test "$(curl --silent --output /tmp/capabilities.json --write-out '%{http_code}' \
+            -H 'X-Forwarded-Proto: https' -H "Authorization: Bearer $SESSION_TOKEN" \
+            http://127.0.0.1:18080/core/capabilities)" = 200
+          grep -q '"snapshot_protocol": "single-image-v1"' /tmp/capabilities.json
+          grep -q '"model": "muse-voice-transcribe-1.0"' /tmp/capabilities.json
+          grep -q '"automatic_actions": false' /tmp/capabilities.json
       - name: Stop verification container
         if: always()
         run: docker rm -f guidinghand-health || true
