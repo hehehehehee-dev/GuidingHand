@@ -30,4 +30,37 @@ jobs:
           java-version: '17'
           cache: gradle
       - name: Verify Android candidate
-        run: ./gradlew testDebugUnitTest lintDebug assembleDebug --no-daemon --console=plain
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug -PcandidateBuild=true --no-daemon --console=plain
+      - name: Verify candidate package identity
+        run: |
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          test -x "$AAPT"
+          "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | head -1 | tee /tmp/package.txt
+          grep -q "name='vn.guidinghand.candidate'" /tmp/package.txt
+          grep -q "versionCode='35'" /tmp/package.txt
+          grep -q "versionName='1.5.26-candidate'" /tmp/package.txt
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build backend container
+        run: docker build -t guidinghand-backend:verify backend
+      - name: Verify public liveness without a provider call
+        run: |
+          docker run -d --name guidinghand-health -p 18080:8080 \
+            -e MODEL_API_KEY=ci-fixture-not-a-real-key \
+            -e GUIDINGHAND_APP_SESSION_TOKEN=ci-session-token-000000000000000000000000 \
+            -e GUIDINGHAND_PROJECT_BUDGET_USD=5 \
+            guidinghand-backend:verify
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz | grep -q '"status": "ok"'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs guidinghand-health
+          exit 1
+      - name: Stop verification container
+        if: always()
+        run: docker rm -f guidinghand-health || true
