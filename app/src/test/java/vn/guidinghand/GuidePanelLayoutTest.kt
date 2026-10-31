@@ -114,5 +114,13 @@ class GuidePanelLayoutTest {
         assertTrue(placement.bounds.bottom == anchor.top - 16 || placement.bounds.top == anchor.bottom + 16 ||
             placement.bounds.right == anchor.left - 16 || placement.bounds.left == anchor.right + 16)
     }
+    @Test fun oversizedPanelScrollsAboveHelpInsteadOfDroppingToBottom() {
+        val safe = GuideBox(12, 30, 348, 760)
+        val anchor = GuideBox(250, 560, 336, 632)
+        val placement = GuidePanelLayout.place(safe, 336, 600, 200, null, 12, anchor = anchor)!!
+        assertTrue(placement.scrollContent)
+        assertTrue(placement.bounds.bottom <= anchor.top - 12 || placement.bounds.top >= anchor.bottom + 12)
+        assertFalse(placement.bounds.intersects(anchor.inflate(12)))
+    }
 }
 

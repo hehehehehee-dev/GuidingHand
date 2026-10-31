@@ -115,6 +115,32 @@ object GuidePanelLayout {
                 GuideBox(box.left + dx, box.top + dy, box.right + dx, box.bottom + dy)
             }
             near.firstOrNull { valid(it) }?.let { return GuidePlacement(it, it.height < desiredHeight) }
+
+            // When the full card cannot fit, keep it attached to Help and let its content
+            // scroll. This is preferable to dropping the card to the bottom of the screen.
+            val attached = listOf(
+                GuideBox(anchor.left, anchor.bottom + gap, anchor.left + width,
+                    minOf(safe.bottom, anchor.bottom + gap + desiredHeight)),
+                GuideBox(anchor.left, maxOf(safe.top, anchor.top - gap - desiredHeight), anchor.left + width,
+                    anchor.top - gap),
+                GuideBox(anchor.right + gap - width, anchor.top, anchor.right + gap,
+                    minOf(safe.bottom, anchor.top + desiredHeight)),
+                GuideBox(anchor.left - gap - width, anchor.top, anchor.left - gap,
+                    minOf(safe.bottom, anchor.top + desiredHeight))
+            ).map { box ->
+                val dx = when {
+                    box.right > safe.right -> safe.right - box.right
+                    box.left < safe.left -> safe.left - box.left
+                    else -> 0
+                }
+                val dy = when {
+                    box.bottom > safe.bottom -> safe.bottom - box.bottom
+                    box.top < safe.top -> safe.top - box.top
+                    else -> 0
+                }
+                GuideBox(box.left + dx, box.top + dy, box.right + dx, box.bottom + dy)
+            }.filter { it.height >= minimumHeight }
+            attached.firstOrNull { valid(it) }?.let { return GuidePlacement(it, it.height < desiredHeight) }
         }
         if (preferred != null && preferred.width == width && preferred.height == minOf(desiredHeight, safe.height) &&
             valid(preferred))

@@ -586,3 +586,14 @@ The APK was installed through Android's package manager from `/data/local/tmp` a
 rejected the `/sdcard/Download` path. Read-only package evidence reports `versionName=1.5.24-candidate`,
 `versionCode=33`; Accessibility is enabled and Bound with no binding service. Visual verification
 of the anchored card remains pending.
+
+## Candidate 1.5.25 anchored-card sizing fix — October 31 local time
+
+The first anchored-card implementation still fell back to the bottom lane when the full card
+height did not fit above Help. The placement solver now keeps the card attached to Help with a
+shorter scrollable box before considering any distant fallback lane. The card still avoids the
+ring and Help anchor.
+
+Candidate **1.5.25/code34** builds and installs as `vn.guidinghand.candidate`. Android unit tests
+pass; package readback reports `versionName=1.5.25-candidate`, Accessibility enabled and Bound.
+APK SHA256: `394027982a8b1ed291ae3dcbe843c4bc6b30804910f63ca67be1d5886d6f1526`.
