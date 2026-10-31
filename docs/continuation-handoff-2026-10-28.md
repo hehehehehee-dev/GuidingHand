@@ -597,3 +597,28 @@ ring and Help anchor.
 Candidate **1.5.25/code34** builds and installs as `vn.guidinghand.candidate`. Android unit tests
 pass; package readback reports `versionName=1.5.25-candidate`, Accessibility enabled and Bound.
 APK SHA256: `394027982a8b1ed291ae3dcbe843c4bc6b30804910f63ca67be1d5886d6f1526`.
+
+## Candidate 1.5.26 submission reliability — October 31 local time
+
+The Home readiness badge now requires the Accessibility service, microphone permission, bound
+service, and an authenticated no-credit `/core/capabilities` contract probe. Offline, expired,
+unconfigured, and incompatible backends are shown as distinct recovery states. The probe is
+bounded to two attempts per Activity resume and never calls a model. The disabled challenge
+control was removed.
+
+Transient core failures now map to distinct actionable states without automatic paid retries.
+Android records only bounded geometry, byte counts, reason codes, and timing events; stale AI
+results are discarded with reason codes when the screen changes. The evidence collector and new
+submission report summarize these privacy-safe events while leaving ring accuracy and a real-phone
+pass as `TBD` until reviewed by a person.
+
+The backend now has a public detail-free `/healthz`, authenticated capabilities, proxy-aware HTTPS,
+a non-root Dockerfile, persistent budget-ledger deployment instructions, environment validation,
+and GitHub verification for backend and Android. Local verification is **72/72 backend tests** and
+**84/84 Android unit tests**, plus `lintDebug` and `assembleDebug`. Docker itself is not installed on
+this workstation, so the container has not been built here. A local two-screen JPEG benchmark made
+six measurements and zero provider calls; production image defaults were deliberately retained
+because SAM accuracy has not yet been re-certified. This candidate is built only and has not been
+installed or phone-certified in this entry. Verified package metadata is
+`vn.guidinghand.candidate`, `versionName=1.5.26-candidate`, `versionCode=35`; APK SHA256:
+`6335e2719b3c073638a098174abd4fbe1a1e0e6df96a29cb10d24ea72f5adb60`.

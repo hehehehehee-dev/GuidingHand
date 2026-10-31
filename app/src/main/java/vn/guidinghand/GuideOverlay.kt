@@ -477,7 +477,13 @@ class GuideOverlay(
         lastMeasurement = Measurement(box, target, coverage, box == null, scrolling, pointingClipped)
         // Geometry and enum only. No screen labels, recipient, goal, audio or images in logs.
         val value = "status=${state.status},panel=$box,target=$target,coverage=$coverage,collapsed=${box == null},scroll=$scrolling,pointingClipped=$pointingClipped,fontScale=${context.resources.configuration.fontScale}"
-        if (lastLog != value) { Log.i("GuidingHandOverlay", value); lastLog = value }
+        if (lastLog != value) {
+            Log.i("GuidingHandOverlay", value)
+            GuideTrace.event(context, "panel_layout",
+                code = "${state.status.name}:${if (box == null) "collapsed" else "visible"}:${if (scrolling) "scroll" else "fixed"}",
+                value = (coverage * 1_000_000).toLong().coerceIn(0, 1_000_000))
+            lastLog = value
+        }
     }
 
     /** The only drag operation moves our own guide window; it never injects input into the target app. */

@@ -9,12 +9,13 @@ import org.json.JSONObject
 object GuideTrace {
     private var sequence = 0L
     @Synchronized fun event(context: Context, event: String, millis: Long? = null,
-                            code: String? = null, requestId: String? = null) {
+                            code: String? = null, requestId: String? = null, value: Long? = null) {
         val row = JSONObject().put("sequence", ++sequence).put("uptime_ms", SystemClock.elapsedRealtime())
             .put("event", event.filter { it.isLetterOrDigit() || it == '_' }.take(48))
         millis?.let { row.put("duration_ms", it.coerceAtLeast(0)) }
         code?.takeIf { it.matches(Regex("[A-Za-z0-9_.:-]{1,100}")) }?.let { row.put("code", it) }
         requestId?.takeIf { it.matches(Regex("[a-fA-F0-9-]{1,64}")) }?.let { row.put("request_id", it) }
+        value?.let { row.put("value", it) }
         Log.i("GuidingHandTrace", row.toString())
         if (BuildConfig.DEBUG) try {
             val file = java.io.File(context.filesDir, "guide-trace.jsonl")

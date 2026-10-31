@@ -89,16 +89,23 @@ class MainActivity : SetupActivity() {
             var serviceConnected by remember { mutableStateOf(GuidingHandService.instance != null) }
             var accessibilityOn by remember { mutableStateOf(accessibilityEnabled()) }
             var micGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) }
+            var backendHealth by remember(preferenceRevision) { mutableStateOf(BackendHealthStatus.NOT_CONFIGURED) }
             LaunchedEffect(preferenceRevision) {
-                repeat(40) {
+                var backendAttempts = 0
+                repeat(12) {
                     accessibilityOn = accessibilityEnabled()
                     micGranted = ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
                     serviceConnected = GuidingHandService.instance != null
-                    if (accessibilityOn && micGranted && serviceConnected) return@LaunchedEffect
-                    delay(250)
+                    val localReady = accessibilityOn && micGranted && serviceConnected
+                    if (localReady && backendAttempts < 2) {
+                        backendHealth = BackendHealth.check(prefs)
+                        backendAttempts++
+                    }
+                    if (accessibilityOn && micGranted && serviceConnected && backendHealth == BackendHealthStatus.READY) return@LaunchedEffect
+                    delay(if (localReady) 4_000 else 500)
                 }
             }
-            val guideReady = accessibilityOn && micGranted && serviceConnected
+            val guideReady = accessibilityOn && micGranted && serviceConnected && backendHealth == BackendHealthStatus.READY
             val contact = prefs.contact.trim()
             fun startPhoto(recipient: String) {
                 val service = GuidingHandService.instance
@@ -125,6 +132,10 @@ class MainActivity : SetupActivity() {
                                 !accessibilityOn -> tr("! Cần bật Trợ năng", "! Accessibility needed")
                                 !micGranted -> tr("! Cần cho phép micro", "! Microphone needed")
                                 !serviceConnected -> tr("… Đang kết nối", "… Connecting")
+                                backendHealth == BackendHealthStatus.NOT_CONFIGURED -> tr("! Cần kết nối trợ lý", "! Assistant setup needed")
+                                backendHealth == BackendHealthStatus.AUTH_REQUIRED -> tr("! Cần ghép lại trợ lý", "! Reconnect assistant")
+                                backendHealth == BackendHealthStatus.UNREACHABLE -> tr("! Trợ lý đang ngoại tuyến", "! Assistant offline")
+                                backendHealth == BackendHealthStatus.INCOMPATIBLE -> tr("! Cần cập nhật máy chủ", "! Server update needed")
                                 else -> tr("! Chưa sẵn sàng", "! Not ready")
                             }, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                                 fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
@@ -147,17 +158,22 @@ class MainActivity : SetupActivity() {
 
                     Button(onClick = {
                         val service = GuidingHandService.instance
-                        if (service == null && !accessibilityOn) startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        if (!accessibilityOn) startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         else if (!micGranted) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1001)
-                        else if (service != null && guideReady) { moveTaskToBack(true); window.decorView.postDelayed({ service.openVoice() }, 350) }
-                    }, enabled = guideReady || !accessibilityOn || !micGranted,
+                        else if (service == null) Unit
+                        else if (backendHealth != BackendHealthStatus.READY) startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                        else if (guideReady) { moveTaskToBack(true); window.decorView.postDelayed({ service.openVoice() }, 350) }
+                    }, enabled = guideReady || !accessibilityOn || !micGranted || (serviceConnected && backendHealth != BackendHealthStatus.READY),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), shape = RoundedCornerShape(24.dp)) {
                         Icon(painterResource(R.drawable.ic_mic), contentDescription = null, modifier = Modifier.size(30.dp))
                         Spacer(Modifier.width(12.dp))
                         Text(when {
                             guideReady -> tr("Nói việc cần giúp", "Speak to get help")
-                            accessibilityOn -> tr("Đang chuẩn bị…", "Getting ready…")
-                            else -> tr("Bật hỗ trợ nổi", "Enable floating help")
+                            !accessibilityOn -> tr("Bật hỗ trợ nổi", "Enable floating help")
+                            !micGranted -> tr("Cho phép micro", "Allow microphone")
+                            !serviceConnected -> tr("Đang chuẩn bị…", "Getting ready…")
+                            backendHealth != BackendHealthStatus.READY -> tr("Kết nối trợ lý", "Connect assistant")
+                            else -> tr("Đang chuẩn bị…", "Getting ready…")
                         }, fontSize = 23.sp)
                     }
                     OutlinedButton(onClick = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
@@ -200,12 +216,6 @@ class MainActivity : SetupActivity() {
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp), shape = RoundedCornerShape(22.dp)) {
                                 Text(tr("Gửi ảnh trên Zalo", "Send a photo on Zalo"), fontSize = 22.sp)
                             }
-                        }
-                        // Hint-only requires a new engine mode; keep this visible but unavailable
-                        // until that core-loop change is explicitly approved.
-                        OutlinedButton(onClick = {}, enabled = false,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp), shape = RoundedCornerShape(22.dp)) {
-                            Text(tr("Thử gửi ảnh mà không cần chỉ từng bước", "Try sending a photo without step by step guidance"), fontSize = 22.sp)
                         }
                         Button(onClick = { GuidingHandService.instance?.callFamilyFromHome() },
                             enabled = contact.isNotBlank() && prefs.phone.isNotBlank(),

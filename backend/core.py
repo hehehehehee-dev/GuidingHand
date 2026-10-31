@@ -38,6 +38,30 @@ class CoreError(Exception):
     pass
 
 
+def blocked_result(frame, code):
+    """Return one actionable, localized recovery state without retrying a paid model call."""
+    if code == 'sensitive_screen':
+        category, description = 'sensitive', message(frame, 'Màn hình có thông tin riêng tư. Đã tạm dừng.', 'This screen contains private information. Guidance is paused.')
+    elif code in ('consent_required', 'locked_screen'):
+        category, description = 'unavailable', message(frame, 'Cần mở khóa màn hình và đồng ý chia sẻ trước khi tiếp tục.', 'Unlock the screen and allow sharing before continuing.')
+    elif code in ('provider_unavailable', 'core_unavailable'):
+        category, description = 'unavailable', message(frame, 'Chưa kết nối được trợ lý. Việc đang làm vẫn được giữ lại. Bác kiểm tra mạng rồi thử lại nhé.', 'The assistant is offline. Your task is kept. Check the connection, then try again.')
+    elif code == 'sam_parser_unavailable':
+        category, description = 'unavailable', message(frame, 'Máy chủ chưa sẵn sàng xác định nút cần bấm. Việc đang làm vẫn được giữ lại.', 'The server is not ready to identify the next button. Your task is kept.')
+    elif code == 'snapshot_changed':
+        category, description = 'unavailable', message(frame, 'Màn hình vừa thay đổi. Bác chờ nội dung đứng yên rồi kiểm tra lại nhé.', 'The screen just changed. Wait for it to settle, then check again.')
+    elif code in ('ungrounded_target', 'sam_no_unique_region', 'sam_target_mismatch', 'incomplete_sam',
+                  'sam_dimensions_mismatch', 'invalid_sam_mask', 'empty_sam_mask', 'sam_mask_bounds_mismatch', 'invalid_region'):
+        category, description = 'cannot_read', message(frame, 'Chưa xác định chắc chắn một nút cần bấm. Bác giữ nguyên màn hình rồi kiểm tra lại nhé.', 'I could not identify one clear button. Keep the screen still, then check again.')
+    elif code == 'invalid_spark_response':
+        category, description = 'unavailable', message(frame, 'Trợ lý chưa trả về một bước hoàn chỉnh. Việc đang làm vẫn được giữ lại.', 'The assistant did not return a complete step. Your task is kept.')
+    elif code == 'budget_limit':
+        category, description = 'usage_limit', message(frame, 'Đã đạt giới hạn sử dụng của phiên này. Việc đang làm vẫn được giữ lại.', 'This session has reached its usage limit. Your task has been kept.')
+    else:
+        category, description = 'cannot_read', message(frame, 'Chưa đọc rõ màn hình hoặc xác định đúng vùng cần bấm. Tôi dừng lại để hỏi, không đoán.', 'I cannot read this screen or identify the next target clearly. Please tell me more before continuing.')
+    return {'status': 'blocked', 'reason': code, 'reason_category': category, 'message_vi': description}
+
+
 def folded(text):
     return ''.join(c for c in unicodedata.normalize('NFD', text.lower()) if not unicodedata.combining(c)).replace('đ', 'd')
 
@@ -477,19 +501,7 @@ class CoreGateway:
                            'region_source': 'sam-3.1', 'speech_output': 'android-system-tts-offline', 'speech_rate': 0.85})
         except Exception as error:
             code = str(error) if isinstance(error, CoreError) else 'budget_limit' if str(error)=='budget_limit' else 'core_unavailable'
-            if code == 'sensitive_screen':
-                category, description = 'sensitive', message(frame, 'Màn hình có thông tin riêng tư. Đã tạm dừng.', 'This screen contains private information. Guidance is paused.')
-            elif code in ('consent_required', 'locked_screen'):
-                category, description = 'unavailable', message(frame, 'Cần mở khóa màn hình và đồng ý chia sẻ trước khi tiếp tục.', 'Unlock the screen and allow sharing before continuing.')
-            elif code in ('provider_unavailable', 'core_unavailable'):
-                category, description = 'unavailable', message(frame, 'Chưa kết nối được trợ lý. Việc đang làm vẫn được giữ lại; bác chọn Kiểm tra lại nhé.', 'The assistant is not connected. Your task has been kept; choose Check again.')
-            elif code == 'sam_parser_unavailable':
-                category, description = 'unavailable', message(frame, 'Bộ xác định vùng cần bấm chưa sẵn sàng. Việc đang làm vẫn được giữ lại; bác chọn Kiểm tra lại nhé.', 'The target-region service is not ready. Your task has been kept; choose Check again.')
-            elif code == 'budget_limit':
-                category, description = 'usage_limit', message(frame, 'Đã đạt giới hạn sử dụng của phiên này. Việc đang làm vẫn được giữ lại.', 'This session has reached its usage limit. Your task has been kept.')
-            else:
-                category, description = 'cannot_read', message(frame, 'Chưa đọc rõ màn hình hoặc xác định đúng vùng cần bấm. Tôi dừng lại để hỏi, không đoán.', 'I cannot read this screen or identify the next target clearly. Please tell me more before continuing.')
-            return finish({'status': 'blocked', 'reason': code, 'reason_category': category, 'message_vi': description})
+            return finish(blocked_result(frame, code))
 
 
 def create_application():
@@ -507,19 +519,25 @@ def create_application():
     speech = SpeechInput(key, core.planner.budget)
     def application(environ, start_response):
         status, result = '200 OK', None
-        if environ.get('wsgi.url_scheme') != 'https':
+        path, method = environ.get('PATH_INFO'), environ.get('REQUEST_METHOD')
+        forwarded = environ.get('HTTP_X_FORWARDED_PROTO', '').split(',', 1)[0].strip().lower()
+        secure = environ.get('wsgi.url_scheme') == 'https' or forwarded == 'https'
+        if method == 'GET' and path == '/healthz':
+            # Public liveness only. No provider, budget, configuration or model details.
+            result = {'status': 'ok'}
+        elif not secure:
             status, result = '400 Bad Request', {'error': 'https_required'}
         elif not hmac.compare_digest(environ.get('HTTP_AUTHORIZATION', ''), 'Bearer '+session):
             status, result = '401 Unauthorized', {'error': 'unauthorized'}
-        elif environ.get('REQUEST_METHOD') == 'GET' and environ.get('PATH_INFO') == '/core/capabilities':
+        elif method == 'GET' and path == '/core/capabilities':
             result = core.capabilities()
-        elif environ.get('REQUEST_METHOD') == 'POST' and environ.get('PATH_INFO') in ('/core/step', '/core/transcribe'):
+        elif method == 'POST' and path in ('/core/step', '/core/transcribe'):
             try:
                 size = int(environ.get('CONTENT_LENGTH', '0'))
                 if not 0 < size <= MAX_BODY or environ.get('CONTENT_TYPE') != 'application/json':
                     raise ValueError()
                 incoming = json.loads(environ['wsgi.input'].read(size))
-                result = speech.transcribe(incoming) if environ.get('PATH_INFO') == '/core/transcribe' else core.step(incoming)
+                result = speech.transcribe(incoming) if path == '/core/transcribe' else core.step(incoming)
             except Exception:
                 status, result = '400 Bad Request', {'error': 'invalid_request'}
         else:

@@ -14,7 +14,7 @@ import urllib.request
 import wave
 from unittest.mock import patch
 
-from core import CoreError, CoreGateway, SamSegmenter, SparkPlanner, create_application, image_info, parse_sam, spark_body
+from core import CoreError, CoreGateway, SamSegmenter, SparkPlanner, blocked_result, create_application, image_info, parse_sam, spark_body
 from gateway import Budget, Gateway, serve
 
 
@@ -64,6 +64,15 @@ class Sam:
 
 
 class CoreTests(unittest.TestCase):
+    def test_actionable_error_copy_keeps_transient_failures_distinct(self):
+        changed = blocked_result({'language': 'en'}, 'snapshot_changed')
+        offline = blocked_result({'language': 'en'}, 'provider_unavailable')
+        ambiguous = blocked_result({'language': 'en'}, 'sam_no_unique_region')
+        self.assertEqual(('unavailable', 'snapshot_changed'), (changed['reason_category'], changed['reason']))
+        self.assertIn('settle', changed['message_vi'])
+        self.assertEqual('unavailable', offline['reason_category']); self.assertIn('offline', offline['message_vi'])
+        self.assertEqual('cannot_read', ambiguous['reason_category']); self.assertIn('one clear button', ambiguous['message_vi'])
+
     def test_supported_or_unclear_intent_cannot_be_rejected_or_autorouted(self):
         for intent in ('send_photo_zalo', 'unclear'):
             self.planner.result = {**decision('unsupported'), 'intent': intent, 'question_vi': 'Not supported'}
@@ -360,13 +369,15 @@ class CoreTests(unittest.TestCase):
         with patch.dict(os.environ, {'MODEL_API_KEY':'fixture-key', 'GUIDINGHAND_APP_SESSION_TOKEN':'session-token-'*4,
                     'GUIDINGHAND_STATE_DIR':self.temp.name, 'GUIDINGHAND_PROJECT_BUDGET_USD':'5'}):
             app = create_application()
-        def request(scheme, auth):
+        def request(scheme, auth, path='/core/capabilities', forwarded=''):
             status = []
-            result = app({'wsgi.url_scheme':scheme,'HTTP_AUTHORIZATION':auth,'REQUEST_METHOD':'GET','PATH_INFO':'/core/capabilities'},
+            result = app({'wsgi.url_scheme':scheme,'HTTP_X_FORWARDED_PROTO':forwarded,'HTTP_AUTHORIZATION':auth,'REQUEST_METHOD':'GET','PATH_INFO':path},
                          lambda s,h:status.append(s))
             return status[0], json.loads(b''.join(result))
+        self.assertEqual(('200 OK', {'status':'ok'}), request('http','', '/healthz'))
         self.assertEqual('400 Bad Request',request('http','Bearer '+'session-token-'*4)[0])
         self.assertEqual('401 Unauthorized',request('https','wrong')[0])
+        self.assertEqual('200 OK',request('http','Bearer '+'session-token-'*4, forwarded='https')[0])
         status,result = request('https','Bearer '+'session-token-'*4)
         self.assertEqual('200 OK',status); self.assertFalse(result['production_ready'])
 

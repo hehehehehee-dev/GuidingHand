@@ -28,6 +28,10 @@ class CoreBackendModel(
         return safe(actual) && actual.planningFingerprint == expected.planningFingerprint && preferences.screenConsent && DeviceVisibility.allowed(context)
     }
     private fun endpoint(): String? = BackendEndpoint.base(preferences)?.plus("/core/step")
+    private fun stale(reason: String): GuideDecision {
+        GuideTrace.event(context, "stale_result", code = reason)
+        return GuideDecision.StateChanged
+    }
     override suspend fun next(input: GuideInput): GuideDecision {
         if (!safe(input.screen) || SafetyPolicy.sensitiveGoal(input.goal)) return GuideDecision.Await(tr("Màn hình chưa an toàn để hướng dẫn.", "I cannot guide on this screen yet."))
         val contextText = input.answers + input.userUpdates + listOf(input.family.recipient, input.family.photo, input.task?.recipient.orEmpty(), input.task?.photo.orEmpty(), input.task?.content.orEmpty())
@@ -63,14 +67,14 @@ class CoreBackendModel(
             .put("app_package", it.appPackage)
             .put("verified_steps", JSONArray(input.verifiedStepIds.toList()))) }
         return try {
-            if (!current(input.screen) || requestEpoch != epoch) return GuideDecision.StateChanged
+            if (!current(input.screen) || requestEpoch != epoch) return stale("before_capture")
             val started = android.os.SystemClock.elapsedRealtime()
-            val bitmap = captureForSam(input.screen) ?: return if (!current(input.screen)) GuideDecision.StateChanged
+            val bitmap = captureForSam(input.screen) ?: return if (!current(input.screen)) stale("capture_state_changed")
                 else GuideDecision.Await(tr("Chưa chụp được màn hình an toàn. Bác giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
                     "I could not take a safe screen snapshot. Keep this screen open and tap Check again."), "snapshot_unavailable")
             val bytes: ByteArray
             try {
-                if (!current(input.screen) || requestEpoch != epoch) return GuideDecision.StateChanged
+                if (!current(input.screen) || requestEpoch != epoch) return stale("during_capture")
                 val scale = minOf(1f, 1600f / maxOf(bitmap.width, bitmap.height))
                 val upload = if (scale < 1f) Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).toInt().coerceAtLeast(1),
                     (bitmap.height * scale).toInt().coerceAtLeast(1), true) else bitmap
@@ -84,8 +88,9 @@ class CoreBackendModel(
             // One capture and one immutable byte array. The backend passes this exact image to both models.
             val imageHash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
             body.put("image", "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)).put("image_sha256", imageHash)
+            GuideTrace.event(context, "snapshot_encoded", code = "${body.getInt("image_width")}x${body.getInt("image_height")}:q80", value = bytes.size.toLong())
             GuideTrace.event(context, "capture_encode", android.os.SystemClock.elapsedRealtime() - started, requestId = requestId)
-            if (!current(input.screen) || requestEpoch != epoch) return GuideDecision.StateChanged
+            if (!current(input.screen) || requestEpoch != epoch) return stale("before_upload")
             val postStarted = android.os.SystemClock.elapsedRealtime()
             val result = post(url, token, body, requestEpoch)
             GuideTrace.event(context, "backend_roundtrip", android.os.SystemClock.elapsedRealtime() - postStarted, requestId = requestId)
@@ -93,7 +98,7 @@ class CoreBackendModel(
                 for (name in listOf("spark", "sam", "total")) if (timing.has(name) && !timing.isNull(name))
                     GuideTrace.event(context, "provider_$name", timing.optLong(name), requestId = requestId)
             }
-            if (requestEpoch != epoch || !current(input.screen)) return GuideDecision.StateChanged
+            if (requestEpoch != epoch || !current(input.screen)) return stale("after_upload")
             if (result.optString("request_id") != requestId || result.optString("fingerprint") != hash || result.optString("image_sha256") != imageHash)
                 return GuideDecision.Await(tr("Chưa xác minh được phản hồi. Đã dừng để tránh chỉ sai.", "I could not verify the response. Guidance is paused."))
             val returnedTask = result.optJSONObject("task")?.let { PhotoTask(it.optString("recipient"), it.optString("photo"), it.optString("kind"), it.optString("app_package"), it.optString("content")) }
@@ -119,7 +124,7 @@ class CoreBackendModel(
                             "unknown_app_package", "snapshot_changed", "invalid_spark_response", "invalid_region",
                             "message_content", "provider_unavailable", "core_unavailable", "sam_parser_unavailable",
                             "budget_limit", "sam_no_unique_region", "sam_target_mismatch", "invalid_sam_mask",
-                            "empty_sam_mask", "sam_mask_bounds_mismatch"
+                            "empty_sam_mask", "sam_mask_bounds_mismatch", "incomplete_sam", "sam_dimensions_mismatch"
                         ) } ?: "model_blocked"
                         GuideDecision.Await(result.optString("message_vi", tr("Chưa chắc chắn bước tiếp theo. Cần hỏi lại.", "I am not sure about the next step. Please clarify.")), code)
                     }
@@ -129,12 +134,12 @@ class CoreBackendModel(
                     val targetId = result.getString("target_node_id")
                     val index = Regex("n(0|[1-9]\\d*)").matchEntire(targetId)?.groupValues?.get(1)?.toIntOrNull()
                     val node = index?.let { input.screen.nodes.getOrNull(it) } ?: return GuideDecision.Await(tr("Không tìm thấy nút trong màn hình hiện tại.", "I cannot find that button on the current screen."), "target_absent")
-                    val liveScreen = freshScreen() ?: return GuideDecision.StateChanged
+                    val liveScreen = freshScreen() ?: return stale("missing_live_screen")
                     if (!safe(liveScreen) || liveScreen.planningFingerprint != input.screen.planningFingerprint)
-                        return GuideDecision.StateChanged
+                        return stale("screen_changed")
                     val liveNode = liveScreen.nodes.singleOrNull { current -> current.id == node.id && current.region == node.region &&
                         current.className == node.className && current.clickable == node.clickable && current.password == node.password &&
-                        current.selected == node.selected && current.labels == node.labels } ?: return GuideDecision.StateChanged
+                        current.selected == node.selected && current.labels == node.labels } ?: return stale("target_changed")
                     val box = result.getJSONArray("region")
                     if (box.length() != 4) return GuideDecision.Await(tr("SAM chưa trả về một vùng duy nhất.", "SAM has not returned one clear region."))
                     val region = Region(box.getDouble(0).toFloat(), box.getDouble(1).toFloat(), box.getDouble(2).toFloat(), box.getDouble(3).toFloat())
@@ -160,7 +165,7 @@ class CoreBackendModel(
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) {
-            if (requestEpoch != epoch) GuideDecision.StateChanged
+            if (requestEpoch != epoch) stale("request_cancelled")
             else GuideDecision.Unavailable("Backend", tr("Chưa nhận được bước hướng dẫn đầy đủ từ máy chủ. Đã dừng chỉ dẫn.", "The server could not return a complete step. Guidance is paused."))
         }
     }
