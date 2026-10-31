@@ -648,3 +648,11 @@ unless collection evidence supplies one, so an older phone trace cannot be prese
 1.5.26 performance. The read-only collector also now reads package/version metadata from
 `vn.guidinghand.candidate` rather than accidentally reporting the original app. The backend suite
 is **74/74**; Android remains **84/84** with lint/assemble passing.
+
+GitHub verification run `41200752173` passed the complete fixture-only app-facing cloud contract
+inside the Linux container. It verified the public detail-free health endpoint, direct HTTP
+rejection, bearer-auth rejection, and an authenticated capabilities response through explicitly
+trusted forwarded HTTPS, including the expected snapshot protocol, Muse Voice Transcribe model,
+and `automatic_actions=false`. The run made no provider call; all backend, Android, and container
+jobs passed. This is deployment-contract evidence, not evidence of a production cloud deployment
+or a real-phone task pass.
