@@ -628,3 +628,9 @@ suite, the Android candidate build/lint/test plus package/version assertions, an
 build followed by a live `/healthz` request with fixture-only environment values. The health check
 made no provider call. This supplies container-build evidence despite Docker being unavailable on
 the Windows workstation; it is not evidence of a production cloud deployment or phone task pass.
+
+The backend now ignores `X-Forwarded-Proto` unless
+`GUIDINGHAND_TRUST_PROXY_HEADERS=true` is explicitly configured. This closes the direct-client
+header-spoofing path while preserving managed TLS termination behind a private trusted proxy.
+Tests cover both the safe default rejection and the explicitly trusted deployment path; local
+verification remains 72/72 backend tests and 84/84 Android tests with lint/assemble passing.

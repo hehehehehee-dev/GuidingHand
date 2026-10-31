@@ -9,6 +9,8 @@ managed HTTPS endpoint and configure all secrets in the hosting platform.
 - `GUIDINGHAND_APP_SESSION_TOKEN`: random app-to-backend bearer token, at least 32 characters.
 - `GUIDINGHAND_PROJECT_BUDGET_USD`: project ceiling, no more than `150`.
 - `GUIDINGHAND_STATE_DIR`: mounted persistent directory for the usage ledger.
+- `GUIDINGHAND_TRUST_PROXY_HEADERS`: set to `true` only when a trusted TLS proxy
+  overwrites forwarded headers and the container port is not publicly reachable.
 - `PORT`: injected by most container platforms; defaults to `8080`.
 
 Do not commit `.env`, provider keys, session tokens, TLS private keys, or the
@@ -22,8 +24,10 @@ Build from the repository root:
 docker build -t guidinghand-backend backend
 ```
 
-The platform must terminate TLS and forward `X-Forwarded-Proto: https`.
-Expose only the managed HTTPS hostname. Keep the container port private.
+For managed TLS termination, keep the container port private, ensure the proxy
+overwrites `X-Forwarded-Proto`, and set `GUIDINGHAND_TRUST_PROXY_HEADERS=true`.
+Without that explicit setting, a client-supplied forwarded header is ignored.
+Expose only the managed HTTPS hostname.
 
 - `GET /healthz` is an unauthenticated liveness check. It does not call Meta or
   reveal model, budget, or configuration details.

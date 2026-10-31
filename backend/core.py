@@ -517,11 +517,13 @@ def create_application():
     core = CoreGateway({'key': key}, Budget(Path(os.environ.get('GUIDINGHAND_STATE_DIR', Path(__file__).parent / '.state')), limit))
     from speech_input import SpeechInput
     speech = SpeechInput(key, core.planner.budget)
+    trust_proxy_headers = os.environ.get('GUIDINGHAND_TRUST_PROXY_HEADERS', '').strip().lower() == 'true'
     def application(environ, start_response):
         status, result = '200 OK', None
         path, method = environ.get('PATH_INFO'), environ.get('REQUEST_METHOD')
         forwarded = environ.get('HTTP_X_FORWARDED_PROTO', '').split(',', 1)[0].strip().lower()
-        secure = environ.get('wsgi.url_scheme') == 'https' or forwarded == 'https'
+        # Forwarded headers are attacker-controlled unless the container is behind a trusted proxy.
+        secure = environ.get('wsgi.url_scheme') == 'https' or (trust_proxy_headers and forwarded == 'https')
         if method == 'GET' and path == '/healthz':
             # Public liveness only. No provider, budget, configuration or model details.
             result = {'status': 'ok'}

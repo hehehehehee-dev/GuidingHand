@@ -366,8 +366,9 @@ class CoreTests(unittest.TestCase):
         self.assertEqual('muse-voice-transcribe-1.0', value['voice_input']['model']); self.assertEqual('speech_to_text', value['voice_input']['role']); self.assertFalse(value['automatic_actions'])
 
     def test_production_wsgi_requires_https_and_backend_session_auth(self):
-        with patch.dict(os.environ, {'MODEL_API_KEY':'fixture-key', 'GUIDINGHAND_APP_SESSION_TOKEN':'session-token-'*4,
-                    'GUIDINGHAND_STATE_DIR':self.temp.name, 'GUIDINGHAND_PROJECT_BUDGET_USD':'5'}):
+        environment = {'MODEL_API_KEY':'fixture-key', 'GUIDINGHAND_APP_SESSION_TOKEN':'session-token-'*4,
+                       'GUIDINGHAND_STATE_DIR':self.temp.name, 'GUIDINGHAND_PROJECT_BUDGET_USD':'5'}
+        with patch.dict(os.environ, environment, clear=True):
             app = create_application()
         def request(scheme, auth, path='/core/capabilities', forwarded=''):
             status = []
@@ -376,10 +377,14 @@ class CoreTests(unittest.TestCase):
             return status[0], json.loads(b''.join(result))
         self.assertEqual(('200 OK', {'status':'ok'}), request('http','', '/healthz'))
         self.assertEqual('400 Bad Request',request('http','Bearer '+'session-token-'*4)[0])
+        self.assertEqual('400 Bad Request',request('http','Bearer '+'session-token-'*4, forwarded='https')[0])
         self.assertEqual('401 Unauthorized',request('https','wrong')[0])
-        self.assertEqual('200 OK',request('http','Bearer '+'session-token-'*4, forwarded='https')[0])
         status,result = request('https','Bearer '+'session-token-'*4)
         self.assertEqual('200 OK',status); self.assertFalse(result['production_ready'])
+        with patch.dict(os.environ, {**environment, 'GUIDINGHAND_TRUST_PROXY_HEADERS':'true'}, clear=True):
+            proxy_app = create_application()
+        app = proxy_app
+        self.assertEqual('200 OK',request('http','Bearer '+'session-token-'*4, forwarded='https')[0])
 
     def test_temporary_dev_transport_routes_core_and_blocks_sensitive_before_planning(self):
         gateway = Gateway({'key': 'fixture-key', 'limit': Decimal('5')}, self.budget)
