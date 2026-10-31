@@ -17,8 +17,21 @@ object LauncherTargets {
         if (!safe(screen)) return null
         val wanted = normalized(label)
         if (wanted.isBlank()) return null
-        return screen.nodes.filter { node -> node.region != null && node.clickable && !node.password &&
-            !editable(node) && wanted in labels(node) }.distinctBy { it.region }.singleOrNull()
+        val candidates = screen.nodes.filter { node -> node.region != null && node.clickable && !node.password &&
+            (node.region.right - node.region.left) * (node.region.bottom - node.region.top) <= .2f &&
+            !node.launcherFolder && !node.inLauncherFolder &&
+            !editable(node) && wanted in labels(node) && screen.nodes.none { child ->
+                val outer = node.region; val inner = child.region
+                editable(child) && outer != null && inner != null && outer.left <= inner.left && outer.top <= inner.top &&
+                    outer.right >= inner.right && outer.bottom >= inner.bottom && (child.focused || wanted in labels(child))
+            } }.distinctBy { it.region }
+        // A clickable workspace/folder can inherit the child's label. Prefer the actual inner icon.
+        return candidates.filter { outer -> candidates.none { inner ->
+            if (inner === outer) false else {
+                val a = outer.region!!; val b = inner.region!!
+                a.left <= b.left && a.top <= b.top && a.right >= b.right && a.bottom >= b.bottom && a != b
+            }
+        } }.singleOrNull()
     }
 
     private fun hasSearchIdentity(node: ScreenNode): Boolean {
@@ -41,5 +54,6 @@ object LauncherTargets {
         return if (focused.isNotEmpty()) focused.singleOrNull() else candidates.singleOrNull()
     }
 
-    fun hasTarget(screen: ScreenState, appLabel: String) = icon(screen, appLabel) != null || search(screen) != null
+    fun hasTarget(screen: ScreenState, appLabel: String) = icon(screen, appLabel) != null || search(screen) != null ||
+        LauncherNavigation.folder(screen, appLabel) != null || LauncherNavigation.drawerButton(screen) != null
 }

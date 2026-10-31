@@ -44,6 +44,7 @@ data class UiText(val language: String = "en") {
         else -> pick("Get help", "Nhận trợ giúp")
     }
     fun task(task: GuideTask): String = when (task.id) {
+        "assist" -> task.label
         "open" -> pick("Find ${task.appLabel}", "Tìm ${task.appLabel}")
         "message" -> pick("Message in ${task.appLabel}", "Nhắn tin trong ${task.appLabel}")
         else -> this.task(task.id)

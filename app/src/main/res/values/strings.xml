@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">GuidingHand</string>
     <string name="settings_label">Family and preferences</string>
-    <string name="service_description">Shows a floating guide and points out the next step when asked. You do every tap. Screen data stays on this device. Guidance pauses at passwords and payments.</string>
+    <string name="service_description">Guides one step at a time. You perform every tap. Android system offline TTS speaks at 0.85 speed. Muse Voice Transcribe is speech input only. With consent, the screen tree goes to the GuidingHand backend; an image is captured only when SAM needs it. Password, payment and OTP screens pause guidance.</string>
 </resources>

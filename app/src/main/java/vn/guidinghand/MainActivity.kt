@@ -1,6 +1,7 @@
 package vn.guidinghand
 
 import android.content.Intent
+import android.content.ComponentName
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -9,281 +10,383 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 
-val Ink = Color(0xFF233D34)
-val Paper = Color(0xFFFBF7EF)
-val Amber = Color(0xFFF3CE8B)
-val Sage = Color(0xFFE8EDE3)
-val Quiet = Color(0xFF536157)
-val Line = Color(0xFFE6E2D8)
-
-@Composable fun GuidingHandTheme(language: String = "en", content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalUi provides UiText(language)) {
-        MaterialTheme(colorScheme = lightColorScheme(primary = Ink, onPrimary = Color.White,
-            background = Paper, surface = Paper, onBackground = Ink, onSurface = Ink,
-            onSurfaceVariant = Quiet, outline = Line, secondary = Amber), content = content)
-    }
-}
-@Composable fun Buddy(modifier: Modifier = Modifier, dark: Boolean = false) {
-    val ui = LocalUi.current
-    Image(painterResource(R.drawable.guidinghand_icon), ui.pick("A hand pointing to the next step", "Bàn tay chỉ điểm dẫn đường"),
-        modifier.clip(RoundedCornerShape(if (dark) 14.dp else 22.dp)))
-}
-@Composable fun TaskMark(id: String, modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        val w = size.width; val h = size.height
-        val stroke = Stroke(w * .065f, cap = StrokeCap.Round)
-        when (id) {
-            "video" -> {
-                drawRoundRect(Ink, Offset(w * .12f, h * .24f), Size(w * .51f, h * .5f), androidx.compose.ui.geometry.CornerRadius(w * .1f), style = stroke)
-                drawLine(Ink, Offset(w * .67f, h * .39f), Offset(w * .86f, h * .28f), w * .065f, StrokeCap.Round)
-                drawLine(Ink, Offset(w * .86f, h * .28f), Offset(w * .86f, h * .72f), w * .065f, StrokeCap.Round)
-                drawLine(Ink, Offset(w * .86f, h * .72f), Offset(w * .67f, h * .61f), w * .065f, StrokeCap.Round)
-            }
-            "photo" -> {
-                drawRoundRect(Ink, Offset(w * .15f, h * .18f), Size(w * .7f, h * .64f), androidx.compose.ui.geometry.CornerRadius(w * .09f), style = stroke)
-                drawCircle(Ink, w * .055f, Offset(w * .65f, h * .36f))
-                drawLine(Ink, Offset(w * .24f, h * .69f), Offset(w * .44f, h * .46f), w * .06f, StrokeCap.Round)
-                drawLine(Ink, Offset(w * .44f, h * .46f), Offset(w * .7f, h * .7f), w * .06f, StrokeCap.Round)
-            }
-            "open" -> {
-                drawCircle(Ink, w * .22f, Offset(w * .43f, h * .42f), style = stroke)
-                drawLine(Ink, Offset(w * .6f, h * .6f), Offset(w * .82f, h * .82f), w * .07f, StrokeCap.Round)
-            }
-            "message" -> {
-                drawRoundRect(Ink, Offset(w * .14f, h * .16f), Size(w * .72f, h * .56f), androidx.compose.ui.geometry.CornerRadius(w * .15f), style = stroke)
-                drawLine(Ink, Offset(w * .3f, h * .73f), Offset(w * .24f, h * .86f), w * .06f, StrokeCap.Round)
-                for (i in 0..2) drawCircle(Ink, w * .035f, Offset(w * (.34f + i * .16f), h * .44f))
-            }
-            else -> {
-                drawCircle(Ink, w * .29f, center, style = stroke)
-                drawLine(Ink, Offset(w * .5f, h * .32f), Offset(w * .5f, h * .68f), w * .06f, StrokeCap.Round)
-                drawLine(Ink, Offset(w * .32f, h * .5f), Offset(w * .68f, h * .5f), w * .06f, StrokeCap.Round)
-            }
-        }
-    }
-}
-@Composable fun LargeButton(label: String, secondary: Boolean = false, action: () -> Unit) {
-    Button(onClick = action, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = if (secondary) Color.White else Ink,
-            contentColor = if (secondary) Ink else Color.White),
-        border = if (secondary) BorderStroke(1.dp, Line) else null,
-        shape = RoundedCornerShape(22.dp), contentPadding = PaddingValues(20.dp)) {
-        Text(label, fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold)
-    }
-}
-@Composable fun LargeText(value: String) { Text(value, fontSize = 24.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, color = Ink) }
-@Composable fun Body(value: String, modifier: Modifier = Modifier) { Text(value, modifier, fontSize = 20.sp, lineHeight = 29.sp, color = Quiet) }
-@Composable fun LanguagePicker(language: String, change: (String) -> Unit) {
-    val ui = LocalUi.current
-    Row(Modifier.clip(RoundedCornerShape(18.dp)).background(Color.White).padding(4.dp)) {
-        listOf("en", "vi").forEach { code ->
-            Surface(onClick = { change(code) }, color = if (language == code) Ink else Color.White, shape = RoundedCornerShape(14.dp)) {
-                Text(ui.languageName(code), Modifier.heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 16.dp),
-                    color = if (language == code) Color.White else Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-@Composable fun TaskCard(task: GuideTask, modifier: Modifier = Modifier, action: () -> Unit) {
-    val ui = LocalUi.current
-    Surface(onClick = action, modifier = modifier, shape = RoundedCornerShape(24.dp), color = Color.White, border = BorderStroke(1.dp, Line)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(if (task.id in listOf("open", "photo")) Amber.copy(alpha = .45f) else Sage), contentAlignment = Alignment.Center) {
-                TaskMark(task.id, Modifier.size(34.dp))
-            }
-            Text(ui.task(task), fontSize = 22.sp, lineHeight = 29.sp, fontWeight = FontWeight.Bold)
-            Text(ui.taskHint(task.id), fontSize = 18.sp, lineHeight = 26.sp, color = Quiet)
-        }
-    }
+@Composable private fun GuideTheme(content: @Composable () -> Unit) {
+    val ink = Color(0xFF18332A); val cream = Color(0xFFFFFCF5)
+    MaterialTheme(colorScheme = lightColorScheme(primary = ink, onPrimary = cream, surface = cream,
+        onSurface = ink, background = cream, onBackground = ink, secondary = ink),
+        typography = Typography(bodyLarge = TextStyle(fontSize = 20.sp), bodyMedium = TextStyle(fontSize = 20.sp),
+            bodySmall = TextStyle(fontSize = 20.sp), labelLarge = TextStyle(fontSize = 22.sp)), content = content)
 }
 
-class MainActivity : ComponentActivity() {
-    override fun attachBaseContext(newBase: android.content.Context) { super.attachBaseContext(AppLanguage.context(newBase)) }
-    private lateinit var preferences: FamilyPreferences
-    private var language by mutableStateOf("en")
-    private var refresh by mutableIntStateOf(0)
-    override fun onResume() { super.onResume(); if (::preferences.isInitialized) language = preferences.language; refresh++ }
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState); preferences = FamilyPreferences(this); language = preferences.language
-        AppLanguage.apply(this, language)
-        setContent {
-            GuidingHandTheme(language) {
-                val ui = LocalUi.current
-                val service = remember(refresh) { GuidingHandService.instance }
-                fun assistant(task: GuideTask? = null) {
-                    if (service == null) { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)); return }
-                    service.setBubbleVisible(true)
-                    service.showAssistant(task)
+/** An explicit Help tap can dismiss our own setup task; it never navigates another app. */
+open class SetupActivity : ComponentActivity() {
+    companion object { var foreground: java.lang.ref.WeakReference<SetupActivity>? = null }
+    override fun onResume() { super.onResume(); foreground = java.lang.ref.WeakReference(this) }
+    override fun onPause() { if (foreground?.get() === this) foreground = null; super.onPause() }
+}
+
+class MainActivity : SetupActivity() {
+    /** SharedPreferences change in SettingsActivity; this revision makes Compose read it again on return. */
+    private var preferenceRevision by mutableIntStateOf(0)
+    override fun onResume() {
+        super.onResume()
+        preferenceRevision++
+    }
+    private fun accessibilityEnabled(): Boolean {
+        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()
+        return enabled.split(':').any { ComponentName.unflattenFromString(it)?.let { name ->
+            name.packageName == packageName && name.className == GuidingHandService::class.java.name
+        } == true }
+    }
+    private fun configureDevelopment(source: Intent) {
+        if (!BuildConfig.DEBUG) return
+        val prefs = FamilyPreferences(this)
+        if (source.getBooleanExtra("configureCoreDev", false) && source.getStringExtra("devPairNonce") == prefs.devPairNonce) {
+            source.getStringExtra("backendSession")?.takeIf { it.matches(Regex("[a-f0-9]{48}")) }?.let {
+                val port = BuildConfig.DEV_BACKEND_PORT
+                prefs.backendUrl = "http://127.0.0.1:$port"; prefs.backendSession = it
+                source.getStringExtra("devLanguage")?.takeIf { language -> language in setOf("vi", "en") }?.let { language ->
+                    prefs.language = language
                 }
-                Surface(Modifier.fillMaxSize(), color = Paper) {
-                    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(26.dp)) {
-                        Column(Modifier.widthIn(max = 680.dp), verticalArrangement = Arrangement.spacedBy(26.dp)) {
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                Buddy(Modifier.size(46.dp), dark = true)
-                                Text("GuidingHand", Modifier.weight(1f).padding(start = 8.dp), fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                                TextButton(onClick = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) }) {
-                                    Text(ui.settings, fontSize = 17.sp, color = Ink)
-                                }
+                prefs.devUsbBridge = true; prefs.devStandIn = false
+                prefs.devPairNonce = java.util.UUID.randomUUID().toString().replace("-", "")
+                GuidingHandService.instance?.reloadModel()
+            }
+        }
+        source.removeExtra("configureCoreDev"); source.removeExtra("devPairNonce"); source.removeExtra("backendSession"); source.removeExtra("devLanguage")
+    }
+    override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); configureDevelopment(intent) }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState); configureDevelopment(intent)
+        val prefs = FamilyPreferences(this)
+        setContent { GuideTheme {
+            val vi = remember(preferenceRevision) { prefs.language == "vi" }
+            fun tr(v: String, e: String) = if (vi) v else e
+            var detailsOpen by remember { mutableStateOf(false) }
+            var guideReady by remember { mutableStateOf(GuidingHandService.instance != null) }
+            val accessibilityOn = accessibilityEnabled()
+            LaunchedEffect(Unit) {
+                repeat(24) {
+                    guideReady = GuidingHandService.instance != null
+                    if (guideReady) return@LaunchedEffect
+                    delay(250)
+                }
+            }
+            Surface(Modifier.fillMaxSize()) {
+                Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Image(painterResource(R.drawable.guidinghand_icon), contentDescription = null,
+                                modifier = Modifier.size(50.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text("GuidingHand", fontSize = 29.sp, fontWeight = FontWeight.SemiBold,
+                                maxLines = 1, softWrap = false, modifier = Modifier.weight(1f))
+                        }
+                        Surface(color = if (guideReady) Color(0xFFE6F0E8) else Color(0xFFF1EEE4),
+                            shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, guideInk)) {
+                            Text(when {
+                                guideReady -> tr("✓ Sẵn sàng", "✓ Ready")
+                                accessibilityOn -> tr("… Đang nối", "… Connecting")
+                                else -> tr("! Cần bật", "! Enable")
+                            }, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                                fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F0E6)),
+                        shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally) {
+                            Image(painterResource(R.drawable.family_together),
+                                contentDescription = tr("Người lớn tuổi và người thân đồng hành", "An elder and family member together"),
+                                modifier = Modifier.fillMaxWidth().heightIn(max = 176.dp))
+                            Text(tr("Bác nói. Tôi chỉ. Bác tự bấm.", "You speak. I point. You tap."),
+                                fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    HomeJourney(vi, accentColor(prefs.visionProfile))
+
+                    Button(onClick = {
+                        val service = GuidingHandService.instance
+                        if (service == null && !accessibilityOn) startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        else if (service != null) { moveTaskToBack(true); window.decorView.postDelayed({ service.openVoice() }, 350) }
+                    }, enabled = guideReady || !accessibilityOn,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), shape = RoundedCornerShape(24.dp)) {
+                        Icon(painterResource(R.drawable.ic_mic), contentDescription = null, modifier = Modifier.size(30.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(when {
+                            guideReady -> tr("Nói việc cần giúp", "Speak to get help")
+                            accessibilityOn -> tr("Đang chuẩn bị…", "Getting ready…")
+                            else -> tr("Bật hỗ trợ nổi", "Enable floating help")
+                        }, fontSize = 23.sp)
+                    }
+                    OutlinedButton(onClick = { startActivity(Intent(this@MainActivity, SettingsActivity::class.java)) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp), shape = RoundedCornerShape(20.dp)) {
+                        Text(tr("⚙  Thiết lập", "⚙  Settings"), fontSize = 22.sp)
+                    }
+
+                    TextButton(onClick = { detailsOpen = !detailsOpen }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text((if (detailsOpen) "⌃  " else "⌄  ") + tr("Xem cách hoạt động", "How it works"), fontSize = 20.sp)
+                    }
+                    if (detailsOpen) {
+                        Card(colors = CardDefaults.cardColors(containerColor = Color.White),
+                            shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, Color(0xFFCBD3CE)),
+                            modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(tr("GuidingHand chỉ khoanh và hướng dẫn. Bác vẫn tự bấm, nhập và gửi.",
+                                    "GuidingHand points and guides. You still tap, type and send."), fontSize = 20.sp)
+                                Text(tr("Ngôn ngữ: ${if (prefs.language == "vi") "Tiếng Việt" else "English"} · Chỉ dẫn: ${visionLabel(prefs.visionProfile, true)}",
+                                    "Language: ${if (prefs.language == "vi") "Vietnamese" else "English"} · Guide: ${visionLabel(prefs.visionProfile, false)}"), fontSize = 18.sp)
+                                Text(tr("Phiên bản ${BuildConfig.VERSION_NAME}", "Version ${BuildConfig.VERSION_NAME}"), fontSize = 18.sp)
+                                if (BuildConfig.DEBUG) Text(tr("Bản phát triển: ${if (prefs.devStandIn) "MockModel" else "Muse Spark + SAM"}",
+                                    "Development: ${if (prefs.devStandIn) "MockModel" else "Muse Spark + SAM"}"), fontSize = 18.sp)
                             }
-                            Surface(shape = RoundedCornerShape(32.dp), color = Color(0xFFF3EBDD)) {
-                                Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Text(ui.pick("A LITTLE CLOSER, EVERY DAY", "GẦN NHAU HƠN, MỖI NGÀY"),
-                                        fontSize = 12.sp, letterSpacing = 1.5.sp, fontWeight = FontWeight.Bold, color = Quiet)
-                                    Text(ui.pick("A helping hand.\nA familiar feeling.", "Có người bên cạnh.\nTừng bước an tâm."),
-                                        fontSize = 36.sp, lineHeight = 43.sp, fontWeight = FontWeight.Medium,
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Serif, letterSpacing = (-.7).sp)
-                                    Text(ui.pick("For the moments your family can't be right beside you.", "Khi con cháu chưa thể ở bên, vẫn có người kiên nhẫn chỉ từng bước."),
-                                        fontSize = 19.sp, lineHeight = 28.sp, color = Quiet)
-                                    Image(painterResource(R.drawable.family_together),
-                                        ui.pick("Two generations holding hands, a heart between them", "Ông bà và con cháu nắm tay, cùng chia sẻ yêu thương"),
-                                        Modifier.fillMaxWidth().height(136.dp))
-                                    LargeButton(if (service != null) ui.start else ui.enable) { assistant() }
-                                    Text(if (service != null) ui.pick("No rush. We can do this together.", "Không cần vội. Cùng làm từng bước nhé.")
-                                        else ui.pick("Ask someone you trust to help set up.", "Nhờ người thân giúp thiết lập lần đầu nhé."),
-                                        Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                        fontSize = 16.sp, lineHeight = 24.sp, color = Quiet)
-                                }
-                            }
-                            Surface(shape = RoundedCornerShape(24.dp), color = Sage) {
-                                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Text(ui.pick("♡  A familiar voice", "♡  Giọng nói thân quen"), fontSize = 23.sp, fontWeight = FontWeight.SemiBold)
-                                    Text(if (preferences.phone.isNotBlank()) ui.pick("When you want your family, they're a phone call away.", "Khi muốn nghe giọng người thân, chỉ cần một cuộc gọi.")
-                                        else ui.pick("Keep someone you trust within reach, for the moments you want a little extra help.", "Lưu số người thân để dễ liên lạc khi cần thêm một chút giúp đỡ."),
-                                        fontSize = 18.sp, lineHeight = 27.sp, color = Quiet)
-                                    TextButton(onClick = {
-                                        if (preferences.phone.isBlank()) startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-                                        else startActivity(Intent(Intent.ACTION_DIAL, android.net.Uri.fromParts("tel", preferences.phone.filter { it.isDigit() || it == '+' }, null)))
-                                    }, contentPadding = PaddingValues(0.dp), modifier = Modifier.heightIn(min = 48.dp)) {
-                                        Text(if (preferences.phone.isBlank()) ui.pick("Add a family number  →", "Lưu số người thân  →") else ui.pick("Call family  →", "Gọi người thân  →"), fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Ink)
-                                    }
-                                }
-                            }
-                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                LargeText(ui.pick("Little things, together", "Việc nhỏ, cùng nhau làm"))
-                                Body(ui.pick("Pick one. We'll go one step at a time.", "Chọn một việc. Mình cùng làm từng bước nhé."))
-                            }
-                            val quick = listOf(Tasks.openZalo, Tasks.openInstagram, Tasks.message, Tasks.messageIn("com.instagram.android", "Instagram"))
-                            quick.chunked(2).forEach { pair ->
-                                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                                    pair.forEach { task -> TaskCard(task, Modifier.weight(1f).fillMaxHeight()) { assistant(task) } }
-                                }
-                            }
-                            LargeText(ui.pick("Everyday things", "Những việc thường ngày"))
-                            Tasks.all.drop(2).forEach { task ->
-                                Surface(onClick = { assistant(task) }, shape = RoundedCornerShape(22.dp), color = Color.White, border = BorderStroke(1.dp, Line)) {
-                                    Row(Modifier.fillMaxWidth().heightIn(min = 88.dp).padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        TaskMark(task.id, Modifier.size(36.dp))
-                                        Text(ui.task(task.id), Modifier.weight(1f).padding(horizontal = 16.dp), fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-                                        Text("→", fontSize = 28.sp)
-                                    }
-                                }
-                            }
-                            LanguagePicker(language) { language = it; preferences.language = it; service?.refreshLanguage() }
-                            Body(ui.pick("A little guidance, with the patience of someone who cares. Every tap is still yours.", "Một chút chỉ dẫn, một chút kiên nhẫn như người thân bên cạnh. Mọi thao tác vẫn do ông bà tự làm."))
-                            Spacer(Modifier.height(12.dp))
                         }
                     }
                 }
             }
+        } }
+    }
+}
+
+private enum class HomeStep { SPEAK, LOOK, TAP }
+
+@Composable private fun HomeJourney(vi: Boolean, accent: Color) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.Center) {
+        HomeJourneyStep(HomeStep.SPEAK, if (vi) "Nói" else "Speak", accent, Modifier.weight(1f))
+        Text("›", fontSize = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp))
+        HomeJourneyStep(HomeStep.LOOK, if (vi) "Nhìn" else "Look", accent, Modifier.weight(1f))
+        Text("›", fontSize = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 18.dp))
+        HomeJourneyStep(HomeStep.TAP, if (vi) "Tự bấm" else "You tap", accent, Modifier.weight(1f))
+    }
+}
+
+@Composable private fun HomeJourneyStep(step: HomeStep, label: String, accent: Color, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Surface(shape = CircleShape, color = Color(0xFF192A30), modifier = Modifier.size(68.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                when (step) {
+                    HomeStep.SPEAK -> Icon(painterResource(R.drawable.ic_mic), contentDescription = null,
+                        tint = Color.White, modifier = Modifier.size(34.dp))
+                    HomeStep.LOOK -> Canvas(Modifier.size(48.dp)) {
+                        drawRoundRect(Color.Black, style = Stroke(width = 6.dp.toPx()))
+                        drawRoundRect(accent, topLeft = androidx.compose.ui.geometry.Offset(7.dp.toPx(), 7.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(size.width - 14.dp.toPx(), size.height - 14.dp.toPx()),
+                            style = Stroke(width = 5.dp.toPx()))
+                    }
+                    HomeStep.TAP -> Image(painterResource(R.drawable.guidinghand_icon), contentDescription = null,
+                        modifier = Modifier.size(68.dp))
+                }
+            }
+        }
+        Text(label, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
+    }
+}
+
+private val guideInk = Color(0xFF18332A)
+private val guideCream = Color(0xFFFFFCF5)
+
+private fun accentColor(profile: VisionProfile) = Color(android.graphics.Color.parseColor(profile.accentHex))
+
+private fun visionLabel(profile: VisionProfile, vi: Boolean) = when (profile) {
+    VisionProfile.HIGH_CONTRAST -> if (vi) "Tương phản cao" else "High contrast"
+    VisionProfile.PROTANOPIA -> if (vi) "Mù màu đỏ" else "Protanopia"
+    VisionProfile.DEUTERANOPIA -> if (vi) "Mù màu xanh lá" else "Deuteranopia"
+    VisionProfile.TRITANOPIA -> if (vi) "Mù màu xanh lam–vàng" else "Tritanopia"
+    VisionProfile.MONOCHROME -> if (vi) "Đơn sắc" else "Monochrome"
+}
+
+@Composable private fun SettingsSection(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F0E6)),
+        shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+            subtitle?.let { Text(it, fontSize = 20.sp) }
+            content()
         }
     }
 }
 
-class SettingsActivity : ComponentActivity() {
-    override fun attachBaseContext(newBase: android.content.Context) { super.attachBaseContext(AppLanguage.context(newBase)) }
+@Composable private fun ChoiceButton(selected: Boolean, label: String, accent: Color = Color.Transparent,
+    supporting: String? = null, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp),
+        shape = RoundedCornerShape(18.dp), border = BorderStroke(if (selected) 4.dp else 1.dp, if (selected) guideInk else Color(0xFF66766F)),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = if (selected) Color.White else guideCream, contentColor = guideInk),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+        if (accent != Color.Transparent) Box(Modifier.size(30.dp).background(Color.Black, CircleShape).padding(5.dp)) {
+            Box(Modifier.fillMaxSize().background(accent, CircleShape))
+        }
+        Spacer(Modifier.width(if (accent != Color.Transparent) 12.dp else 0.dp))
+        Column(Modifier.weight(1f)) {
+            Text((if (selected) "✓  " else "") + label, fontSize = 22.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+            supporting?.let { Text(it, fontSize = 20.sp, fontWeight = FontWeight.Normal) }
+        }
+    }
+}
+
+@Composable private fun ToggleSetting(title: String, description: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Surface(onClick = { onCheckedChange(!checked) }, color = Color.White, shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, Color(0xFF66766F)), modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                Text(description, fontSize = 20.sp)
+            }
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
+        }
+    }
+}
+
+@Composable private fun GuidePreview(profile: VisionProfile, showPointer: Boolean, vi: Boolean) {
+    val accent = accentColor(profile)
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(if (vi) "Xem trước chỉ dẫn" else "Guide preview", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+        Box(Modifier.fillMaxWidth().height(150.dp).background(Color(0xFFE0E4E2), RoundedCornerShape(18.dp)),
+            contentAlignment = Alignment.Center) {
+            Box(Modifier.width(190.dp).height(82.dp).border(6.dp, Color.Black, RoundedCornerShape(20.dp)).padding(9.dp)
+                .border(6.dp, accent, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
+                Text(if (vi) "Nút cần bấm" else "Button to tap", fontSize = 20.sp, color = guideInk)
+            }
+            if (showPointer) Text("☝", fontSize = 44.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 3.dp))
+        }
+        Text(if (vi) "Vòng đôi và chữ vẫn cho biết vị trí, kể cả khi không phân biệt được màu."
+            else "The double ring and label still identify the target without relying on color.", fontSize = 20.sp)
+    }
+}
+
+class SettingsActivity : SetupActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val prefs = FamilyPreferences(this)
-        setContent {
+        setContent { GuideTheme {
             var language by remember { mutableStateOf(prefs.language) }
-            GuidingHandTheme(language) {
-                val ui = LocalUi.current
-                var phone by rememberSaveable { mutableStateOf(prefs.phone) }
-                var contact by rememberSaveable { mutableStateOf(prefs.contact) }
-                var network by rememberSaveable { mutableStateOf(prefs.network) }
-                var photo by rememberSaveable { mutableStateOf(prefs.photo) }
-                var address by rememberSaveable { mutableStateOf(prefs.address) }
-                var speechLanguage by remember { mutableStateOf(prefs.speechLanguage) }
-                var zaloAlias by rememberSaveable { mutableStateOf(prefs.zaloAlias) }
-                var instagramAlias by rememberSaveable { mutableStateOf(prefs.instagramAlias) }
-                var saved by rememberSaveable { mutableStateOf(false) }
-                Surface(Modifier.fillMaxSize(), color = Paper) {
-                    Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                        Column(Modifier.widthIn(max = 680.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                            TextButton(onClick = { finish() }) { Text("←  ${ui.back}", fontSize = 20.sp, color = Ink) }
-                            Buddy(Modifier.size(76.dp), dark = true)
-                            Text(ui.family, fontSize = 34.sp, lineHeight = 42.sp, fontWeight = FontWeight.Bold)
-                            Body(ui.pick("A few minutes of your care. A little more confidence for someone you love.", "Con cháu dành vài phút thiết lập, để ông bà thêm tự tin mỗi ngày."))
-                            LanguagePicker(language) { language = it; prefs.language = it; GuidingHandService.instance?.refreshLanguage() }
-                            LargeText(ui.pick("The language you speak", "Ngôn ngữ ông bà nói"))
-                            Body(ui.pick("Your screen can stay in English while you speak Vietnamese.", "Giao diện có thể bằng tiếng Anh trong khi ông bà nói tiếng Việt."))
-                            LanguagePicker(speechLanguage) { speechLanguage = it; prefs.speechLanguage = it }
-                            Surface(shape = RoundedCornerShape(24.dp), color = Sage) {
-                                Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    LargeText(ui.pick("Make your guide available", "Bật trợ lý nổi"))
-                                    Body(ui.pick("Enable GuidingHand in Accessibility. The bubble stays available over your apps, until you hide it.", "Bật GuidingHand trong Trợ năng. Bong bóng hiện trên các ứng dụng đến khi được ẩn."))
-                                    LargeButton(ui.pick("Open Accessibility settings", "Mở cài đặt Trợ năng")) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-                                }
-                            }
-                            @Composable fun field(label: String, value: String, phoneInput: Boolean = false, update: (String) -> Unit) {
-                                OutlinedTextField(value, update, label = { Text(label, fontSize = 18.sp) }, shape = RoundedCornerShape(18.dp),
-                                    textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, fontWeight = FontWeight.Medium),
-                                    keyboardOptions = KeyboardOptions(keyboardType = if (phoneInput) KeyboardType.Phone else KeyboardType.Text),
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp))
-                            }
-                            LargeText(ui.pick("A familiar person", "Một người thân quen"))
-                            field(ui.pick("Family phone number", "Số điện thoại người thân"), phone, true) { phone = it; saved = false }
-                            field(ui.pick("Saved contact's exact Zalo name", "Tên người thân trong Zalo"), contact) { contact = it; saved = false }
-                            Body(ui.pick("A saved contact is a one-tap option. You can also say another name when offline voice is available.", "Người thân đã lưu có thể chọn bằng một lần bấm. Có thể nói tên khác khi máy hỗ trợ giọng nói ngoại tuyến."))
-                            LargeText(ui.pick("Familiar names for apps", "Tên ứng dụng dễ nhớ"))
-                            Body(ui.pick("Save a name your family already uses, like “the app for talking to my grandson”. GuidingHand will ask before opening it.", "Lưu cách ông bà hay gọi, ví dụ “ứng dụng nói chuyện với cháu”. GuidingHand sẽ hỏi lại trước khi hướng dẫn mở."))
-                            field(ui.pick("A familiar name for Zalo", "Cách gọi quen thuộc của Zalo"), zaloAlias) { zaloAlias = it; saved = false }
-                            field(ui.pick("A familiar name for Instagram", "Cách gọi quen thuộc của Instagram"), instagramAlias) { instagramAlias = it; saved = false }
-                            LargeText(ui.pick("Optional task details", "Thông tin tùy chọn"))
-                            field(ui.pick("Wi-Fi network name", "Tên mạng không dây"), network) { network = it; saved = false }
-                            field(ui.pick("Photo's accessible label", "Tên ảnh trên màn hình"), photo) { photo = it; saved = false }
-                            if (language == "vi") field("Cách xưng hô: bà, ông, cô, chú, mẹ", address) { address = it; saved = false }
-                            LargeButton(if (saved) ui.pick("Saved ✓", "Đã lưu ✓") else ui.save) {
-                                prefs.phone = phone; prefs.contact = contact; prefs.network = network; prefs.photo = photo; prefs.address = address
-                                prefs.zaloAlias = zaloAlias; prefs.instagramAlias = instagramAlias; saved = true
-                            }
-                            LargeButton(ui.show, secondary = true) {
-                                GuidingHandService.instance?.setBubbleVisible(true)
-                                startActivity(Intent(this@SettingsActivity, MainActivity::class.java)); finish()
-                            }
-                            Body(ui.pick("Your screen stays on your phone. Speech starts offline. Online speech sends audio to the named service only after you confirm. Passwords and payments pause guidance.", "Màn hình được xử lý trong máy. Giọng nói mặc định ngoại tuyến. Chỉ gửi âm thanh đến dịch vụ được nêu khi ông bà xác nhận dùng nhận dạng qua mạng. Dừng hướng dẫn ở mật khẩu và thanh toán."))
+            var phone by remember { mutableStateOf(prefs.phone) }
+            var contact by remember { mutableStateOf(prefs.contact) }
+            var user by remember { mutableStateOf(prefs.respectfulLanguage.user) }
+            var assistant by remember { mutableStateOf(prefs.respectfulLanguage.assistant) }
+            var tone by remember { mutableStateOf(prefs.respectfulLanguage.tone) }
+            var visionProfile by remember { mutableStateOf(prefs.visionProfile) }
+            var showPointer by remember { mutableStateOf(prefs.showPointer) }
+            var reduceMotion by remember { mutableStateOf(prefs.reduceMotion) }
+            var technical by remember { mutableStateOf(false) }
+            var backend by remember { mutableStateOf(prefs.backendUrl) }
+            var session by remember { mutableStateOf(prefs.backendSession) }
+            var screenConsent by remember { mutableStateOf(prefs.screenConsent) }
+            var voiceConsent by remember { mutableStateOf(prefs.voiceConsent) }
+            var devStandIn by remember { mutableStateOf(prefs.devStandIn) }
+            var saved by remember { mutableStateOf(false) }
+            fun tr(v: String, e: String) = if (language == "vi") v else e
+            val preview = RespectfulLanguage(user, assistant, tone)
+            Surface(Modifier.fillMaxSize()) {
+                Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    Text(tr("Thiết lập GuidingHand", "GuidingHand settings"), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+                    Text(tr("Người nhà có thể cùng thiết lập một lần. Bác vẫn là người quyết định và tự thao tác.",
+                        "A family member can help set this up once. The elder stays in control and performs every action."))
+                    SettingsSection(tr("Ngôn ngữ", "Language"), tr("Toàn bộ lời hướng dẫn chỉ dùng ngôn ngữ đã chọn.", "All guidance uses only the selected language.")) {
+                        for ((key, label) in listOf("en" to "English", "vi" to "Tiếng Việt")) {
+                            ChoiceButton(language == key, label, onClick = { language = key; saved = false })
                         }
                     }
+                    if (language == "vi") {
+                        SettingsSection("Cách trò chuyện", "Chọn cách xưng hô khiến bác cảm thấy tự nhiên và được tôn trọng.") {
+                            Text("Trợ lý gọi bác là", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                            for (value in UserAddress.entries) ChoiceButton(user == value, value.label, onClick = { user = value; saved = false })
+                            Text("Trợ lý tự xưng là", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                            for (value in AssistantAddress.entries) ChoiceButton(assistant == value, value.label, onClick = { assistant = value; saved = false })
+                            Text("Cách hướng dẫn", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                            for (value in GuidanceTone.entries) ChoiceButton(tone == value, value.label, onClick = { tone = value; saved = false })
+                            Surface(color = Color.White, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("Nghe thử cách nói", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(preview.goalQuestion, fontSize = 24.sp)
+                                    Text(preview.waitingExample, fontSize = 20.sp)
+                                }
+                            }
+                        }
+                    } else SettingsSection("How the assistant speaks") {
+                        Text("The assistant speaks respectfully as itself. It never pretends to be a grandchild.")
+                    }
+                    SettingsSection(tr("Thị lực và chuyển động", "Vision and motion"),
+                        tr("Chọn kiểu dễ nhìn nhất. GuidingHand luôn dùng thêm hình dạng, đường viền và chữ — không chỉ dùng màu.",
+                            "Choose what is easiest to see. GuidingHand always uses shapes, borders and text—not color alone.")) {
+                        for (value in VisionProfile.entries) ChoiceButton(visionProfile == value, visionLabel(value, language == "vi"),
+                            accentColor(value), when (value) {
+                                VisionProfile.HIGH_CONTRAST -> tr("Vàng sáng trên viền đen", "Bright yellow with black outline")
+                                VisionProfile.PROTANOPIA -> tr("Tối ưu khi khó phân biệt màu đỏ", "For reduced red sensitivity")
+                                VisionProfile.DEUTERANOPIA -> tr("Tối ưu khi khó phân biệt màu xanh lá", "For reduced green sensitivity")
+                                VisionProfile.TRITANOPIA -> tr("Tối ưu khi khó phân biệt xanh lam–vàng", "For reduced blue–yellow sensitivity")
+                                VisionProfile.MONOCHROME -> tr("Chỉ trắng, đen và hình dạng", "White, black and shapes only")
+                            }) { visionProfile = value; saved = false }
+                        ToggleSetting(tr("Hiện bàn tay chỉ", "Show pointing hand"),
+                            tr("Thêm bàn tay bên cạnh vòng đôi. Tắt nếu bác thấy rối mắt.", "Adds a hand beside the double ring. Turn it off if it feels distracting."),
+                            showPointer) { showPointer = it; saved = false }
+                        ToggleSetting(tr("Giảm chuyển động", "Reduce motion"),
+                            tr("Tắt hiệu ứng gợn và chuyển động không cần thiết.", "Removes non-essential ripple and motion effects."),
+                            reduceMotion) { reduceMotion = it; saved = false }
+                        GuidePreview(visionProfile, showPointer, language == "vi")
+                    }
+                    SettingsSection(tr("Liên hệ gia đình", "Family contact"),
+                        tr("Chỉ dùng khi GuidingHand phải dừng vì mật khẩu, OTP hoặc thanh toán.",
+                            "Used only when GuidingHand must stop for a password, OTP or payment.")) {
+                        OutlinedTextField(contact, { contact = it; saved = false }, label = { Text(tr("Tên người thân", "Family member’s name")) },
+                            textStyle = TextStyle(fontSize = 20.sp), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(phone, { phone = it; saved = false }, label = { Text(tr("Số điện thoại người thân", "Family phone number")) },
+                            textStyle = TextStyle(fontSize = 20.sp), modifier = Modifier.fillMaxWidth())
+                        Text(tr("Gọi người thân chỉ mở trình quay số. GuidingHand không tự gọi.", "Call family only opens the dialer. GuidingHand never places the call."))
+                    }
+                    OutlinedButton(onClick = { technical = !technical }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text((if (technical) "− " else "+ ") + tr("Kết nối và quyền chia sẻ", "Connection and sharing"), fontSize = 22.sp)
+                    }
+                    if (technical) {
+                        Text(tr("Khóa API Meta chỉ nằm trên máy chủ. Không nhập khóa API vào ứng dụng.", "The Meta API key stays on the server. Never enter a provider key in the app."))
+                        OutlinedTextField(backend, { backend = it; saved = false }, label = { Text(tr("Máy chủ HTTPS GuidingHand", "GuidingHand HTTPS server")) },
+                            textStyle = TextStyle(fontSize = 20.sp), modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(session, { session = it; saved = false }, label = { Text(tr("Phiên kết nối GuidingHand", "GuidingHand session")) },
+                            visualTransformation = PasswordVisualTransformation(), textStyle = TextStyle(fontSize = 20.sp), modifier = Modifier.fillMaxWidth())
+                        Row { Checkbox(screenConsent, { screenConsent = it; saved = false }); Text(tr("Cho phép gửi một ảnh màn hình đã kiểm tra an toàn và dữ liệu giao diện để hướng dẫn.", "Allow one safety-checked screenshot and UI data for guidance.")) }
+                        Row { Checkbox(voiceConsent, { voiceConsent = it; saved = false }); Text(tr("Cho phép gửi bản ghi khi bấm Nói tới Meta qua máy chủ GuidingHand để chuyển thành chữ.", "Allow recordings made by tapping Speak to be transcribed by Meta through GuidingHand.")) }
+                        if (BuildConfig.DEBUG) Row { Checkbox(devStandIn, { devStandIn = it; saved = false }); Text(tr("Chỉ phát triển: MockModel thay cho Meta. Không dùng trong bản chính thức.", "Development only: MockModel instead of Meta. Not the submission path.")) }
+                    }
+                    Button(onClick = {
+                        val reload = prefs.backendUrl != backend.trim().trimEnd('/') || prefs.backendSession != session.trim() || prefs.screenConsent != screenConsent || prefs.contact != contact || prefs.devStandIn != devStandIn
+                        prefs.language = language; prefs.phone = phone; prefs.contact = contact; prefs.respectfulLanguage = preview
+                        prefs.visionProfile = visionProfile; prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion
+                        prefs.backendUrl = backend; prefs.backendSession = session; prefs.screenConsent = screenConsent; prefs.voiceConsent = voiceConsent
+                        if (BuildConfig.DEBUG) prefs.devStandIn = devStandIn
+                        if (reload) GuidingHandService.instance?.reloadModel()
+                        GuidingHandService.instance?.refreshPreferences()
+                        saved = true
+                    }, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)) { Text(if (saved) tr("Đã lưu", "Saved") else tr("Lưu thiết lập", "Save setup"), fontSize = 22.sp) }
+                    OutlinedButton(onClick = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)) {
+                        Text(tr("Mở cài đặt Trợ năng", "Open Accessibility settings"), fontSize = 22.sp)
+                    }
+                    TextButton(onClick = { finish() }, modifier = Modifier.heightIn(min = 48.dp)) { Text(tr("Quay lại", "Back"), fontSize = 22.sp) }
                 }
             }
-        }
+        } }
     }
 }

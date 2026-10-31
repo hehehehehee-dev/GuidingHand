@@ -1,53 +1,67 @@
 package vn.guidinghand
 
 import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
 
-interface PathStore {
-    fun familiar(task: GuideTask): Boolean
-    fun savePath(task: GuideTask, steps: List<Pair<String, Long>>)
+enum class VisionProfile(val key: String, val accentHex: String) {
+    HIGH_CONTRAST("high_contrast", "#FFE600"),
+    PROTANOPIA("protanopia", "#00E5FF"),
+    DEUTERANOPIA("deuteranopia", "#FFD166"),
+    TRITANOPIA("tritanopia", "#FFB3E6"),
+    MONOCHROME("monochrome", "#FFFFFF");
+    companion object { fun from(value: String) = entries.firstOrNull { it.key == value } ?: HIGH_CONTRAST }
 }
-class FamilyPreferences(private val context: Context) : PathStore {
+
+/** Family slots and a user session for our backend. No Meta/provider credential belongs here. */
+class FamilyPreferences(context: Context) {
     private val prefs = context.getSharedPreferences("GuidingHand", Context.MODE_PRIVATE)
-    var language: String
-        get() = prefs.getString("language", "en")!!
-        set(value) {
-            val selected = if (value == "vi") "vi" else "en"
-            prefs.edit().putString("language", selected).apply()
-            AppLanguage.apply(context, selected)
+    var voiceConsent: Boolean
+        get() = prefs.getBoolean("voiceInputConsent", false)
+        set(value) { prefs.edit().putBoolean("voiceInputConsent", value).apply() }
+    var devPairNonce: String
+        get() = prefs.getString("devPairNonce", null) ?: java.util.UUID.randomUUID().toString().replace("-", "").also {
+            prefs.edit().putString("devPairNonce", it).apply()
         }
-    var bubbleVisible: Boolean
-        get() = prefs.getBoolean("bubbleVisible", true)
-        set(value) { prefs.edit().putBoolean("bubbleVisible", value).apply() }
-    var speechLanguage: String
-        get() = prefs.getString("speechLanguage", language)!!
-        set(value) { prefs.edit().putString("speechLanguage", if (value == "vi") "vi" else "en").apply() }
-    var zaloAlias: String
-        get() = prefs.getString("zaloAlias", "").orEmpty()
-        set(value) { prefs.edit().putString("zaloAlias", value.trim()).apply() }
-    var instagramAlias: String
-        get() = prefs.getString("instagramAlias", "").orEmpty()
-        set(value) { prefs.edit().putString("instagramAlias", value.trim()).apply() }
+        set(value) { prefs.edit().putString("devPairNonce", value).apply() }
+    var devUsbBridge: Boolean
+        get() = prefs.getBoolean("devUsbBridge", false)
+        set(value) { prefs.edit().putBoolean("devUsbBridge", value).apply() }
+    var respectfulLanguage: RespectfulLanguage
+        get() = RespectfulLanguage(UserAddress.from(prefs.getString("userAddress", "bac").orEmpty()),
+            AssistantAddress.from(prefs.getString("assistantAddress", "toi").orEmpty()),
+            GuidanceTone.from(prefs.getString("guidanceTone", "gentle").orEmpty()))
+        set(value) { prefs.edit().putString("userAddress", value.user.key).putString("assistantAddress", value.assistant.key)
+            .putString("guidanceTone", value.tone.key).apply() }
+    var devStandIn: Boolean
+        get() = prefs.getBoolean("phase1DevStandIn", false)
+        set(value) { prefs.edit().putBoolean("phase1DevStandIn", value).apply() }
+    var language: String
+        get() = prefs.getString("language", "en").orEmpty()
+        set(value) { prefs.edit().putString("language", if (value == "en") "en" else "vi").apply() }
     var phone: String
-        get() = prefs.getString("phone", "")!!
-        set(value) { prefs.edit().putString("phone", value).apply() }
+        get() = prefs.getString("phone", "").orEmpty()
+        set(value) { prefs.edit().putString("phone", value.trim()).apply() }
     var contact: String
-        get() = prefs.getString("contact", "")!!
-        set(value) { prefs.edit().putString("contact", value).apply() }
-    var network: String
-        get() = prefs.getString("network", "")!!
-        set(value) { prefs.edit().putString("network", value).apply() }
+        get() = prefs.getString("contact", "").orEmpty()
+        set(value) { prefs.edit().putString("contact", value.trim()).apply() }
     var photo: String
-        get() = prefs.getString("photo", "")!!
-        set(value) { prefs.edit().putString("photo", value).apply() }
-    var address: String
-        get() = prefs.getString("address", "")!!
-        set(value) { prefs.edit().putString("address", value).apply() }
-    override fun familiar(task: GuideTask) = prefs.contains("path-${task.id}")
-    override fun savePath(task: GuideTask, steps: List<Pair<String, Long>>) {
-        val json = JSONObject().put("task", task.label).put("completedAt", System.currentTimeMillis())
-            .put("steps", JSONArray(steps.map { JSONObject().put("goal", it.first).put("at", it.second) }))
-        prefs.edit().putString("path-${task.id}", json.toString()).apply()
-    }
+        get() = prefs.getString("photo", "").orEmpty()
+        set(value) { prefs.edit().putString("photo", value.trim()).apply() }
+    var backendUrl: String
+        get() = prefs.getString("coreBackendUrl", "").orEmpty()
+        set(value) { prefs.edit().putString("coreBackendUrl", value.trim().trimEnd('/')).apply() }
+    var backendSession: String
+        get() = prefs.getString("coreBackendSession", "").orEmpty()
+        set(value) { prefs.edit().putString("coreBackendSession", value.trim()).apply() }
+    var screenConsent: Boolean
+        get() = prefs.getBoolean("coreScreenConsent", false)
+        set(value) { prefs.edit().putBoolean("coreScreenConsent", value).apply() }
+    var visionProfile: VisionProfile
+        get() = VisionProfile.from(prefs.getString("visionProfile", VisionProfile.HIGH_CONTRAST.key).orEmpty())
+        set(value) { prefs.edit().putString("visionProfile", value.key).apply() }
+    var showPointer: Boolean
+        get() = prefs.getBoolean("showGuidePointer", true)
+        set(value) { prefs.edit().putBoolean("showGuidePointer", value).apply() }
+    var reduceMotion: Boolean
+        get() = prefs.getBoolean("reduceGuideMotion", true)
+        set(value) { prefs.edit().putBoolean("reduceGuideMotion", value).apply() }
 }
