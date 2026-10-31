@@ -66,14 +66,47 @@ class Budget:
         self.lock = directory / 'usage.lock'
         self.mutex = threading.Lock()
 
+    def _acquire_process_lock(self):
+        """Bounded OS lock: released automatically if a worker exits or crashes."""
+        handle = self.lock.open('a+b')
+        if os.name == 'nt':
+            import msvcrt
+            handle.seek(0, os.SEEK_END)
+            if handle.tell() == 0:
+                handle.write(b'0'); handle.flush()
+        deadline = time.monotonic() + 2
+        while True:
+            try:
+                handle.seek(0)
+                if os.name == 'nt':
+                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return handle
+            except OSError:
+                if time.monotonic() >= deadline:
+                    handle.close()
+                    raise Rejected('budget_locked') from None
+                time.sleep(.02)
+
+    @staticmethod
+    def _release_process_lock(handle):
+        try:
+            handle.seek(0)
+            if os.name == 'nt':
+                import msvcrt
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        finally:
+            handle.close()
+
     def transaction(self, update):
         with self.mutex:
+            handle = self._acquire_process_lock()
             try:
-                fd = os.open(self.lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-            except FileExistsError:
-                raise Rejected('budget_locked') from None
-            try:
-                os.close(fd)
                 data = json.loads(self.file.read_text()) if self.file.exists() else {
                     'spent_usd': '0', 'pending': {}, 'requests': 0}
                 spent = Decimal(data['spent_usd'])
@@ -91,7 +124,7 @@ class Budget:
             except (KeyError, ValueError, TypeError):
                 raise Rejected('invalid_usage_ledger') from None
             finally:
-                self.lock.unlink(missing_ok=True)
+                self._release_process_lock(handle)
 
     def reserve(self):
         def update(data, spent, pending):

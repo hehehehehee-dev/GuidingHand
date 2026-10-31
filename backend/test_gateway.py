@@ -107,6 +107,11 @@ class GatewayTests(unittest.TestCase):
         with self.assertRaises(Rejected):
             restarted.reserve()
 
+    def test_stale_lock_filename_does_not_permanently_block_budget(self):
+        self.budget.lock.write_text('left by a terminated worker', encoding='utf-8')
+        token = self.budget.reserve()
+        self.assertIn(token, json.loads(self.budget.file.read_text())['pending'])
+
     def test_network_failure_keeps_reservation_and_never_retries(self):
         calls = []
         def fail(body):

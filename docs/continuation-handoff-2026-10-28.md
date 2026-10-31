@@ -634,3 +634,10 @@ The backend now ignores `X-Forwarded-Proto` unless
 header-spoofing path while preserving managed TLS termination behind a private trusted proxy.
 Tests cover both the safe default rejection and the explicitly trusted deployment path; local
 verification remains 72/72 backend tests and 84/84 Android tests with lint/assemble passing.
+
+The persistent budget ledger now uses a bounded operating-system advisory lock instead of treating
+the existence of `usage.lock` as ownership. The lock is released automatically when a Gunicorn
+worker exits or crashes, while concurrent workers still serialize reservations. This prevents one
+terminated worker from leaving the deployed backend permanently stuck in `budget_locked`. A stale
+lock-file regression test raises the backend suite to **73/73**; Android remains **84/84** with
+lint/assemble passing.
