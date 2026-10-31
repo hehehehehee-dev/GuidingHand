@@ -582,4 +582,7 @@ prevents a detached card from covering the control that opened it.
 
 Candidate **1.5.24/code33** builds as package `vn.guidinghand.candidate`; Android unit tests pass.
 APK SHA256: `5883e87f5cf680a81adfccdbb2380dbddf1536cdb81cb878a89949c93b4bf296`.
-Physical installation and visual verification remain pending.
+The APK was installed through Android's package manager from `/data/local/tmp` after Xiaomi
+rejected the `/sdcard/Download` path. Read-only package evidence reports `versionName=1.5.24-candidate`,
+`versionCode=33`; Accessibility is enabled and Bound with no binding service. Visual verification
+of the anchored card remains pending.
