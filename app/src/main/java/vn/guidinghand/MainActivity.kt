@@ -1,7 +1,9 @@
 package vn.guidinghand
 
+import android.Manifest
 import android.content.Intent
 import android.content.ComponentName
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -28,6 +30,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.delay
 
 @Composable private fun GuideTheme(content: @Composable () -> Unit) {
@@ -83,14 +86,26 @@ class MainActivity : SetupActivity() {
             val vi = remember(preferenceRevision) { prefs.language == "vi" }
             fun tr(v: String, e: String) = if (vi) v else e
             var detailsOpen by remember { mutableStateOf(false) }
-            var guideReady by remember { mutableStateOf(GuidingHandService.instance != null) }
-            val accessibilityOn = accessibilityEnabled()
-            LaunchedEffect(Unit) {
-                repeat(24) {
-                    guideReady = GuidingHandService.instance != null
-                    if (guideReady) return@LaunchedEffect
+            var serviceConnected by remember { mutableStateOf(GuidingHandService.instance != null) }
+            var accessibilityOn by remember { mutableStateOf(accessibilityEnabled()) }
+            var micGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) }
+            LaunchedEffect(preferenceRevision) {
+                repeat(40) {
+                    accessibilityOn = accessibilityEnabled()
+                    micGranted = ContextCompat.checkSelfPermission(this@MainActivity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+                    serviceConnected = GuidingHandService.instance != null
+                    if (accessibilityOn && micGranted && serviceConnected) return@LaunchedEffect
                     delay(250)
                 }
+            }
+            val guideReady = accessibilityOn && micGranted && serviceConnected
+            val contact = prefs.contact.trim()
+            fun startPhoto(recipient: String) {
+                val service = GuidingHandService.instance
+                if (service != null && guideReady) {
+                    service.startPhotoTaskForRecipient(recipient)
+                    moveTaskToBack(true)
+                } else if (!accessibilityOn) startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
             Surface(Modifier.fillMaxSize()) {
                 Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 16.dp),
@@ -107,8 +122,10 @@ class MainActivity : SetupActivity() {
                             shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, guideInk)) {
                             Text(when {
                                 guideReady -> tr("✓ Sẵn sàng", "✓ Ready")
-                                accessibilityOn -> tr("… Đang nối", "… Connecting")
-                                else -> tr("! Cần bật", "! Enable")
+                                !accessibilityOn -> tr("! Cần bật Trợ năng", "! Accessibility needed")
+                                !micGranted -> tr("! Cần cho phép micro", "! Microphone needed")
+                                !serviceConnected -> tr("… Đang kết nối", "… Connecting")
+                                else -> tr("! Chưa sẵn sàng", "! Not ready")
                             }, modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                                 fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                         }
@@ -131,8 +148,9 @@ class MainActivity : SetupActivity() {
                     Button(onClick = {
                         val service = GuidingHandService.instance
                         if (service == null && !accessibilityOn) startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                        else if (service != null) { moveTaskToBack(true); window.decorView.postDelayed({ service.openVoice() }, 350) }
-                    }, enabled = guideReady || !accessibilityOn,
+                        else if (!micGranted) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1001)
+                        else if (service != null && guideReady) { moveTaskToBack(true); window.decorView.postDelayed({ service.openVoice() }, 350) }
+                    }, enabled = guideReady || !accessibilityOn || !micGranted,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), shape = RoundedCornerShape(24.dp)) {
                         Icon(painterResource(R.drawable.ic_mic), contentDescription = null, modifier = Modifier.size(30.dp))
                         Spacer(Modifier.width(12.dp))
@@ -163,6 +181,40 @@ class MainActivity : SetupActivity() {
                                 if (BuildConfig.DEBUG) Text(tr("Bản phát triển: ${if (prefs.devStandIn) "MockModel" else "Muse Spark + SAM"}",
                                     "Development: ${if (prefs.devStandIn) "MockModel" else "Muse Spark + SAM"}"), fontSize = 18.sp)
                             }
+                        }
+                    }
+
+                    SettingsSection(tr("Việc bạn hay làm", "Things you often do"),
+                        tr("Bác vẫn tự bấm từng bước trong ứng dụng.", "You still tap every step inside the app.")) {
+                        if (contact.isNotBlank()) {
+                            Button(onClick = { startPhoto(contact) }, enabled = guideReady,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp), shape = RoundedCornerShape(22.dp)) {
+                                Text(tr("Gửi ảnh cho $contact", "Send a photo to $contact"), fontSize = 22.sp)
+                            }
+                            OutlinedButton(onClick = { startPhoto("") }, enabled = guideReady,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp), shape = RoundedCornerShape(22.dp)) {
+                                Text(tr("Gửi ảnh trên Zalo", "Send a photo on Zalo"), fontSize = 22.sp)
+                            }
+                        } else {
+                            Button(onClick = { startPhoto("") }, enabled = guideReady,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp), shape = RoundedCornerShape(22.dp)) {
+                                Text(tr("Gửi ảnh trên Zalo", "Send a photo on Zalo"), fontSize = 22.sp)
+                            }
+                        }
+                        // Hint-only requires a new engine mode; keep this visible but unavailable
+                        // until that core-loop change is explicitly approved.
+                        OutlinedButton(onClick = {}, enabled = false,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp), shape = RoundedCornerShape(22.dp)) {
+                            Text(tr("Thử gửi ảnh mà không cần chỉ từng bước", "Try sending a photo without step by step guidance"), fontSize = 22.sp)
+                        }
+                        Button(onClick = { GuidingHandService.instance?.callFamilyFromHome() },
+                            enabled = contact.isNotBlank() && prefs.phone.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp), shape = RoundedCornerShape(22.dp)) {
+                            Text(tr("Gọi cho gia đình", "Call family"), fontSize = 22.sp)
+                        }
+                        if (contact.isBlank() || prefs.phone.isBlank()) {
+                            Text(tr("Hãy thêm tên và số điện thoại gia đình trong Thiết lập để bật nút gọi.",
+                                "Add a family name and phone number in Settings to enable calling."), fontSize = 20.sp)
                         }
                     }
                 }
@@ -301,7 +353,7 @@ class SettingsActivity : SetupActivity() {
             fun tr(v: String, e: String) = if (language == "vi") v else e
             val preview = RespectfulLanguage(user, assistant, tone)
             Surface(Modifier.fillMaxSize()) {
-                Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),
+                Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp).padding(bottom = 56.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     Text(tr("Thiết lập GuidingHand", "GuidingHand settings"), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                     Text(tr("Người nhà có thể cùng thiết lập một lần. Bác vẫn là người quyết định và tự thao tác.",

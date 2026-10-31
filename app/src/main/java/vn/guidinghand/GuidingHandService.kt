@@ -107,6 +107,15 @@ class GuidingHandService : AccessibilityService() {
     }
     fun reloadModel() { engine.stop(); model.close(); model = makeModel(); engine = newEngine() }
     fun startGoal(goal: String) { voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned(); engine.stop(); engine = newEngine(); engine.startGoal(goal); updates.trySend(Unit) }
+    /** Starts the existing Zalo send-photo flow with a recipient supplied by setup/home UI.
+     * The elder still performs every action in Zalo; this method only seeds task context. */
+    fun startPhotoTaskForRecipient(recipient: String) {
+        if (!::engine.isInitialized || !DeviceVisibility.allowed(this)) return
+        voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
+        engine.stop(); engine = newEngine()
+        engine.startGoal(tr("Gửi ảnh trên Zalo", "Send a photo on Zalo"), PhotoTask(recipient.trim(), prefs.photo))
+        updates.trySend(Unit)
+    }
     fun startPhotoDevTask() {
         if (!model.developmentStandIn) return
         engine.stop(); engine = newEngine()
@@ -340,6 +349,13 @@ class GuidingHandService : AccessibilityService() {
         model.cancel(); overlay.hide()
         val dialer = if (number.isBlank()) Intent(Intent.ACTION_DIAL) else Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null))
         startActivity(dialer.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+    /** Home action: opens the dialer only; never places a call. */
+    fun callFamilyFromHome() {
+        if (!DeviceVisibility.allowed(this)) return
+        val number = prefs.phone.filter { it.isDigit() || it == '+' }
+        if (number.isBlank()) return
+        startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         event ?: return

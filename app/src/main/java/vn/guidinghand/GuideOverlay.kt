@@ -296,7 +296,7 @@ class GuideOverlay(
             userCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Tạm dừng", "Paused")
             autoCollapsed -> tr("Nói", "Speak")
             userCollapsed -> tr("Tiếp tục", "Continue")
-            else -> tr("Giúp", "Help")
+            else -> tr("Giúp tôi", "Help")
         }
         if (bubble.text.toString() != label) bubble.text = label
         val showHand = busyLabel == null && !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)

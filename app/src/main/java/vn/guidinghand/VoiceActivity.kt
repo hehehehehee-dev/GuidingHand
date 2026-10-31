@@ -44,6 +44,7 @@ class VoiceActivity : ComponentActivity() {
     private val recording = AtomicBoolean(false)
     private lateinit var prefs: FamilyPreferences
     private lateinit var status: TextView
+    private lateinit var example: TextView
     private lateinit var waveform: TextView
     private lateinit var editor: EditText
     private lateinit var primary: Button
@@ -87,6 +88,10 @@ class VoiceActivity : ComponentActivity() {
             textSize = GuideDesign.INSTRUCTION_SP; setTextColor(ink()); gravity = Gravity.CENTER
             setLineSpacing(0f, 1.12f); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
+        example = TextView(this).apply {
+            textSize = GuideDesign.BODY_SP; setTextColor(ink()); gravity = Gravity.CENTER
+            setPadding(0, dp(4), 0, dp(6))
+        }
         waveform = TextView(this).apply {
             textSize = GuideDesign.BODY_SP; setTextColor(ink()); gravity = Gravity.CENTER
             minHeight = dp(48); visibility = View.GONE
@@ -108,12 +113,14 @@ class VoiceActivity : ComponentActivity() {
 
         layout.addView(dragHandle)
         layout.addView(status, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
+        layout.addView(example, LinearLayout.LayoutParams(-1, -2))
         layout.addView(waveform, LinearLayout.LayoutParams(-1, -2))
         layout.addView(editor, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
         layout.addView(primary, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         layout.addView(secondary, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         layout.addView(cancel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         setContentView(layout)
+        updateExample()
 
         val sheetWidth = minOf(resources.displayMetrics.widthPixels - dp(24), dp(360))
         window.setLayout(sheetWidth, WindowManager.LayoutParams.WRAP_CONTENT)
@@ -139,6 +146,7 @@ class VoiceActivity : ComponentActivity() {
     private fun showReady() {
         recording.set(false); submitting = false
         status.text = readyText(); waveform.visibility = View.GONE; editor.visibility = View.GONE
+        updateExample()
         primary.visibility = View.VISIBLE; secondary.visibility = View.VISIBLE
         primary.isEnabled = true; primary.text = tr("Chạm để nói", "Tap to speak")
         primary.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_gh_mic, 0, 0, 0)
@@ -287,6 +295,8 @@ class VoiceActivity : ComponentActivity() {
     private fun showError(message: String) {
         recording.set(false); submitting = false
         status.text = if (prefs.language == "vi") prefs.respectfulLanguage.message(message) else message
+        updateExample()
+        example.visibility = View.VISIBLE
         waveform.visibility = View.GONE; editor.visibility = View.GONE
         primary.visibility = View.VISIBLE; primary.isEnabled = true
         primary.text = tr("Thử lại", "Try again"); primary.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
@@ -365,6 +375,11 @@ class VoiceActivity : ComponentActivity() {
         SpeechPurpose.GENERAL -> tr("Đang nghe…", "Listening…")
     }
     private fun tr(vi: String, en: String) = if (prefs.language == "en") en else vi
+    private fun updateExample() {
+        val who = prefs.contact.trim()
+        example.text = if (who.isBlank()) tr("Bạn có thể nói: Gửi ảnh trên Zalo", "You can say: Send a photo on Zalo")
+        else tr("Bạn có thể nói: Gửi ảnh cho $who", "You can say: Send a photo to $who")
+    }
     private fun ink() = Color.parseColor(GuideDesign.INK_HEX)
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }
