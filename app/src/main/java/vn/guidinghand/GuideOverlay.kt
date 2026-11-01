@@ -372,12 +372,6 @@ class GuideOverlay(
             else LinearLayout.LayoutParams(0, -2, 1f)
         primaryActions.removeAllViews(); footer.removeAllViews()
         if (state.status != GuideStatus.SAFETY_PAUSED) {
-            if (state.status == GuideStatus.CONFIRMING_INPUT) {
-                addPrimary(tr("Đúng rồi", "Use this"), confirmDraft)
-                addSecondary(tr("Sửa câu này", "Edit this"), editDraft)
-            }
-            if (state.status == GuideStatus.CONFIRMING_COPY)
-                addPrimary(tr("Sao chép nội dung", "Copy message"), copyDraft)
             if (state.status in setOf(GuideStatus.CLARIFYING, GuideStatus.UNSUPPORTED)) state.options.forEach { option -> addPrimary(option) { answer(option) } }
             if (canOpenLauncher && state.status == GuideStatus.WAITING_TAP && state.step?.stage == PhotoStage.LAUNCHER)
                 addPrimary(tr("Mở giúp tôi", "Open for me"), openLauncher)
@@ -385,7 +379,9 @@ class GuideOverlay(
         // Retry must never live in the clipped/scrolling card body. Every recoverable
         // read/model failure gets the same fixed, full-width action near the elder's thumb.
         val pinnedRetry = state.status in setOf(GuideStatus.ASKING, GuideStatus.UNAVAILABLE)
-        footer.orientation = if (state.status == GuideStatus.SAFETY_PAUSED || pinnedRetry || context.resources.configuration.fontScale > 1.3f) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        footer.orientation = if (state.status == GuideStatus.SAFETY_PAUSED || pinnedRetry ||
+            state.status in setOf(GuideStatus.CONFIRMING_INPUT, GuideStatus.CONFIRMING_COPY) ||
+            context.resources.configuration.fontScale > 1.3f) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
         footer.gravity = Gravity.CENTER_VERTICAL
         fun footerAction(label: String, primary: Boolean = false, callback: () -> Unit) {
             val p = if (footer.orientation == LinearLayout.HORIZONTAL) LinearLayout.LayoutParams(0, -2, 1f)
@@ -395,6 +391,12 @@ class GuideOverlay(
         }
         if (state.status == GuideStatus.SAFETY_PAUSED) footer.addView(makeButton(tr("Gọi người thân", "Call family"), true, callFamily),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        else if (state.status == GuideStatus.CONFIRMING_INPUT) {
+            footerAction(tr("Đúng rồi", "Use this"), true, confirmDraft)
+            footerAction(tr("Sửa câu này", "Edit this"), false, editDraft)
+        } else if (state.status == GuideStatus.CONFIRMING_COPY) {
+            footerAction(tr("Sao chép nội dung", "Copy message"), true, copyDraft)
+        }
         else if (pinnedRetry) footerAction(tr("Kiểm tra lại", "Check again"), true, continueGuide)
         else {
             val busy = state.status in setOf(
