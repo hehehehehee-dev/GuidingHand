@@ -11,6 +11,11 @@ enum class VisionProfile(val key: String, val accentHex: String) {
     companion object { fun from(value: String) = entries.firstOrNull { it.key == value } ?: HIGH_CONTRAST }
 }
 
+enum class GuideCardSize(val key: String, val fraction: Float) {
+    COMPACT("compact", .34f), STANDARD("standard", .42f), LARGE("large", .56f);
+    companion object { fun from(value: String) = entries.firstOrNull { it.key == value } ?: STANDARD }
+}
+
 /** Family slots and a user session for our backend. No Meta/provider credential belongs here. */
 class FamilyPreferences(context: Context) {
     private val prefs = context.getSharedPreferences("GuidingHand", Context.MODE_PRIVATE)
@@ -64,4 +69,7 @@ class FamilyPreferences(context: Context) {
     var reduceMotion: Boolean
         get() = prefs.getBoolean("reduceGuideMotion", true)
         set(value) { prefs.edit().putBoolean("reduceGuideMotion", value).apply() }
+    var cardSize: GuideCardSize
+        get() = GuideCardSize.from(prefs.getString("guideCardSize", GuideCardSize.STANDARD.key).orEmpty())
+        set(value) { prefs.edit().putString("guideCardSize", value.key).apply() }
 }

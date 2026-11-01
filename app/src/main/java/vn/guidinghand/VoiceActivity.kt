@@ -36,6 +36,7 @@ import kotlin.math.abs
 class VoiceActivity : ComponentActivity() {
     companion object {
         const val EXTRA_SPEECH_PURPOSE = "vn.guidinghand.extra.SPEECH_PURPOSE"
+        const val EXTRA_REVIEW_TEXT = "vn.guidinghand.extra.REVIEW_TEXT"
         @Volatile var visible = false; private set
         @Volatile var activeSession = false; private set
     }
@@ -51,6 +52,7 @@ class VoiceActivity : ComponentActivity() {
     private lateinit var secondary: Button
     private lateinit var cancel: Button
     private var purpose = SpeechPurpose.GENERAL
+    private var reviewText: String? = null
     private var submitting = false
     private var delivered = false
     private var awaitingPermission = false
@@ -68,6 +70,7 @@ class VoiceActivity : ComponentActivity() {
         prefs = FamilyPreferences(this)
         purpose = runCatching { SpeechPurpose.valueOf(intent.getStringExtra(EXTRA_SPEECH_PURPOSE).orEmpty()) }
             .getOrDefault(SpeechPurpose.GENERAL)
+        reviewText = intent.getStringExtra(EXTRA_REVIEW_TEXT)?.trim()?.takeIf { it.isNotEmpty() }
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
         val layout = LinearLayout(this).apply {
@@ -137,10 +140,41 @@ class VoiceActivity : ComponentActivity() {
             }
         }
 
-        if (BackendEndpoint.base(prefs) == null) showError(tr(
+        if (reviewText != null) showTranscriptEditor(reviewText!!)
+        else if (BackendEndpoint.base(prefs) == null) showError(tr(
             "Chưa kết nối trợ lý nhận giọng nói. Bác vẫn có thể chọn Gõ chữ.",
             "Voice guidance is not connected. You can still choose Type instead."
         )) else showReady()
+    }
+
+    /** Review happens in a focusable Activity so the elder can correct transcription safely.
+     * The edited sentence is sent back to the overlay for a second explicit confirmation;
+     * it never enters the target app automatically. */
+    private fun showTranscriptEditor(text: String) {
+        recording.set(false); submitting = false
+        status.text = tr("Kiểm tra và sửa câu này", "Review and edit this sentence")
+        example.text = tr("Bác có thể sửa tên người, ứng dụng hoặc nội dung trước khi dùng.",
+            "You can correct a name, app, or message before using it.")
+        example.visibility = View.VISIBLE; waveform.visibility = View.GONE
+        editor.visibility = View.VISIBLE; editor.setText(text); editor.setSelection(editor.text.length)
+        primary.visibility = View.VISIBLE; primary.isEnabled = true
+        primary.text = tr("Dùng câu đã sửa", "Use edited text")
+        primary.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
+        primary.setOnClickListener {
+            pressed(primary)
+            val value = editor.text?.toString()?.trim().orEmpty()
+            if (value.isEmpty()) { status.text = tr("Bác viết một câu trước nhé.", "Please enter a sentence first."); return@setOnClickListener }
+            val service = GuidingHandService.instance
+            if (service == null || !service.localRecordingAllowed()) {
+                showError(tr("Phiên hỗ trợ đã dừng. Bác bấm Giúp để mở lại nhé.", "This help session has stopped. Tap Help again.")); return@setOnClickListener
+            }
+            submitting = true; delivered = true; hideKeyboard(); service.submitEditedVoiceText(value); finish()
+        }
+        secondary.visibility = View.VISIBLE; secondary.isEnabled = true
+        secondary.text = tr("Nói lại", "Record again")
+        secondary.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_gh_mic, 0, 0, 0)
+        secondary.setOnClickListener { pressed(secondary); hideKeyboard(); reviewText = null; showReady() }
+        editor.post { editor.requestFocus(); getSystemService(InputMethodManager::class.java).showSoftInput(editor, InputMethodManager.SHOW_IMPLICIT) }
     }
 
     private fun showReady() {

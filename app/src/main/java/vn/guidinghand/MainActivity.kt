@@ -280,6 +280,12 @@ private fun visionLabel(profile: VisionProfile, vi: Boolean) = when (profile) {
     VisionProfile.MONOCHROME -> if (vi) "Đơn sắc" else "Monochrome"
 }
 
+private fun cardSizeLabel(size: GuideCardSize, vi: Boolean) = when (size) {
+    GuideCardSize.COMPACT -> if (vi) "Gọn — che ít màn hình" else "Compact — covers less screen"
+    GuideCardSize.STANDARD -> if (vi) "Vừa — dễ đọc" else "Standard — easier to read"
+    GuideCardSize.LARGE -> if (vi) "Lớn — chữ và nút thoáng hơn" else "Large — more room for text and buttons"
+}
+
 @Composable private fun SettingsSection(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F0E6)),
         shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
@@ -353,6 +359,7 @@ class SettingsActivity : SetupActivity() {
             var visionProfile by remember { mutableStateOf(prefs.visionProfile) }
             var showPointer by remember { mutableStateOf(prefs.showPointer) }
             var reduceMotion by remember { mutableStateOf(prefs.reduceMotion) }
+            var cardSize by remember { mutableStateOf(prefs.cardSize) }
             var technical by remember { mutableStateOf(false) }
             var backend by remember { mutableStateOf(prefs.backendUrl) }
             var session by remember { mutableStateOf(prefs.backendSession) }
@@ -409,6 +416,15 @@ class SettingsActivity : SetupActivity() {
                         ToggleSetting(tr("Giảm chuyển động", "Reduce motion"),
                             tr("Tắt hiệu ứng gợn và chuyển động không cần thiết.", "Removes non-essential ripple and motion effects."),
                             reduceMotion) { reduceMotion = it; saved = false }
+                        Text(tr("Kích thước thẻ hướng dẫn", "Guide card size"), fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                        Text(tr("Bác chọn mức vừa mắt. Thẻ luôn tự tránh vòng chỉ dẫn và thanh hệ thống.",
+                            "Choose the size that feels comfortable. The card still avoids the ring and system bars."), fontSize = 20.sp)
+                        for (value in GuideCardSize.entries) ChoiceButton(cardSize == value, cardSizeLabel(value, language == "vi"),
+                            supporting = when (value) {
+                                GuideCardSize.COMPACT -> tr("Ít che màn hình nhất; nội dung có thể cuộn.", "Least coverage; content can scroll.")
+                                GuideCardSize.STANDARD -> tr("Cân bằng giữa dễ đọc và không gian phía sau.", "Balanced readability and screen space.")
+                                GuideCardSize.LARGE -> tr("Dễ đọc hơn khi cần chữ lớn hoặc nhiều lựa chọn.", "More room for large text or extra choices.")
+                            }) { cardSize = value; saved = false }
                         GuidePreview(visionProfile, showPointer, language == "vi")
                     }
                     SettingsSection(tr("Liên hệ gia đình", "Family contact"),
@@ -436,7 +452,7 @@ class SettingsActivity : SetupActivity() {
                     Button(onClick = {
                         val reload = prefs.backendUrl != backend.trim().trimEnd('/') || prefs.backendSession != session.trim() || prefs.screenConsent != screenConsent || prefs.contact != contact || prefs.devStandIn != devStandIn
                         prefs.language = language; prefs.phone = phone; prefs.contact = contact; prefs.respectfulLanguage = preview
-                        prefs.visionProfile = visionProfile; prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion
+                        prefs.visionProfile = visionProfile; prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion; prefs.cardSize = cardSize
                         prefs.backendUrl = backend; prefs.backendSession = session; prefs.screenConsent = screenConsent; prefs.voiceConsent = voiceConsent
                         if (BuildConfig.DEBUG) prefs.devStandIn = devStandIn
                         if (reload) GuidingHandService.instance?.reloadModel()

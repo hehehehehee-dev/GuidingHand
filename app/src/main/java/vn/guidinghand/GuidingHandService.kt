@@ -61,7 +61,7 @@ class GuidingHandService : AccessibilityService() {
         overlay = GuideOverlay(this, { stopGuide() }, { scope.launch { readFresh()?.let { engine.repeat(it) } } },
             { openForElder() }, { callFamily() }, { openIntake() }, { answer(it) }, { resumeGuide() },
             { screen?.let { engine.inspectBeforeSpeech(it.copy(readIssue = "pointing_clipped")) } },
-            { confirmVoiceDraft() }, { retryVoiceDraft() }, { copyVoiceDraft() })
+            { confirmVoiceDraft() }, { retryVoiceDraft() }, { copyVoiceDraft() }, { editVoiceDraft() })
         engine = newEngine()
         val filter = IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_USER_PRESENT) }
         if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED) else registerReceiver(screenReceiver, filter)
@@ -289,6 +289,27 @@ class GuidingHandService : AccessibilityService() {
         val purpose = voiceDraft.purpose
         voiceDraft.begin(purpose)
         openVoice()
+    }
+    private fun editVoiceDraft() {
+        val text = voiceDraft.textForReview() ?: return
+        if (VoiceActivity.activeSession || !DeviceVisibility.allowed(this)) return
+        voicePermitUntil = android.os.SystemClock.elapsedRealtime() + 180_000
+        try {
+            startActivity(Intent(this, VoiceActivity::class.java)
+                .putExtra(VoiceActivity.EXTRA_SPEECH_PURPOSE, voiceDraft.purpose.name)
+                .putExtra(VoiceActivity.EXTRA_REVIEW_TEXT, text)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+            overlay.showVoiceNotice(tr("Chưa mở được phần sửa câu. Bác thử Nói lại nhé.", "I could not open the editor. Please record again."))
+        }
+    }
+    fun submitEditedVoiceText(text: String) {
+        voicePermitUntil = 0L
+        voiceDraft.begin(recordingPurpose)
+        if (!voiceDraft.capture(text)) {
+            overlay.showVoiceNotice(tr("Bác viết một câu trước nhé.", "Please enter a sentence first.")); return
+        }
+        voiceDraft.textForReview()?.let { overlay.showDraftReview(it, recordingPurpose) }
     }
     private fun copyVoiceDraft() {
         scope.launch {

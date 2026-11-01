@@ -43,7 +43,8 @@ class GuideOverlay(
     private val cannotPoint: () -> Unit = {},
     private val confirmDraft: () -> Unit = {},
     private val retryDraft: () -> Unit = {},
-    private val copyDraft: () -> Unit = {}
+    private val copyDraft: () -> Unit = {},
+    private val editDraft: () -> Unit = {}
 ) {
     private val wm = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
@@ -181,6 +182,7 @@ class GuideOverlay(
     private var savedState: GuideViewState? = null
     private var savedCanOpen = false
     private var cardPosition: WindowManager.LayoutParams? = null
+    private var lastCardContentKey: String? = null
     private var draggedCard: GuideBox? = null
     private var draggedBubble: GuideBox? = null
     private var lastLog = ""
@@ -369,7 +371,7 @@ class GuideOverlay(
         if (state.status != GuideStatus.SAFETY_PAUSED) {
             if (state.status == GuideStatus.CONFIRMING_INPUT) {
                 addPrimary(tr("Đúng rồi", "Use this"), confirmDraft)
-                addSecondary(tr("Nói lại", "Record again"), retryDraft)
+                addSecondary(tr("Sửa câu này", "Edit this"), editDraft)
             }
             if (state.status == GuideStatus.CONFIRMING_COPY)
                 addPrimary(tr("Sao chép nội dung", "Copy message"), copyDraft)
@@ -449,6 +451,8 @@ class GuideOverlay(
     }
 
     private fun layoutCard(state: GuideViewState) {
+        val contentKey = listOf(state.status, state.instructionVi, state.draftText, state.options).joinToString("\u001f")
+        val contentChanged = contentKey != lastCardContentKey
         val safe = safeArea(); val width = minOf(safe.width, dp(344))
         if (width <= 0) { clearCard(); return }
         scroll.layoutParams = LinearLayout.LayoutParams(-1, -2)
@@ -458,7 +462,7 @@ class GuideOverlay(
         val naturalHeight = card.measuredHeight
         // Cap screen coverage, not text size. Large text and choices scroll inside a solid card;
         // Repeat/Stop stay outside the scroll area. Accessibility minima win over the cap.
-        val desiredHeight = minOf(naturalHeight, maxOf(minimumHeight, (safe.height * GuideDesign.CARD_SCREEN_FRACTION).toInt()))
+        val desiredHeight = minOf(naturalHeight, maxOf(minimumHeight, (safe.height * prefs.cardSize.fraction).toInt()))
         val placement = GuidePanelLayout.place(safe, width, desiredHeight, minimumHeight, pointedBox(), dp(8), draggedCard,
             anchor = bubbleBounds())
         if (placement == null) {
@@ -468,9 +472,15 @@ class GuideOverlay(
         val scrolling = placement.scrollContent || box.height < naturalHeight
         if (scrolling) scroll.layoutParams = LinearLayout.LayoutParams(-1,
             (box.height - header.measuredHeight - footer.measuredHeight - card.paddingTop - card.paddingBottom).coerceAtLeast(dp(72)))
+        // Re-measure after constraining the scroll viewport so the fixed footer cannot
+        // cover the last action (the clipped "Use this" state seen in the recording).
+        card.measure(View.MeasureSpec.makeMeasureSpec(box.width, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(box.height, View.MeasureSpec.EXACTLY))
         val p = params(box.width, box.height, false).apply { x = box.left; y = box.top }
         cardPosition = p
         if (!cardAttached) { wm.addView(card, p); cardAttached = true } else wm.updateViewLayout(card, p)
+        if (contentChanged) scroll.post { scroll.scrollTo(0, 0) }
+        lastCardContentKey = contentKey
         recordMeasurement(box, scrolling, state)
     }
 
@@ -526,7 +536,7 @@ class GuideOverlay(
         }
     }
     private fun clearRing() { region = null; if (ringAttached) { wm.removeView(ring); ringAttached = false } }
-    private fun clearCard() { if (cardAttached) { wm.removeView(card); cardAttached = false } }
+    private fun clearCard() { if (cardAttached) { wm.removeView(card); cardAttached = false }; lastCardContentKey = null }
     private fun removeBubble() { if (bubbleAttached) { wm.removeView(bubble); bubbleAttached = false; GuideTrace.event(context, "bubble_detached") } }
     fun suspendForCapture() { clearRing(); clearCard(); removeBubble() }
     fun refreshPreferences() {
