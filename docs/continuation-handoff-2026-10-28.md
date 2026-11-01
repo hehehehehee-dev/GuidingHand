@@ -702,3 +702,19 @@ Local verification is **79/79 backend tests**, Android unit tests, lint, and Can
 GitHub verification run `41286612609` passed the backend, Android, and container jobs for commit
 `04204b5`. The change is pushed to `main` but was not installed or phone-certified while the user
 was away; current-device UX and latency remain `TBD` until reviewed through a real interaction.
+
+## Bounded Xiaomi smoke evidence — November 1 local time
+
+After explicit authorization, the existing Candidate package was updated in place with `adb install
+-r`; the original GuidingHand package and Candidate data were not removed. The reusable
+`tools/phone-smoke-test.ps1` collector then passed on the connected unlocked Xiaomi for Candidate
+identity (`vn.guidinghand.candidate`, `1.5.27-candidate`/code 36), awake/unlocked state,
+Accessibility enabled/not crashed, no new fatal exception, and no bubble attach/detach churn during
+an eight-second idle observation.
+
+This is real-phone read-only evidence, not a simulated task pass. The report explicitly records
+`inputInjectionUsed=false` and `userInteractionClaimed=false`, omits the device serial and all user
+content, and stores output only under the ignored build directory. A single ADB tap attempt confirmed
+that Xiaomi still rejects injected input with `INJECT_EVENTS`; it was not repeated or bypassed.
+Speech, transcript correction, ring accuracy, step advancement, and target-app completion therefore
+remain `TBD` until the user performs those interactions.

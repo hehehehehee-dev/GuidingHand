@@ -54,6 +54,11 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: all gates pass; APK identity remains Candidate; no key or provider content is committed.
   Verify: command outputs and GitHub CI after push.
 
+- [x] **8. Add bounded real-phone smoke evidence**
+  What to build: Add a reusable read-only phone check for Candidate identity, lock/power state, Accessibility health, crashes, and idle overlay churn.
+  Acceptance: never inject input or claim a user interaction; never record screen text, speech, goals, recipients, credentials, provider content, or device serial; screenshot capture is opt-in and limited to Home/Candidate.
+  Verify: run against the connected Xiaomi and preserve only the content-free JSON result under the ignored build directory.
+
 ## Deferred deliberately
 
 - Cloud deployment and paid live benchmarks: final phase, after behavior stabilizes.
@@ -66,5 +71,5 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
 - Commit: `04204b5` on `main`.
 - Local: 79 backend tests passed; Android unit tests, lint, and Candidate assemble passed; diff and secret checks passed.
 - GitHub Actions: run `41286612609` passed the backend, Android, and container jobs.
-- Phone status: not installed or phone-certified during unattended work; current-device UX and latency remain `TBD` until a real interaction is reviewed.
+- Phone status: Candidate was updated after explicit user authorization. The read-only smoke test passed package, unlocked/awake, Accessibility, crash, and idle-overlay checks. User interaction, speech, ring accuracy, and target-app latency remain `TBD` until a person performs the flow.
 
