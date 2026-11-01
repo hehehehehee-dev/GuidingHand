@@ -62,6 +62,16 @@ class GuidePanelLayoutTest {
         assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(language = "en")))
         assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(reduceMotion = false)))
     }
+    @Test fun overlayIdentityChangesWhenSpeakPurposeChangesWithoutParsingCopy() {
+        val safe = GuideBox(12, 30, 348, 760)
+        val preferences = GuideRenderPreferences("en", true, GuideCardSize.STANDARD,
+            VisionProfile.HIGH_CONTRAST, true, 1f)
+        val general = GuideViewState(GuideStatus.CLARIFYING, "Please tell me more.",
+            speechPurpose = SpeechPurpose.GENERAL)
+        val message = general.copy(speechPurpose = SpeechPurpose.MESSAGE_CONTENT)
+        assertNotEquals(GuideRenderIdentity.key(general, false, false, safe, preferences),
+            GuideRenderIdentity.key(message, false, false, safe, preferences))
+    }
     @Test fun placementSweepAcrossScreenAndLargeFontHeightsHasNoTargetCoverage() {
         val safe = GuideBox(12, 30, 348, 760)
         for (top in 40..680 step 40) for (height in listOf(220, 380, 600, 900)) {

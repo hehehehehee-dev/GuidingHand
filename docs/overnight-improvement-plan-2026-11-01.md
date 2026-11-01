@@ -71,6 +71,12 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: changing language refreshes Help and fixed action labels even in IDLE; changing Reduce motion rebuilds action backgrounds without waiting for a new guide step; unchanged renders remain idempotent.
   Verify: Android Candidate unit tests, lint, assemble, read-only phone smoke, and manual visual confirmation remains `TBD` until the user changes each setting.
 
+- [x] **11. Keep the Speak action meaningful for screen readers across dialogue turns**
+  Evidence: the overlay's duplicate-render identity omits `speechPurpose`, even though that field changes the Speak button description between a general request and dictating message content. A purpose-only planner update can therefore leave assistive technology announcing the wrong action.
+  What to build: include structured speech purpose in the content-free render identity; do not infer purpose from question text.
+  Acceptance: identical purpose remains idempotent; GENERAL → MESSAGE_CONTENT triggers one refresh and announces the message-dictation action; no transcript or question text enters diagnostic traces.
+  Verify: deterministic identity regression test, Android Candidate unit tests, lint, assemble, and read-only phone smoke.
+
 ## Deferred deliberately
 
 - Cloud deployment and paid live benchmarks: final phase, after behavior stabilizes.

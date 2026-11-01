@@ -747,3 +747,17 @@ language and Reduce motion changes invalidate it independently. Android Candidat
 assemble plus all 79 backend tests pass. The updated Candidate was installed in place and the
 read-only Xiaomi smoke check passed without a new fatal exception or idle overlay churn. Manual
 visual confirmation of switching each preference remains `TBD` until the user performs it.
+
+## Speech-purpose-aware accessibility action — November 1 local time
+
+The overlay render identity now includes the planner's structured `speechPurpose`. Previously a
+purpose-only dialogue update could be suppressed as a duplicate, leaving a screen reader to announce
+“Speak your request” when the next action was actually “Dictate the message,” or vice versa. The app
+still does not infer purpose from visible question text; the planner-provided enum remains the source
+of truth.
+
+A deterministic regression test covers GENERAL → MESSAGE_CONTENT while proving identical purposes
+remain idempotent. Android Candidate tests, lint, and assemble plus all 79 backend tests pass. The
+updated Candidate was installed in place and the read-only Xiaomi smoke check passed with no new
+fatal exception or idle overlay churn. A spoken screen-reader walkthrough remains human evidence and
+is not claimed here.
