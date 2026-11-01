@@ -65,6 +65,12 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: accepted Help drag updates both bubble anchor and card placement; target-overlapping drag is rejected; dragging GuidingHand never injects an action into the target app.
   Verify: pure geometry tests for accepted/rejected candidates, Android unit tests, lint, assemble, and manual phone status remains `TBD` until the user drags it.
 
+- [x] **10. Apply language and Reduce motion immediately to an unchanged overlay**
+  Evidence: the idempotent render identity omits language and Reduce motion. Saving either preference while the guide state is unchanged can return early, leaving the Help label/action labels in the old language or old ripple behavior until another state transition.
+  What to build: include both preferences in the render identity so a preference save performs exactly one intentional rebuild while duplicate Accessibility events remain no-ops.
+  Acceptance: changing language refreshes Help and fixed action labels even in IDLE; changing Reduce motion rebuilds action backgrounds without waiting for a new guide step; unchanged renders remain idempotent.
+  Verify: Android Candidate unit tests, lint, assemble, read-only phone smoke, and manual visual confirmation remains `TBD` until the user changes each setting.
+
 ## Deferred deliberately
 
 - Cloud deployment and paid live benchmarks: final phase, after behavior stabilizes.

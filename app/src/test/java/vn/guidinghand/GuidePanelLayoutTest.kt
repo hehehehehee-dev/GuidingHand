@@ -52,6 +52,16 @@ class GuidePanelLayoutTest {
         assertTrue(GuidePanelLayout.acceptsDrag(GuideBox(240, 120, 340, 220), null, 8))
         assertFalse(GuidePanelLayout.acceptsDrag(GuideBox(0, 0, 0, 0), null, 8))
     }
+    @Test fun overlayIdentityChangesForLanguageAndReduceMotionButNotDuplicateEvents() {
+        val state = GuideViewState(GuideStatus.IDLE, "")
+        val safe = GuideBox(12, 30, 348, 760)
+        val base = GuideRenderPreferences("vi", true, GuideCardSize.STANDARD,
+            VisionProfile.HIGH_CONTRAST, true, 1f)
+        val key = GuideRenderIdentity.key(state, false, false, safe, base)
+        assertEquals(key, GuideRenderIdentity.key(state, false, false, safe, base))
+        assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(language = "en")))
+        assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(reduceMotion = false)))
+    }
     @Test fun placementSweepAcrossScreenAndLargeFontHeightsHasNoTargetCoverage() {
         val safe = GuideBox(12, 30, 348, 760)
         for (top in 40..680 step 40) for (height in listOf(220, 380, 600, 900)) {

@@ -22,6 +22,19 @@ data class GuideRingBands(val blackCenter: GuideBox, val yellowCenter: GuideBox,
 data class GuidePointerPlacement(val bounds: GuideBox, val rotationDegrees: Float)
 data class GuideTargetFusion(val target: GuideBox, val mode: String, val overlapPermille: Int,
                              val edgeAdjusted: Boolean)
+data class GuideRenderPreferences(val language: String, val reduceMotion: Boolean,
+                                  val cardSize: GuideCardSize, val visionProfile: VisionProfile,
+                                  val showPointer: Boolean, val fontScale: Float)
+
+/** Content-free identity for suppressing duplicate renders without suppressing preference changes. */
+object GuideRenderIdentity {
+    fun key(state: GuideViewState, canOpenLauncher: Boolean, userCollapsed: Boolean,
+            safe: GuideBox, preferences: GuideRenderPreferences): String = listOf(
+        state.status, state.instructionVi, state.draftText, state.options,
+        state.step?.stage, state.step?.sam?.region, state.step?.sam?.frameFingerprint,
+        canOpenLauncher, userCollapsed, safe, preferences
+    ).joinToString("\u001f")
+}
 
 object GuideRingGeometry {
     /** Full outside edge: 12dp gap + 6dp yellow band + 6dp black band. Never round the minimum down. */

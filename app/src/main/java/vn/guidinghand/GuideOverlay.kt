@@ -346,12 +346,9 @@ class GuideOverlay(
     fun render(state: GuideViewState, canOpenLauncher: Boolean) {
         busyLabel = null
         val safeNow = safeArea()
-        val renderKey = listOf(
-            state.status, state.instructionVi, state.draftText, state.options,
-            state.step?.stage, state.step?.sam?.region, state.step?.sam?.frameFingerprint,
-            canOpenLauncher, userCollapsed, safeNow, prefs.cardSize, prefs.visionProfile,
-            prefs.showPointer, context.resources.configuration.fontScale
-        ).joinToString("\u001f")
+        val renderKey = GuideRenderIdentity.key(state, canOpenLauncher, userCollapsed, safeNow,
+            GuideRenderPreferences(prefs.language, prefs.reduceMotion, prefs.cardSize, prefs.visionProfile,
+                prefs.showPointer, context.resources.configuration.fontScale))
         val expectedRing = state.status == GuideStatus.WAITING_TAP && state.step?.sam?.region != null
         val mounted = bubbleAttached && (userCollapsed || cardAttached) && (!expectedRing || ringAttached)
         if (renderKey == lastRenderKey && mounted && DeviceVisibility.allowed(context)) {

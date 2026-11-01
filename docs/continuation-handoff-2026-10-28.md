@@ -733,3 +733,17 @@ Android Candidate unit tests, lint, and assemble plus all 79 backend tests pass.
 was installed in place and the read-only Xiaomi smoke check passed with no new fatal exception or
 idle overlay churn. Because Xiaomi blocks injected input, the actual finger-drag/card-follow motion
 remains `TBD` until the user performs it.
+
+## Preference-aware overlay identity — November 1 local time
+
+The duplicate-render guard previously omitted the selected language and Reduce motion preference.
+Saving either setting while the guide state was otherwise unchanged could therefore return early,
+leaving the Help/action labels or ripple behavior stale until another screen transition. Overlay
+render identity now includes both preferences, causing one intentional refresh after Save while
+keeping repeated identical Accessibility events idempotent.
+
+A deterministic regression test proves that duplicate events retain the same identity while
+language and Reduce motion changes invalidate it independently. Android Candidate tests, lint, and
+assemble plus all 79 backend tests pass. The updated Candidate was installed in place and the
+read-only Xiaomi smoke check passed without a new fatal exception or idle overlay churn. Manual
+visual confirmation of switching each preference remains `TBD` until the user performs it.
