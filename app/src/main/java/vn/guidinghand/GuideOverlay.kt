@@ -281,10 +281,13 @@ class GuideOverlay(
 
     fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING, text), false) }
     fun showVoiceBusy(text: String) {
-        if (busyLabel == text && bubbleAttached && !cardAttached && !ringAttached) return
+        if (busyLabel == text && !VoiceActivity.visible && bubbleAttached && !cardAttached && !ringAttached) return
         busyLabel = text
         clearRing(); clearCard()
-        showBubble()
+        // VoiceActivity is the focusable input surface. Do not leave a second,
+        // translucent "Listening…" bubble underneath it; it covers the keyboard
+        // and makes the editor look like it is stuck to the bottom of the screen.
+        if (VoiceActivity.visible) removeBubble() else showBubble()
     }
     fun showDraftReview(text: String, purpose: SpeechPurpose) = render(GuideViewState(GuideStatus.CONFIRMING_INPUT,
         if (purpose == SpeechPurpose.MESSAGE_CONTENT) tr("Bác muốn viết:", "You would like to write:")
