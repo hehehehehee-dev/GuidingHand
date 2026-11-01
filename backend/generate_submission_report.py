@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 
 ALLOWED = {'sequence', 'uptime_ms', 'event', 'duration_ms', 'code', 'request_id', 'value'}
 LATENCY_EVENTS = ('capture_encode', 'backend_roundtrip', 'provider_spark', 'provider_sam', 'provider_total', 'transcribe', 'screen_step')
+ACTIONABLE_STATES = {'WAITING_TAP', 'WAITING_NAVIGATION', 'CLARIFYING', 'ASKING', 'UNAVAILABLE', 'UNSUPPORTED', 'DONE'}
 
 
 def junit_summary(directory):
@@ -79,6 +80,21 @@ def summarize(events, verification=None, provenance=None):
     for name in LATENCY_EVENTS:
         values = [row['duration_ms'] for row in events if row.get('event') == name and type(row.get('duration_ms')) is int]
         latency[name] = {'count': len(values), 'median_ms': percentile(values, .5), 'p95_ms': percentile(values, .95)} if values else 'TBD'
+    # Content-free perceived latency: from a confirmed goal to the first state where the
+    # elder can act, answer, or understand why guidance stopped. An unfinished goal is not
+    # silently counted as a slow or successful sample.
+    first_guidance = []
+    for index, row in enumerate(events):
+        if row.get('event') != 'goal_started' or type(row.get('uptime_ms')) is not int:
+            continue
+        for later in events[index + 1:]:
+            if later.get('event') == 'goal_started':
+                break
+            if later.get('event') == 'state' and later.get('code') in ACTIONABLE_STATES and type(later.get('uptime_ms')) is int:
+                first_guidance.append(max(0, later['uptime_ms'] - row['uptime_ms']))
+                break
+    latency['goal_to_first_guidance'] = ({'count': len(first_guidance), 'median_ms': percentile(first_guidance, .5),
+                                          'p95_ms': percentile(first_guidance, .95)} if first_guidance else 'TBD')
     states = Counter(row.get('code') for row in events if row.get('event') == 'state' and isinstance(row.get('code'), str))
     coverage = [row['value'] / 1_000_000 for row in events if row.get('event') == 'panel_layout' and type(row.get('value')) is int]
     snapshots = [row['value'] for row in events if row.get('event') == 'snapshot_encoded' and type(row.get('value')) is int]
@@ -87,6 +103,7 @@ def summarize(events, verification=None, provenance=None):
         'latency': latency,
         'state_counts': dict(states),
         'stale_results_discarded': sum(1 for row in events if row.get('event') == 'stale_result'),
+        'exact_screen_cache_hits': sum(1 for row in events if row.get('event') == 'plan_cache_hit'),
         'recovery_states_observed': states.get('RECOVERING', 0),
         'safety_pauses_observed': states.get('SAFETY_PAUSED', 0),
         'done_state_observed': states.get('DONE', 0) > 0,
@@ -113,6 +130,7 @@ def markdown(summary):
              '> Generated from privacy-safe diagnostic events. Missing evidence remains TBD.', '',
              f"- Trace events: **{summary['trace_events']}**",
              f"- Stale AI results discarded: **{summary['stale_results_discarded']}**",
+             f"- Duplicate model work avoided by exact-screen cache: **{summary['exact_screen_cache_hits']}**",
              f"- Recovery states observed: **{summary['recovery_states_observed']}**",
              f"- Safety pauses observed: **{summary['safety_pauses_observed']}**",
              f"- Real-phone task result: **{summary['real_phone_task_result']}**", '',

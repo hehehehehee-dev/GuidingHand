@@ -183,6 +183,7 @@ class GuideOverlay(
     private var savedCanOpen = false
     private var cardPosition: WindowManager.LayoutParams? = null
     private var lastCardContentKey: String? = null
+    private var lastRenderKey: String? = null
     private var draggedCard: GuideBox? = null
     private var draggedBubble: GuideBox? = null
     private var lastLog = ""
@@ -280,6 +281,8 @@ class GuideOverlay(
     }
 
     fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING, text), false) }
+    /** In-flight work is informative, not a recoverable error. Only Stop remains available. */
+    fun showWorking(text: String) { render(GuideViewState(GuideStatus.PLANNING, text), false) }
     fun showVoiceBusy(text: String) {
         if (busyLabel == text && !VoiceActivity.visible && bubbleAttached && !cardAttached && !ringAttached) return
         busyLabel = text
@@ -342,6 +345,20 @@ class GuideOverlay(
 
     fun render(state: GuideViewState, canOpenLauncher: Boolean) {
         busyLabel = null
+        val safeNow = safeArea()
+        val renderKey = listOf(
+            state.status, state.instructionVi, state.draftText, state.options,
+            state.step?.stage, state.step?.sam?.region, state.step?.sam?.frameFingerprint,
+            canOpenLauncher, userCollapsed, safeNow, prefs.cardSize, prefs.visionProfile,
+            prefs.showPointer, context.resources.configuration.fontScale
+        ).joinToString("\u001f")
+        val expectedRing = state.status == GuideStatus.WAITING_TAP && state.step?.sam?.region != null
+        val mounted = bubbleAttached && (userCollapsed || cardAttached) && (!expectedRing || ringAttached)
+        if (renderKey == lastRenderKey && mounted && DeviceVisibility.allowed(context)) {
+            savedState = state; savedCanOpen = canOpenLauncher
+            return
+        }
+        lastRenderKey = renderKey
         val previousStatus = savedState?.status
         savedState = state; savedCanOpen = canOpenLauncher
         // Keep the same non-touchable ring mounted while the elder is looking for the target.
@@ -549,5 +566,5 @@ class GuideOverlay(
         collapse.setTextColor(feedbackText(false)); collapse.background = feedbackBackground(false)
         savedState?.let { render(it, savedCanOpen) } ?: showBubble()
     }
-    fun hide() { busyLabel = null; uiHandler.removeCallbacksAndMessages(null); suspendForCapture() }
+    fun hide() { busyLabel = null; lastRenderKey = null; uiHandler.removeCallbacksAndMessages(null); suspendForCapture() }
 }

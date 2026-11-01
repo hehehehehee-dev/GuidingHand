@@ -15,9 +15,15 @@ class SubmissionToolsTests(unittest.TestCase):
             {'sequence': 3, 'uptime_ms': 3, 'event': 'state', 'code': 'RECOVERING'},
             {'sequence': 4, 'uptime_ms': 4, 'event': 'stale_result', 'code': 'screen_changed'},
             {'sequence': 5, 'uptime_ms': 5, 'event': 'panel_layout', 'code': 'WAITING_TAP:visible:fixed', 'value': 0},
+            {'sequence': 6, 'uptime_ms': 10, 'event': 'goal_started'},
+            {'sequence': 7, 'uptime_ms': 35, 'event': 'state', 'code': 'PLANNING'},
+            {'sequence': 8, 'uptime_ms': 1210, 'event': 'state', 'code': 'WAITING_TAP'},
+            {'sequence': 9, 'uptime_ms': 1220, 'event': 'plan_cache_hit', 'code': 'exact_screen'},
         ]
         result = summarize(rows)
         self.assertEqual(1000, result['latency']['provider_spark']['median_ms'])
+        self.assertEqual(1200, result['latency']['goal_to_first_guidance']['median_ms'])
+        self.assertEqual(1, result['exact_screen_cache_hits'])
         self.assertEqual(1, result['recovery_states_observed']); self.assertEqual(1, result['stale_results_discarded'])
         self.assertIn('TBD', result['real_phone_task_result']); self.assertIn('TBD', markdown(result))
 

@@ -111,13 +111,19 @@ class GuidingHandService : AccessibilityService() {
         updates.trySend(Unit)
     }
     fun reloadModel() { engine.stop(); model.close(); model = makeModel(); engine = newEngine() }
-    fun startGoal(goal: String) { voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned(); engine.stop(); engine = newEngine(); engine.startGoal(goal); updates.trySend(Unit) }
+    fun startGoal(goal: String) {
+        voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
+        engine.stop(); engine = newEngine()
+        GuideTrace.event(this, "goal_started") // Content-free timing anchor for real-phone evidence.
+        engine.startGoal(goal); updates.trySend(Unit)
+    }
     /** Starts the existing Zalo send-photo flow with a recipient supplied by setup/home UI.
      * The elder still performs every action in Zalo; this method only seeds task context. */
     fun startPhotoTaskForRecipient(recipient: String) {
         if (!::engine.isInitialized || !DeviceVisibility.allowed(this)) return
         voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
         engine.stop(); engine = newEngine()
+        GuideTrace.event(this, "goal_started")
         engine.startGoal(tr("Gửi ảnh trên Zalo", "Send a photo on Zalo"), PhotoTask(recipient.trim(), prefs.photo))
         updates.trySend(Unit)
     }
@@ -195,7 +201,7 @@ class GuidingHandService : AccessibilityService() {
                 }
                 val current = fresh ?: error("cannot_read")
                 check(engine.inspectBeforeSpeech(current))
-                overlay.showVoiceNotice(tr("Đang nghe lại lời bác nói…", "Understanding what you said…"))
+                overlay.showWorking(tr("Đang chuyển lời nói thành chữ…", "Turning speech into text…"))
                 val speechKeywords = buildList {
                     addAll(listOf("GuidingHand", "Zalo", "Instagram", "YouTube", "Messenger", "Facebook", "WhatsApp", "TikTok"))
                     prefs.contact.trim().takeIf { it.isNotBlank() }?.let(::add)
@@ -329,7 +335,7 @@ class GuidingHandService : AccessibilityService() {
     fun voiceClosed(message: String? = null) {
         voicePermitUntil = 0L
         if (DeviceVisibility.allowed(this)) {
-            if (voiceSubmission?.isActive == true) overlay.showVoiceNotice(tr("Đang nghe lại lời bác nói…", "Understanding what you said…"))
+            if (voiceSubmission?.isActive == true) overlay.showWorking(tr("Đang chuyển lời nói thành chữ…", "Turning speech into text…"))
             else if (message != null) overlay.showVoiceNotice(if (prefs.language == "vi") prefs.respectfulLanguage.message(message) else message)
             else overlay.render(viewState, engine.launcherStep != null)
         }
