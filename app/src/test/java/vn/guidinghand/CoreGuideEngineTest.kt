@@ -403,6 +403,22 @@ class CoreGuideEngineTest {
         engine.repeat(protected())
         assertEquals(1, model.spoken); assertEquals(GuideStatus.SAFETY_PAUSED, engine.status)
     }
+    @Test fun offlineSpeechFailureNamesTheInstalledVoiceInsteadOfAConnection() = runBlocking {
+        val views = mutableListOf<GuideViewState>()
+        var repeats = 0
+        val model = object : GuideModel {
+            override suspend fun next(input: GuideInput) = GuideDecision.Step(step(home, icon, PhotoStage.LAUNCHER), task)
+            override suspend fun repeat(step: GuidanceStep) {
+                if (++repeats > 1) throw IllegalStateException("offline voice missing")
+            }
+            override fun cancel() = Unit
+        }
+        val engine = GuideEngine(model, views::add)
+        engine.startGoal("Gửi ảnh cho An"); engine.onScreen(home); engine.repeat(home)
+        assertEquals(GuideStatus.ASKING, engine.status)
+        assertTrue(views.last().instructionVi.contains("giọng đọc ngoại tuyến"))
+        assertFalse(views.last().instructionVi.contains("kết nối", ignoreCase = true))
+    }
     @Test fun aSearchMessagesFieldIsNotConversationEvidence() {
         val search = composer.copy(text = "Search messages")
         assertFalse(PhotoVerification.conversation(zalo().copy(nodes = listOf(recipient, search)), task))

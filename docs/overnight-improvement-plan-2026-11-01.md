@@ -77,6 +77,12 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: identical purpose remains idempotent; GENERAL → MESSAGE_CONTENT triggers one refresh and announces the message-dictation action; no transcript or question text enters diagnostic traces.
   Verify: deterministic identity regression test, Android Candidate unit tests, lint, assemble, and read-only phone smoke.
 
+- [x] **12. Give an accurate recovery step when offline speech output is unavailable**
+  Evidence: Android system TTS is deliberately offline, but the Vietnamese repeat-failure copy tells the elder to check a connection. That recovery cannot fix a missing offline voice and conflicts with the English copy.
+  What to build: replace the misleading connection instruction with one short Vietnamese sentence that names the installed offline voice and asks a family member for setup help. Keep the task and on-screen state intact.
+  Acceptance: no offline-TTS failure message asks the elder to check a network connection; Vietnamese and English both identify the offline voice; the unavailable state still exposes the existing recovery actions and never falls back to cloud speech.
+  Verify: deterministic GuideEngine copy regression, Android Candidate unit tests, lint, assemble, diff/secret checks, and read-only phone smoke. Rendered elder interaction remains `TBD` until a person triggers the failure.
+
 ## Deferred deliberately
 
 - Cloud deployment and paid live benchmarks: final phase, after behavior stabilizes.

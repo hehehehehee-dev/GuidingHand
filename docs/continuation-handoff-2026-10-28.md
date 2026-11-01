@@ -761,3 +761,18 @@ remain idempotent. Android Candidate tests, lint, and assemble plus all 79 backe
 updated Candidate was installed in place and the read-only Xiaomi smoke check passed with no new
 fatal exception or idle overlay churn. A spoken screen-reader walkthrough remains human evidence and
 is not claimed here.
+
+## Honest offline-voice recovery — November 1 local time
+
+Android system TTS remains the only speech-output path and still runs at 0.85 speed with an
+installed offline voice. The Vietnamese repeat-failure message previously told the elder to check
+a connection, although network access cannot repair a missing offline voice. It now names the
+offline voice and asks a family member to check that it is installed. The task and current screen
+remain available through the existing recovery state; no cloud speech fallback was added.
+
+A deterministic GuideEngine regression proves that the failure copy names the offline voice and
+does not mention a connection. Local verification is **95/95 Android tests**, lint, Candidate
+assemble, and **79/79 backend tests**. The Candidate was updated in place, preserving the original
+GuidingHand package, and the read-only Xiaomi smoke check passed with no new fatal exception or idle
+overlay churn. A person triggering the missing-voice failure remains `TBD`; the smoke check does not
+claim that interaction.

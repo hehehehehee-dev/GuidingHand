@@ -95,7 +95,7 @@ class GuideEngine(
         "Chưa đủ bằng chứng xác minh ảnh đã gửi. Kiểm tra lại giúp mình nhé." to "I cannot yet verify a new photo was sent. Please check the conversation.",
         "Chưa xác minh được vùng cần bấm. Mình dừng lại để hỏi, không đoán." to "I cannot verify the button yet. I will pause and ask rather than guess.",
         "Chưa phát được giọng hướng dẫn. Mình dừng lại, không đổi sang giọng khác." to "The offline guide voice is unavailable. Guidance is paused.",
-        "Chưa phát được giọng hướng dẫn. Kiểm tra kết nối rồi tiếp tục nhé." to "The offline guide voice is unavailable. Please check the installed voice before continuing."
+        "Chưa phát được giọng hướng dẫn. Nhờ người thân kiểm tra giọng đọc ngoại tuyến đã cài nhé." to "The offline guide voice is unavailable. Please check the installed voice before continuing."
     )
 
     private fun emit(next: GuideStatus, instruction: String, step: GuidanceStep? = null, options: List<String> = emptyList(),
@@ -418,6 +418,6 @@ class GuideEngine(
         if (step.sam.frameFingerprint != screen.planningFingerprint) { onScreen(screen); return }
         try { model.repeat(wording(step)) }
         catch (cancelled: CancellationException) { throw cancelled }
-        catch (_: Exception) { model.cancel(); ask("Chưa phát được giọng hướng dẫn. Kiểm tra kết nối rồi tiếp tục nhé.") }
+        catch (_: Exception) { model.cancel(); ask("Chưa phát được giọng hướng dẫn. Nhờ người thân kiểm tra giọng đọc ngoại tuyến đã cài nhé.") }
     }
 }
