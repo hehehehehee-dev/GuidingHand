@@ -1,0 +1,25 @@
+# id|expected|kind|label
+password_node|SENSITIVE|password|
+otp_heading_with_input|SENSITIVE|label_with_input|Enter your OTP
+verification_code_input|SENSITIVE|input_label|Verification code
+vietnamese_otp_heading|SENSITIVE|label_with_input|Nhập mã xác thực
+payment_details_input|SENSITIVE|label_with_input|Payment details
+vietnamese_payment_action|SENSITIVE|interactive_label|Thanh toán
+cvv_heading_with_input|SENSITIVE|label_with_input|CVV
+pin_input|SENSITIVE|input_label|PIN
+pay_now_action|SENSITIVE|interactive_label|Pay now
+checkout_action|SENSITIVE|interactive_label|Checkout
+standalone_otp_label|SENSITIVE|plain_label|OTP
+standalone_password_label|SENSITIVE|plain_label|Password
+standalone_payment_label|SENSITIVE|plain_label|Payment
+locked_screen|LOCKED|locked|
+empty_tree|CANNOT_READ|empty|
+incomplete_tree|CANNOT_READ|incomplete|Home
+read_issue|CANNOT_READ|read_issue|Home
+pinterest_word|SAFE|plain_label|Pinterest
+payment_article|SAFE|plain_label|How payment systems work
+password_advice|SAFE|plain_label|How to choose a strong password
+otp_news|SAFE|plain_label|Why OTP scams are increasing
+browser_search|SAFE|normal_button|Search
+zalo_message|SAFE|normal_button|Nhắn tin
+pin_article|SAFE|plain_label|What is a PIN?

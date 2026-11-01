@@ -1,0 +1,84 @@
+name: Verify GuidingHand
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install backend runtime dependencies
+        run: python -m pip install --disable-pip-version-check -r backend/requirements.txt
+      - name: Run backend tests without provider calls
+        run: python -m unittest discover -s backend -p 'test_*.py' -v
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Verify Android candidate
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug -PcandidateBuild=true --no-daemon --console=plain
+      - name: Verify candidate package identity
+        run: |
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
+          test -x "$AAPT"
+          "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | head -1 | tee /tmp/package.txt
+          grep -q "name='vn.guidinghand.candidate'" /tmp/package.txt
+          grep -q "versionCode='36'" /tmp/package.txt
+          grep -q "versionName='1.5.27-candidate'" /tmp/package.txt
+          "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | grep -q "application-label:'GuidingHand Candidate'"
+      - name: Generate deterministic evaluation evidence
+        run: |
+          python backend/generate_evaluation_report.py --output /tmp/deterministic-evaluation.md
+          grep -q 'Provider calls: \*\*0\*\*' /tmp/deterministic-evaluation.md
+          grep -q 'Ring accuracy: \*\*TBD' /tmp/deterministic-evaluation.md
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build backend container
+        run: docker build -t guidinghand-backend:verify backend
+      - name: Verify liveness and authenticated app contract without a provider call
+        run: |
+          SESSION_TOKEN=ci-session-token-000000000000000000000000
+          docker run -d --name guidinghand-health -p 18080:8080 \
+            -e MODEL_API_KEY=ci-fixture-not-a-real-key \
+            -e GUIDINGHAND_APP_SESSION_TOKEN=$SESSION_TOKEN \
+            -e GUIDINGHAND_PROJECT_BUDGET_USD=5 \
+            -e GUIDINGHAND_TRUST_PROXY_HEADERS=true \
+            guidinghand-backend:verify
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz | grep -q '"status": "ok"'; then
+              break
+            fi
+            test "$attempt" != 20 || { docker logs guidinghand-health; exit 1; }
+            sleep 1
+          done
+          test "$(curl --silent --output /tmp/direct.json --write-out '%{http_code}' \
+            http://127.0.0.1:18080/core/capabilities)" = 400
+          grep -q 'https_required' /tmp/direct.json
+          test "$(curl --silent --output /tmp/unauthorized.json --write-out '%{http_code}' \
+            -H 'X-Forwarded-Proto: https' http://127.0.0.1:18080/core/capabilities)" = 401
+          test "$(curl --silent --output /tmp/capabilities.json --write-out '%{http_code}' \
+            -H 'X-Forwarded-Proto: https' -H "Authorization: Bearer $SESSION_TOKEN" \
+            http://127.0.0.1:18080/core/capabilities)" = 200
+          grep -q '"snapshot_protocol": "single-image-v1"' /tmp/capabilities.json
+          grep -q '"model": "muse-voice-transcribe-1.0"' /tmp/capabilities.json
+          grep -q '"automatic_actions": false' /tmp/capabilities.json
+      - name: Stop verification container
+        if: always()
+        run: docker rm -f guidinghand-health || true

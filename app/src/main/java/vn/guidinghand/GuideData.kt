@@ -1,6 +1,5 @@
 package vn.guidinghand
 
-import android.graphics.Bitmap
 import android.graphics.RectF
 import java.text.Normalizer
 
@@ -10,126 +9,197 @@ fun folded(value: String): String = Normalizer.normalize(value.lowercase(), Norm
 data class Region(val left: Float, val top: Float, val right: Float, val bottom: Float) {
     init { require(left >= 0 && top >= 0 && right <= 1 && bottom <= 1 && left < right && top < bottom) }
     fun rectF() = RectF(left, top, right, bottom)
+    fun containsCenter(other: Region): Boolean {
+        val x = (other.left + other.right) / 2; val y = (other.top + other.bottom) / 2
+        return x in left..right && y in top..bottom
+    }
 }
 data class ScreenNode(
     val id: String, val text: String, val region: Region?, val clickable: Boolean,
     val selected: Boolean = false, val password: Boolean = false,
-    val className: String = "", val aliases: List<String> = emptyList(), val focused: Boolean = false
-)
-data class ScreenState(val packageName: String, val nodes: List<ScreenNode>, val complete: Boolean = true) {
-    val fingerprint: String get() = "$packageName:$complete:" + nodes.joinToString { "${it.id}:${it.text}:${it.region}:${it.selected}:${it.password}:${it.focused}:${it.aliases}" }
-    fun has(vararg words: String) = nodes.any { node -> words.any { word -> (node.aliases + node.text).any { folded(it).contains(folded(word)) } } }
+    val className: String = "", val aliases: List<String> = emptyList(), val focused: Boolean = false,
+    val launcherFolder: Boolean = false, val inLauncherFolder: Boolean = false, val heading: Boolean = false,
+    val launchPackage: String? = null
+) { val labels get() = (aliases + text).filter { it.isNotBlank() }.distinct() }
+data class ScreenState(
+    val packageName: String, val nodes: List<ScreenNode>, val complete: Boolean = true,
+    val isLauncher: Boolean = false, val isLocked: Boolean = false,
+    val windowId: Int = -1, val navigationGeneration: Long = 0, val readIssue: String? = null
+) {
+    val fingerprint get() = "$packageName:$windowId:$navigationGeneration:$complete:$isLauncher:$isLocked:$readIssue:" + nodes.joinToString { "${it.id}:${it.text}:${it.region}:${it.selected}:${it.password}:${it.focused}:${it.aliases}:${it.launcherFolder}:${it.inLauncherFolder}:${it.heading}" }
+    /** Stable during decorative animation; still binds app/window, safety and actionable geometry. */
+    val planningFingerprint get() = "$packageName:$windowId:$navigationGeneration:$complete:$isLauncher:$isLocked:$readIssue:" +
+        nodes.filter { it.clickable || it.focused || it.password || it.heading || it.className.contains("EditText") }
+            .joinToString { "${it.id}:${it.region}:${it.clickable}:${it.selected}:${it.password}:${it.focused}:${it.className}:${it.heading}" }
+    fun hasExact(value: String) = value.isNotBlank() && nodes.any { node -> node.labels.any { folded(it) == folded(value) } }
+    fun has(vararg words: String) = nodes.any { node -> node.labels.any { label -> words.any { folded(label).contains(folded(it)) } } }
 }
-data class GuideFrame(val screen: ScreenState, val screenshot: Bitmap?)
-data class StepGoal(val id: String, val labels: List<String>, val instruction: String,
-                    val expected: List<String>, val completion: String = "text")
-data class GuideTask(val id: String, val label: String, val steps: List<StepGoal>,
-                     val recipient: String? = null, val allowedPackages: Set<String> = emptySet(),
-                     val appPackage: String = "com.zing.zalo", val appLabel: String = "Zalo")
-data class ModelStep(val goal: StepGoal, val node: ScreenNode, val instruction: String) {
-    val target: RectF get() = requireNotNull(node.region).rectF()
-}
+enum class ScreenReadVerdict { SAFE, CANNOT_READ, SENSITIVE, LOCKED }
 
-/** The only backend seam. Frames remain in memory on this phone. */
-interface GuideModel {
-    suspend fun getNextStep(screenshot: GuideFrame, goal: GuideTask): ModelStep?
-    fun speak(text: String)
-    fun silence()
-    fun close()
-}
-
-object Tasks {
-    private fun step(id: String, labels: List<String>, instruction: String, vararg expected: String, completion: String = "text") =
-        StepGoal(id, labels, instruction, expected.toList(), completion)
-    val all = listOf(
-        GuideTask("video", "Gọi hình cho người thân", listOf(
-            step("chat", listOf("Tin nhắn", "Messages"), "Bấm Tin nhắn ở dưới.", "Tìm kiếm", "Search"),
-            step("conversation", listOf("{family}"), "Bấm tên người thân ở giữa.", "Gọi video", "Video call"),
-            step("video", listOf("Gọi video", "Video call"), "Bấm Gọi video ở phía trên.", "Kết thúc", "Đang gọi", "End call", "Calling")
-        )),
-        GuideTask("photo", "Gửi ảnh cho người thân", listOf(
-            step("conversation", listOf("{family}"), "Bấm tên người thân ở giữa.", "Gửi ảnh", "Hình ảnh", "Photo"),
-            step("attach", listOf("Gửi ảnh", "Hình ảnh", "Ảnh", "Photo"), "Bấm Hình ảnh ở phía dưới.", "Thư viện", "Gần đây", "Gallery", "Recent"),
-            step("choose", listOf("{photo}"), "Bấm ảnh cần gửi ở giữa.", "Gửi", "Send", completion = "selection"),
-            step("send", listOf("Gửi", "Send"), "Bấm Gửi ở phía dưới, bên phải.", "Đã gửi", "Đã nhận", "Sent", "Delivered", completion = "photoSent")
-        )),
-        GuideTask("font", "Phóng to chữ trong Zalo", listOf(
-            step("personal", listOf("Cá nhân", "Personal"), "Bấm Cá nhân ở dưới, bên phải.", "Cài đặt", "Settings"),
-            step("settings", listOf("Cài đặt", "Settings"), "Bấm Cài đặt ở phía trên.", "Giao diện", "Cỡ chữ", "Appearance"),
-            step("font", listOf("Cỡ chữ", "Giao diện", "Font size", "Appearance"), "Bấm Cỡ chữ ở giữa.", "Rất lớn", "Lớn", "Very large", "Large"),
-            step("large", listOf("Rất lớn", "Very large", "Lớn", "Large"), "Bấm chữ Lớn ở giữa.", completion = "selection")
-        )),
-        GuideTask("wifi", "Kết nối mạng không dây", listOf(
-            step("network", listOf("{network}"), "Bấm tên mạng ở giữa.", "Đã kết nối", "Connected", completion = "wifi")
-        )),
-        GuideTask("qr", "Quét mã bằng Zalo", listOf(
-            step("scanner", listOf("Quét mã QR", "Quét QR", "Scan QR"), "Bấm Quét mã ở phía trên.", "Đưa mã", "Di chuyển mã", "Quét mã QR", "Scan QR"),
-            step("frame", listOf("Khung quét", "Vùng quét", "QR scanner"), "Đặt mã vào giữa khung.", "Kết quả quét", "QR result", completion = "scan")
-        ))
-    )
-    fun openApp(label: String, packageName: String) = GuideTask("open", "Open $label", listOf(
-        step("openApp", listOf(label), "Bấm $label trên màn hình.", packageName, completion = "app")
-    ), appPackage = packageName, appLabel = label)
-    val openZalo = openApp("Zalo", "com.zing.zalo")
-    val openInstagram = openApp("Instagram", "com.instagram.android")
-    val message = GuideTask("message", "Send a message", listOf(
-        step("conversation", listOf("{family}"), "Bấm tên người cần nhắn.", "Tin nhắn", "Message", "Gọi video", "Video call"),
-        step("compose", listOf("Tin nhắn", "Nhập tin nhắn", "Message", "Type a message"), "Bấm ô tin nhắn ở dưới.", completion = "focus")
-    ))
-    fun messageIn(packageName: String, label: String): GuideTask {
-        if (packageName == "com.zing.zalo") return message
-        return GuideTask("message", "Message in $label", listOf(
-            step("inbox", listOf("Messages", "Your messages", "Direct messages", "Direct messaging", "Open messages", "Open inbox", "Direct", "Messenger", "Inbox", "Tin nhắn"), "Bấm Tin nhắn ở trên.", "Search", "New message", "Tìm kiếm", "New Message"),
-            step("conversation", listOf("{family}"), "Bấm tên người cần nhắn.", "Message", "Message…", "Nhắn tin", "Gọi thoại", "Audio call"),
-            step("compose", listOf("Message", "Message…", "Message...", "Type a message", "Nhắn tin", "Tin nhắn"), "Bấm ô tin nhắn ở dưới.", completion = "focus")
-        ), appPackage = packageName, appLabel = label)
-    }
-    fun fromGoal(text: String): GuideTask? {
-        val query = folded(text)
-        fun has(vararg terms: String) = terms.any { term ->
-            Regex("(^|[^a-z0-9])${Regex.escape(term)}([^a-z0-9]|$)").containsMatchIn(query)
-        }
-        return when {
-            has("video", "goi hinh", "goi video") -> all[0]
-            has("call", "goi") -> GuideTask("call", "Call someone", emptyList())
-            has("font", "text size", "larger", "phong to", "co chu") -> all[2]
-            has("message", "text", "nhan tin", "nhan cho") -> message
-            has("photo", "picture", "gui anh", "gui hinh") -> all[1]
-            has("wifi", "wi-fi", "network", "mang") -> all[3]
-            has("qr", "scan", "quet") -> all[4]
-            has("zalo") -> openZalo
-            else -> null
-        }
+/** Local classification before any provider call. Missing data is not evidence of danger or safety. */
+object ScreenReadPolicy {
+    fun verdict(screen: ScreenState?): ScreenReadVerdict = when {
+        screen == null -> ScreenReadVerdict.CANNOT_READ
+        screen.isLocked -> ScreenReadVerdict.LOCKED
+        SafetyPolicy.sensitive(screen) -> ScreenReadVerdict.SENSITIVE
+        !screen.complete || screen.readIssue != null || screen.packageName.isBlank() ||
+            screen.nodes.isEmpty() || screen.nodes.none { it.labels.isNotEmpty() } -> ScreenReadVerdict.CANNOT_READ
+        else -> ScreenReadVerdict.SAFE
     }
 }
-
 object SafetyPolicy {
-    private val terms = listOf("mat khau", "password", "thanh toan", "payment", "otp", "ma xac thuc", "ma xac nhan", "pin", "cvv")
-    fun sensitive(screen: ScreenState) = screen.nodes.any { node ->
-        node.password || terms.any { term -> (node.aliases + node.text).any { Regex("(^|[^a-z0-9])${Regex.escape(term)}([^a-z0-9]|$)").containsMatchIn(folded(it)) } }
+    private val credentialTerms = listOf("mat khau", "password", "passcode", "otp", "ma xac thuc", "ma xac nhan", "verification code", "pin", "cvv")
+    private val paymentTerms = listOf("thanh toan", "payment", "pay now", "checkout", "card number", "so the")
+    private fun patterns(values: List<String>) = values.map { Regex("(^|[^a-z0-9])${Regex.escape(it)}([^a-z0-9]|$)") }
+    private val credentialPatterns = patterns(credentialTerms)
+    private val paymentPatterns = patterns(paymentTerms)
+    private val explicitScreenPromptPatterns = patterns(listOf(
+        "enter your otp", "nhap ma xac thuc", "nhap ma xac nhan", "enter password", "nhap mat khau",
+        "verification code", "payment details", "card details", "enter pin"
+    ))
+    private fun matches(label: String, patterns: List<Regex>) = patterns.any { it.containsMatchIn(folded(label)) }
+    private fun editable(node: ScreenNode) = node.focused || node.className.contains("EditText", true) ||
+        node.className.contains("AutoCompleteTextView", true)
+
+    fun sensitive(screen: ScreenState): Boolean {
+        if (screen.nodes.any { it.password }) return true
+        val hasEditable = screen.nodes.any(::editable)
+        val exactSensitiveLabel = screen.nodes.any { node -> node.labels.any { label ->
+            folded(label) in credentialTerms || folded(label) in paymentTerms
+        } }
+        val explicitScreenPrompt = screen.nodes.any { node -> node.labels.any { matches(it, explicitScreenPromptPatterns) } }
+        val credentialContext = screen.nodes.any { node -> node.labels.any { matches(it, credentialPatterns) } }
+        val paymentContext = screen.nodes.any { node -> node.labels.any { matches(it, paymentPatterns) } }
+        val sensitiveControl = screen.nodes.any { node -> (editable(node) || node.clickable) && node.labels.any { label ->
+            matches(label, credentialPatterns) || matches(label, paymentPatterns)
+        } }
+        // A plain article mentioning passwords or payments is not a credential screen. A
+        // matching label plus an input control is; so is an explicit sensitive action.
+        return exactSensitiveLabel || explicitScreenPrompt || sensitiveControl || (hasEditable && (credentialContext || paymentContext))
+    }
+
+    /** Spoken goals and draft content have no UI-role context, so use the strict lexical gate. */
+    fun sensitiveGoal(goal: String): Boolean {
+        val normalized = folded(goal)
+        return (credentialPatterns + paymentPatterns).any { it.containsMatchIn(normalized) }
     }
 }
+enum class PhotoStage { LAUNCHER, RECIPIENT, ATTACH, PHOTO, SEND, DELIVERY, RECOVER, ACTION }
+/** Task data for the one planner; the legacy name preserves the strict photo evidence implementation. */
+data class PhotoTask(val recipient: String, val photo: String, val id: String = "send_photo_zalo", val targetPackage: String = "",
+                     val content: String = "") {
+    val appPackage get() = if (id == "send_photo_zalo") "com.zing.zalo" else targetPackage
+    val isPhotoTask get() = id == "send_photo_zalo"
+    val valid get() = id in setOf("send_photo_zalo", "guide_app") &&
+        (isPhotoTask || Regex("[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z0-9_]+)+").matches(targetPackage)) && recipient.length <= 100 && photo.length <= 200 &&
+        content.length <= 500 && !SafetyPolicy.sensitiveGoal(recipient) && !SafetyPolicy.sensitiveGoal(photo) && !SafetyPolicy.sensitiveGoal(content)
+    val ready get() = valid && recipient.isNotBlank() && photo.isNotBlank()
+    fun acceptsRefinement(next: PhotoTask) = valid && next.valid && id == next.id && appPackage == next.appPackage &&
+        (recipient.isBlank() || recipient == next.recipient) && (photo.isBlank() || photo == next.photo) &&
+        (content.isBlank() || content == next.content)
+}
+data class FamilyContext(val recipient: String = "", val photo: String = "")
+data class GuideObservation(val target: String, val matchedTap: Boolean, val screenChanged: Boolean,
+    val instruction: String = "", val targetLabel: String = "", val fromPackage: String = "")
+data class ClarificationTurn(val question: String, val answer: String)
+data class GuideInput(
+    val screen: ScreenState, val goal: String, val answers: List<String>, val task: PhotoTask?,
+    val verifiedStepIds: Set<String>, val observations: List<GuideObservation>, val family: FamilyContext = FamilyContext(),
+    val dialogue: List<ClarificationTurn> = emptyList(), val allowTaskUpdate: Boolean = false,
+    val userUpdates: List<String> = emptyList()
+)
+data class SamRegion(val region: Region, val frameFingerprint: String, val source: String = "sam-3.1",
+                     val rawRegion: Region? = null)
+data class VoiceOutput(val audioBytes: ByteArray = byteArrayOf(), val mimeType: String = "text/plain",
+                       val provider: String = "Android system TTS", val rate: Float = .85f)
+data class GuidanceStep(val id: String, val stage: PhotoStage, val instructionVi: String, val target: ScreenNode,
+                        val sam: SamRegion, val voice: VoiceOutput)
+sealed interface GuideDecision {
+    data object StateChanged : GuideDecision
+    data class Step(val step: GuidanceStep, val task: PhotoTask? = null) : GuideDecision
+    data class Clarify(val questionVi: String, val options: List<String> = emptyList(),
+                       val speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL) : GuideDecision
+    data class Unsupported(val messageVi: String, val options: List<String> = emptyList()) : GuideDecision
+    data class Unavailable(val component: String, val messageVi: String) : GuideDecision
+    /** Server independently detected sensitive content; this must latch the same native hard stop. */
+    data class Sensitive(val messageVi: String) : GuideDecision
+    data class Await(val messageVi: String, val reasonCode: String = "model_ask") : GuideDecision
+    /** A real user navigation/gesture instruction; no invented tappable target or ring. */
+    data class Navigate(val messageVi: String, val task: PhotoTask? = null) : GuideDecision
+    data class DoneProposal(val messageVi: String) : GuideDecision
+}
+interface GuideModel {
+    val developmentStandIn: Boolean get() = false
+    suspend fun next(input: GuideInput): GuideDecision
+    suspend fun repeat(step: GuidanceStep)
+    suspend fun speakMessage(text: String, screen: ScreenState) {}
+    fun cancel()
+    /** Clear RAM-only task/model memory on Stop, a new goal, lock, or a sensitive screen. */
+    fun clearSessionMemory() {}
+    fun close() = cancel()
+}
+enum class GuideStatus { IDLE, READING, PLANNING, CLARIFYING, CONFIRMING_INPUT, CONFIRMING_COPY, WAITING_TAP, WAITING_NAVIGATION, VERIFYING, RECOVERING, SAFETY_PAUSED, ASKING, UNAVAILABLE, UNSUPPORTED, DONE }
+data class GuideViewState(val status: GuideStatus, val instructionVi: String, val step: GuidanceStep? = null,
+    val options: List<String> = emptyList(), val reasonCode: String? = null,
+    val speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL, val draftText: String? = null)
+data class GuideTransition(val sequence: Long, val from: GuideStatus, val to: GuideStatus,
+                           val reasonCode: String? = null, val stage: PhotoStage? = null,
+                           val taskKind: String? = null)
 
-object Verification {
-    fun confirms(step: ModelStep, before: ScreenState, after: ScreenState): Boolean {
-        if (!before.complete || !after.complete || before.fingerprint == after.fingerprint || SafetyPolicy.sensitive(after)) return false
-        return when (step.goal.completion) {
-            "app" -> after.packageName in step.goal.expected && before.packageName != after.packageName
-            "focus" -> after.nodes.any { it.focused && it.id == step.node.id && it.className.contains("EditText") } &&
-                before.nodes.none { it.focused && it.id == step.node.id }
-            "selection" -> after.nodes.any { it.selected && !before.nodes.any { old -> old.id == it.id && old.selected } &&
-                (it.id == step.node.id || folded(it.text) == folded(step.node.text)) }
-            "wifi" -> after.has(step.node.text) && after.has(*step.goal.expected.toTypedArray()) &&
-                !before.has(*step.goal.expected.toTypedArray())
-            "photoSent" -> after.has(*step.goal.expected.toTypedArray()) &&
-                !before.has(*step.goal.expected.toTypedArray()) &&
-                after.nodes.any { node -> node.className.endsWith("ImageView") &&
-                    folded(node.text).let { it.contains("anh da gui") || it.contains("sent photo") } &&
-                    before.nodes.none { it.id == node.id && it.text == node.text } } &&
-                !after.has("Thư viện", "Gallery", "Gần đây", "Recent")
-            "scan" -> after.has(*step.goal.expected.toTypedArray()) && !before.has(*step.goal.expected.toTypedArray())
-            else -> after.has(*step.goal.expected.toTypedArray()) &&
-                !before.has(*step.goal.expected.toTypedArray())
+/** Native evidence only: planner success claims do not complete a task. */
+object PhotoVerification {
+    private val composer = listOf("message", "type a message", "nhap tin nhan", "tin nhan", "message…", "nhan tin")
+    fun hasComposer(screen: ScreenState) = screen.nodes.any { it.className.contains("EditText") &&
+        it.labels.any { label -> folded(label) in composer } }
+    fun composerContains(screen: ScreenState, task: PhotoTask) = task.content.isNotBlank() && screen.nodes.any { node ->
+        node.className.contains("EditText") && node.labels.any { folded(it) == folded(task.content) }
+    }
+    private val headerId = Regex("(^|[_-])(title|header|toolbar|contact_name|chat_name|user_name|conversation_name)($|[_-])")
+    private fun recipientHeader(node: ScreenNode, task: PhotoTask): Boolean {
+        val bounds = node.region ?: return false
+        if (bounds.top >= .3f || node.password || node.className.contains("EditText") || node.className.contains("AutoCompleteTextView")) return false
+        if (node.labels.none { folded(it) == folded(task.recipient) }) return false
+        val realId = node.id.substringBefore('@')
+        return node.heading || (realId.contains(":id/") && headerId.containsMatchIn(realId.substringAfterLast('/').lowercase()))
+    }
+    fun recipientTitle(screen: ScreenState, task: PhotoTask) = screen.packageName == task.appPackage &&
+        screen.nodes.filter { recipientHeader(it, task) }.singleOrNull() != null
+    fun conversation(screen: ScreenState, task: PhotoTask) = hasComposer(screen) && recipientTitle(screen, task)
+    fun gallery(screen: ScreenState) = screen.has("Thư viện", "Gần đây", "Gallery", "Recent", "Chọn ảnh", "Select photos") ||
+        (screen.packageName in setOf("com.google.android.providers.media.module", "com.android.providers.media.module", "com.google.android.documentsui", "com.android.documentsui") &&
+            screen.has("Photos", "Ảnh", "Images"))
+    fun selectedPhoto(screen: ScreenState, task: PhotoTask) = screen.nodes.any { node -> node.selected && node.labels.any { folded(it) == folded(task.photo) } }
+    /** A thumbnail is often labelled by date, not by the person's spoken description.
+     * Bind the actual elder-tapped thumbnail to a newly selected instance, never to a generic count. */
+    fun selectedTarget(before: ScreenState, after: ScreenState, target: ScreenNode): Boolean {
+        if (target.selected || target.region == null || before.nodes.none { it == target } ||
+            before.packageName != after.packageName || before.windowId != after.windowId) return false
+        return after.nodes.any { node ->
+            val box = node.region
+            node.selected && box != null && target.region.containsCenter(box) && box.containsCenter(target.region) &&
+                node.className == target.className && node.id.substringBefore('@') == target.id.substringBefore('@') &&
+                node.labels.map(::folded).intersect(target.labels.map(::folded).toSet()).isNotEmpty()
         }
     }
+    fun hasSelectedTarget(screen: ScreenState, target: ScreenNode?) = target != null && screen.nodes.any { node ->
+        node.selected && node.region != null && target.region?.containsCenter(node.region) == true &&
+            node.id.substringBefore('@') == target.id.substringBefore('@') && node.className == target.className &&
+            node.labels.map(::folded).intersect(target.labels.map(::folded).toSet()).isNotEmpty()
+    }
+    fun photoPreview(screen: ScreenState, task: PhotoTask) = screen.nodes.any { node -> node.className.endsWith("ImageView") && node.labels.any { folded(it) == folded(task.photo) } }
+    private fun outgoing(node: ScreenNode) = node.className.endsWith("ImageView") && node.labels.any {
+        val value = folded(it)
+        value.contains("anh da gui") || value.contains("sent photo") || value.contains("outgoing photo") || value.contains("anh ban da gui")
+    }
+    private fun delivery(node: ScreenNode) = node.labels.any { folded(it) in setOf("da gui", "da nhan", "sent", "delivered") }
+    private fun newEvidence(before: ScreenState, after: ScreenState, predicate: (ScreenNode) -> Boolean): Boolean {
+        // Tree positions/resource IDs are not message identity: old bubbles can move or be recycled.
+        val old = before.nodes.filter(predicate).groupingBy { it.labels.map(::folded).distinct().sorted() }.eachCount()
+        val current = after.nodes.filter(predicate).groupingBy { it.labels.map(::folded).distinct().sorted() }.eachCount()
+        return current.any { (key, count) -> count > (old[key] ?: 0) }
+    }
+    fun delivered(before: ScreenState, after: ScreenState, task: PhotoTask) = before.complete && after.complete &&
+        !before.isLocked && !after.isLocked && !SafetyPolicy.sensitive(before) && !SafetyPolicy.sensitive(after) &&
+        before.packageName == task.appPackage && conversation(after, task) && before.fingerprint != after.fingerprint && !gallery(after) &&
+        newEvidence(before, after, ::outgoing) && newEvidence(before, after, ::delivery)
 }

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="240" viewBox="0 0 800 240" role="img" aria-labelledby="title description">
+  <title id="title">Held-out evaluation results pending</title>
+  <desc id="description">Ring-hit rate, guidance accuracy and per-step latency have not been measured. Every result is TBD. Empty chart tracks are placeholders, not zero scores.</desc>
+  <rect x="1" y="1" width="798" height="238" rx="18" fill="#f8faf8" stroke="#dbe3dd"/>
+  <g font-family="Arial, sans-serif" fill="#233d34">
+    <text x="28" y="36" font-size="19" font-weight="700">Held-out evaluation</text>
+    <text x="28" y="60" font-size="13" fill="#536157">No measurements yet. Empty tracks are placeholders, not zero scores.</text>
+    <text x="28" y="104" font-size="15">Ring-hit rate (%)</text>
+    <text x="28" y="148" font-size="15">Guidance accuracy (%)</text>
+    <text x="28" y="192" font-size="15">Per-step latency (ms, p50/p95)</text>
+    <rect x="275" y="87" width="320" height="24" rx="6" fill="#eef1ee" stroke="#bdc9c0" stroke-dasharray="4 4"/>
+    <rect x="275" y="131" width="320" height="24" rx="6" fill="#eef1ee" stroke="#bdc9c0" stroke-dasharray="4 4"/>
+    <rect x="275" y="175" width="320" height="24" rx="6" fill="#eef1ee" stroke="#bdc9c0" stroke-dasharray="4 4"/>
+    <text x="620" y="104" font-size="15" font-weight="700">TBD</text>
+    <text x="620" y="148" font-size="15" font-weight="700">TBD</text>
+    <text x="620" y="192" font-size="15" font-weight="700">TBD</text>
+    <text x="28" y="220" font-size="12" fill="#536157">Freeze held-out sessions and layouts before tuning. Publish failures and abstentions with results.</text>
+  </g>
+</svg>

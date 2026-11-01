@@ -1,8 +1,10 @@
+> Historical Phase 1 record. These results do not verify the redesigned Spark → SAM → Voice core. See README.md for current wiring and validation status.
+
 # GuidingHand 1.0 — real-phone acceptance
 
-Release version: **1.0**. The APK manifest and installed package report `versionName=1.0`. Internal Android upgrade code14 is retained to update the existing installation without uninstalling. The app logic is unchanged.
+Release version: **1.0**. Internal Android upgrade code14 is retained to update the existing installation without uninstalling. The initial Meta debug adapter adds an optional planning path; historical user observations below apply to the earlier local build until repeated.
 
-Device: Xiaomi 2602DPT53G, Android API36, with Zalo and Instagram installed. Installation and Accessibility connection were verified through ADB. JVM checks passed with **86 tests**; they do not replace the physical checks below.
+Device: Xiaomi 2602DPT53G, Android API36, with Zalo and Instagram installed. Installation and Accessibility connection were verified through ADB. Current JVM checks passed with **106 tests**; they do not replace the physical checks below.
 
 ## Confirmed user observations
 
@@ -14,8 +16,14 @@ Device: Xiaomi 2602DPT53G, Android API36, with Zalo and Instagram installed. Ins
 - Launcher swipes run and guidance continues. Downward navigation opened the Xiaomi system panel during development and was removed.
 - The final translucent moving cue is easy to see and swipes correctly.
 - After English → Vietnamese → English interface switching, the guide and speech dialog use the correct language in both modes.
+- With the initial Meta debug adapter installed, the user followed the Meta opt-in/Calculator test instructions and reported a ring on the correct control. Additional settled gateway requests corroborated API activity; no control-level trace or latency measurement was collected.
+- With the goal planner and pointing hand installed, the user confirmed that the new app picker opened Calculator and showed Try an example. They then reported the indicated taps reached 168 and the guide asked whether the task was finished. Additional settled API requests corroborated activity; other goals and edge/lifecycle variants remain unverified.
 
 These observations apply to this Xiaomi and the reported interactions only.
+
+## Owner stop-trials instruction
+
+The owner requested normal use and no more trials. The final app was rebuilt and installed with point-first launcher guidance, an explicit launcher-only **Mở giúp tôi** option and no automatic in-app actions. No additional physical acceptance result is claimed for that policy. Earlier direct-launch/search observations below are historical and do not describe the current default. The remaining checklist is a development record, not a request for the owner to perform it.
 
 ## Acceptance checklist
 
@@ -30,6 +38,11 @@ These observations apply to this Xiaomi and the reported interactions only.
 9. **Font, Wi-Fi and scanning:** single-tap accessible font choices may be guided; slider-only controls stop. A selected Wi-Fi network must newly become connected. Password entry stops guidance. Scanning requires accessible viewport/result evidence; do not invent results from a camera preview.
 10. **Sensitive screens:** password/payment/OTP content stops rings, speech and planning before processing. Call family opens the saved number in the dialer without starting the call. Guidance cannot resume while the sensitive screen remains. Do not export private, password, payment or lock/passcode screenshots.
 11. **Lock and lifecycle:** lock with only the bubble visible, an expanded card, active cue and microphone capture. Waking without unlocking must restore nothing; speech and microphone stop. Unlock restores only the bubble, respects Hide and never automatically resumes a task. Repeat after service recreation. The confirmed basic lock/unlock result does not establish all these variants.
-12. **General current-screen guidance:** in another app, choose a uniquely labeled control or speak its supported translated label. Highlight the actual node bounds. Duplicate/unlabeled controls must not be invented. A changed screen asks what next without claiming an arbitrary goal is complete. No universal AI planner or cloud backend is configured.
+12. **General current-screen guidance:** in another app, choose a uniquely labeled control or speak its supported translated label. Highlight the actual node bounds. Duplicate/unlabeled controls must not be invented. A changed screen asks what next without claiming an arbitrary goal is complete. The optional Spark adapter selects grounded choices only; it is not universal goal understanding.
+13. **Meta debug mode — initial Calculator ring reported; remaining acceptance pending:** use a test account and synthetic photo only. Pair through USB, then explicitly consent in Preferences. Trigger supported guidance on a non-sensitive test screen and check the ring and localized instruction. Disable Meta, disconnect USB, change language, Stop and lock during a pending request: late responses must not revive a ring. Service recreation must return to local mode. Review only usage counters; never export private screens, provider keys or pairing tokens. The reported single-control check does not establish these remaining scenarios.
 
 Record additional observations in `BUILD-LOG.md`; distinguish physical results from synthetic checks. Own-app review images, if any, stay under ignored `build/review/`.
+
+## New goal flow and hand — Calculator reported successful; broader acceptance pending
+
+Enable Meta test mode after an update. When starting inside GuidingHand, tap Guide → microphone → Calculator in the app picker. Clear the old expression, choose Try an example → Guide me, and perform each indicated tap yourself. The user reported this flow reached 168 and asked for confirmation. Still check that the fingertip stays inside all screen edges, avoids the attached card and never intercepts touches. Try a wrong digit, Stop while thinking, lock, cancel, switch languages and disconnect USB. Speech and model responses must not return after cancellation. Other goals remain subject to usable labels and current-app boundaries; final consequential actions stay with the person. The reported example does not establish these remaining cases or held-out accuracy.

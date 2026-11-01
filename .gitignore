@@ -17,3 +17,5 @@ GuidingHandTlsProbe.java
 *.key
 .DS_Store
 Thumbs.db
+backend/.state/
+backend/__pycache__/

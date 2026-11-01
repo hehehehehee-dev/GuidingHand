@@ -1,79 +1,158 @@
 # GuidingHand
 
-A floating Android companion that helps someone use their own phone, one step at a time. Kotlin + Jetpack Compose, Android 11+. English is the default; **Tiếng Việt** is an explicit, saved option.
+Implementation branch: `feat/submission-reliability`. The installed phone build is not proof that this candidate has passed the send-photo task. Main and the original `vn.guidinghand` installation remain separate from the Candidate package.
 
-## Current build: 1.0
+GuidingHand helps an older person use their own Android phone, one step at a time. **The elder performs every tap, every keystroke and every final action.**
 
-This repository contains GuidingHand **1.0**, including its Android source, branding, build instructions and verification records.
+The October 28 direction expands guidance to readable, non-sensitive installed Android apps. Spark plans from the original goal, actual screen and installed app names/packages; there is no fixed app allowlist or keyword script. This is implemented capability, **not a claim that every app or workflow has been demonstrated**. The Zalo photo flow retains its stricter recipient and new-message evidence checks.
 
-GuidingHand 1.0 includes:
+**Muse Spark plans and SAM 3.1 supplies the production ring region. Muse Voice Transcribe 1.0 is speech input, not speech output.** The November 4 build uses Android's system offline Vietnamese TTS at a speech rate of **0.85** for output. Missing or uncertain production planning or grounding stops guidance.
 
-- One interface language at a time across Home, preferences, the floating guide, microphone states/consent, recovery, accessibility descriptions and spoken instructions. Language names are localized too: English/Vietnamese or Tiếng Anh/Tiếng Việt. Changing language stops old speech/recording and invalidates old guidance; an expanded guide returns to its newly localized help menu. Android app resources follow the saved selection, and unsaved family fields survive the locale change. Speech-recognition language remains a separate explicit preference. App/provider names and user-supplied names/content retain their spelling. Common external control labels are translated locally; unknown controls use numbered localized labels and a highlighted-control instruction rather than copying foreign text or guessing a translation. This does not translate the underlying third-party app or system-owned Settings screens.
+## Current status
 
-- Launcher guidance follows manual swipes instead of going idle after the first Home page. The default is left to the next page; Other way cycles right, up, then left. Downward swipes are omitted because they open a system panel on the tested Xiaomi. A thin translucent track and small moving circle demonstrate the direction without blocking touches. Reduced-motion settings keep the circle still. Swipe for me performs one 420ms stroke only after an explicit tap, a fresh complete safe tree and an immediate exact-Home foreground check; both interactive overlays are removed while the non-touchable circle travels with the stroke. Search/app icon targets are read again afterward, including Xiaomi App finder. Gesture completion never counts as finding/opening an app. No automated app taps or typing; TalkBack/magnification, locked, sensitive, unknown and non-launcher contexts retain manual guidance.
+| Component | Role | Wiring status |
+| --- | --- | --- |
+| AccessibilityService | Read the actual application window; create an on-demand, safety-checked image for Spark and SAM | Native core |
+| Safety gate | Pause on password, payment or OTP; stop on incomplete or uncertain screens | Native core |
+| GuideEngine | Keep one task session, verify diffs and recover after wrong taps | Native core |
+| Muse Spark | Clarify intent and plan one next step through our backend | Required core; screenshot + UI-data server adapter |
+| SAM 3.1 | Segment the chosen target; supply the only permitted ring region | Required core; identical screenshot reused after Spark; live verification pending |
+| Muse Voice Transcribe 1.0 | Core speech input: audio to text, never speech synthesis | Close local microphone UI before fresh read/upload; device verification pending |
+| Android system TTS | Offline Vietnamese speech output at rate 0.85 | November 4 build output |
+| MockModel | Phase 1 development stand-in behind the same GuideModel interface | Explicitly selected development stand-in only; Core is the default, never a parallel fast path |
+| Overlay | Non-touchable black/yellow ring; solid collapsible card avoiding its target | Native core; 24/22/20sp text and 72/48dp targets |
+| Target fusion | Require Spark target, SAM region and the same live Accessibility control to agree | Native deterministic validator; edge controls remain valid |
+| Exact-screen cache | Reuse only a verified Step for an identical full screen + goal/task state | RAM-only, 30-second TTL; cleared on Stop/new goal/sensitive screen |
+| Own HTTPS backend | Hold the Meta key and orchestrate the providers | Configuration and deployment required; no hosted endpoint claimed |
 
-- More forgiving local voice intake: the speech language is saved separately from the UI language and can be switched EN/VI inside the microphone dialog. The recognizer requests up to five final alternatives and partial feedback, when supported; partial text never launches a task. Choose instead always offers a path using buttons. Installed-app matching recognizes curated pronunciation variants and family-defined Zalo/Instagram names, then asks for confirmation using real app icons. Ambiguous results remain choices. Message goals without an app ask which supported installed app to use; generic call requests ask the call type. None of this substitutes a cloud model or establishes measured speech accuracy.
+**The complete production loop is not yet live-verified.** Spark and SAM have core adapters, but the project's production backend is not configured or deployed here. Muse Voice Transcribe recognizes speech; its lack of a synthesis API does not block Android system TTS output. [Meta speech-input documentation](https://dev.meta.ai/docs/speech-to-text)
 
-- Lock-screen suppression: screen-off or a showing keyguard removes all GuidingHand overlay windows, stops speech/microphone, cancels pending steps and drops cached screen state. Tree reads and screenshots are guarded while locked. Waking the display alone does not restore the bubble; after unlock only the bubble returns, respecting the saved Hide preference. No prior task automatically resumes.
+The existing USB loopback gateway is a temporary development transport only.
 
-- A minimal chat-style floating root: short prompt, a real tap-to-speak microphone, and a horizontal strip of suggestion chips (This screen, Find an app, Hide). The warm panel background is translucent; text and controls stay opaque. The root no longer stacks a brand header, reassurance paragraph and four large buttons. Substeps retain Help menu and minimize, with reduced typography and spacing. Tap targets remain at least 48dp for the microphone and suggestion controls; system font scaling is respected.
+Daily use starts from **Help / Giúp** over the app already in use. Tap, speak, then finish recording; the microphone window closes before the fresh application read and transcription upload. First use requires microphone and sharing consent. Clarifications use one question and can be answered by voice without MainActivity or typing. Audio stays in memory and recording stops on leaving the microphone or locking the phone.
 
-- A family-centered visual identity: warm ivory, forest green and apricot, a native vector illustration of two generations holding hands, a calm serif headline, high-contrast action buttons and patient bilingual copy. The family card opens the dialer for the saved number, or family setup when no number is saved. It does not imply a relative is online or speaking through the assistant.
-- A draggable 52dp accessibility overlay bubble with a pointing-hand/waypoint logo. Drag to reposition; release to dock at the nearest edge; a tap opens the card. Questions, choices, contact confirmation and coaching now render in native overlay cards; tapping the bubble does not launch the GuidingHand app or a large assistant sheet. Close/tap the bubble to minimize and restore the current card. **Hide** stops guidance and removes the app's overlays.
-- A compact guide card, at most 300dp wide, with one instruction and Repeat/Stop. The card stays 6dp above/below the hand bubble, aligns to its edge, and follows dragging. The bubble/card move as a group to avoid the highlighted target. Subcards and guidance expose a persistent Help menu action that cancels pending guidance and returns to the root question over the current app. The ring has its own non-touchable window. A minimized card also disables window touch interception.
-- Conversational entry: **Find an app → point out its real launcher icon → verify the actual package opened → continue in an overlay on that app**. Zalo and Instagram offer a recipient question and semantic messaging steps. Other apps offer accessible controls from the actual screen. There is no typed goal field.
-- **This screen**: choose a uniquely labeled accessible control or say its name. This operates across app packages without per-app coordinates. After a screen change, the assistant asks what to inspect next; it does not falsely claim an arbitrary goal is complete.
-- Tap-to-talk starts with offline language checking. An installed model, a downloadable model, a pending download and unsupported language are distinct states. A user may request a one-time language download where the provider supports it; downloading does not automatically start recording. Online speech is a separate per-utterance opt-in: the dialog identifies the current system provider and explains that audio leaves the phone; only confirmation starts that recognizer, explicitly bound to the disclosed provider. No silent network fallback, background listening or app-owned speech server/API key. The system provider uses its own network access; GuidingHand still has no INTERNET permission. Unsupported/offline-only devices retain button choices.
-- The existing local mock planning seam, target verification, and password/payment safety stop.
+The goal follows the elder across apps and actual launcher search/folders. App labels/packages may be cached for one minute; icon coordinates are always read from the current screen. There is no assumed universal swipe, automatic Home action, default launch, typing or sending. The actual package must be verified after opening an app.
 
-The interaction takes inspiration from [HeyClicky's on-demand floating companion](https://www.heyclicky.com/). The user chose to continue local development without API access. This is **not** a universal AI planner: it can point to uniquely labeled controls and open installed apps, but cannot infer every goal or understand unlabeled graphics. Screen matching remains local, not a Meta/Google/OpenAI backend. The app never taps, types, sends, or confirms for the user.
+## Architecture
 
-## Verified on 2026-10-26
+One observe → verify → guide loop. Speech input and speech output have separate roles; all Meta calls pass through the project's own backend after the safety check.
 
-The 1.0 APK builds successfully and its packaged manifest and installed Xiaomi app both report `versionName=1.0`. The internal Android upgrade code is 14 so the existing installation can be updated without removing its data. Accessibility remains connected.
-
-`assembleDebug testDebugUnitTest lintDebug` passed for the application logic: **86 JVM tests, zero failures; lint zero errors**. The user physically confirmed correct language in both interface modes after the EN→VI→EN guide/microphone-dialog check. This does not establish every speech-provider/error state, audible TTS or language-change lifecycle variant. It has `RECORD_AUDIO` and `VIBRATE`, but no `INTERNET`, call, or additional gesture permissions; the Accessibility service declares canPerformGestures for the explicit launcher-only swipe action. The user physically confirmed the moving cue is easy to see and swipes correctly on this Xiaomi. Individual lifecycle/reduced-motion variants and other devices remain unverified.
-
-Physical checks on the Xiaomi confirmed bubble opening, attached-card dragging, return to the help menu, the compact chat bar, lock-screen hiding/restoration, correct swiping and interface language consistency. Current-app messaging requests preserve the current page. Complete Instagram messaging and additional voice/search variants remain pending. No personal app screenshots were exported.
-
-## Use on the phone
-
-1. Open GuidingHand. Choose **English/Vietnamese**, or **Tiếng Anh/Tiếng Việt** when the interface is Vietnamese.
-2. If needed, choose **Enable floating guide → Open Accessibility settings** and enable **GuidingHand** in downloaded services/apps. This is an explicit system permission enabled by the user.
-3. In **Preferences**, save a family phone number and, optionally, an exact Zalo contact name. A saved name is a one-tap alternative to speaking a name. Network and photo labels remain optional, task-specific setup.
-4. Tap **Guide** over the app being used. **This screen** displays readable controls from that app. **Speak** lets you name a visible control or request a known task. Grant microphone permission only if using voice.
-5. **Find an app** lists actual installed launcher apps, two at a time with **More** and **Speak**. Choose one; the app opens the launcher and points to its uniquely visible icon or an accessible search field. The user performs the taps and any search typing. If no icon/search target is readable, a subtle moving circle demonstrates a leftward workspace swipe. **Other way** cycles right, up, then left; no downward swipe is offered. Manual swipes refresh guidance automatically; **Swipe for me** performs one user-requested stroke after launcher-only checks, with the circle illustrating that stroke. The circle does not track the user's finger during a manual swipe. Launcher layouts vary, so success still depends on actual Search/result/app evidence.
-6. Zalo/Instagram opening continues to a recipient question in the same overlay, without returning Home. Say or choose a saved contact, confirm it, then choose **Guide me**. The user still performs all chat lookup and composition actions.
-7. **Close** or the bubble minimizes the current card; tap the bubble again to restore it. **Stop** ends the current guide. **Hide** in the assistant removes the bubble. Open GuidingHand and use the primary action to restore it.
-
-If Xiaomi adds its own separate accessibility shortcut, that system shortcut is independent of GuidingHand's **Guide** bubble. It can be configured separately in the phone's accessibility settings.
-
-## Build and install
-
-Open this folder in Android Studio, use its bundled JDK, and build:
-
-```powershell
-.\gradlew.bat assembleDebug testDebugUnitTest lintDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+```mermaid
+flowchart LR
+    goal["Any app: Help bubble + elder goal"] --> mic["Local microphone; close its window"]
+    mic --> read["AccessibilityService: fresh application screen"]
+    read --> gate{"Safety gate before every model call"}
+    gate -->|"Safe; pending speech"| transcribe["Own backend: Muse Voice Transcribe 1.0 · core input"]
+    transcribe --> engine["GuideEngine: goal + dialogue; read screen-state diff"]
+    gate -->|"Safe; existing task"| engine
+    engine --> cache{"Exact full-screen + task cache hit?"}
+    cache -->|"No"| frame["One safety-checked screenshot + UI data + SHA-256"]
+    frame --> spark["Own backend: Muse Spark · multi-app core planner"]
+    spark -->|"Exact same image bytes"| sam["Own backend: SAM 3.1 · core region"]
+    sam --> fusion["Spark + SAM + live Accessibility target fusion"]
+    fusion -->|"Validate current screen; discard stale results"| output["Android offline TTS · 0.85"]
+    cache -->|"Yes; exact state only"| output
+    output --> guide["One solid card + non-touchable black/yellow ring"]
+    guide --> elder["Elder performs the step"]
+    elder -->|"Correct or wrong tap: read new state"| read
+    spark -->|"Unclear intent or missing detail"| ask["One question; no guessed ring"]
+    ask -->|"Elder answers"| mic
+    gate -->|"Cannot read / cluttered / unsure"| ask
+    gate -->|"Password / payment / OTP"| pause["Hard stop: pause + clear ring"]
+    pause -->|"Elder chooses Call family"| dialer["Open dialer only; never auto-call"]
 ```
 
-The deliverable is also copied to `build/outputs/GuidingHand-debug.apk`. If Xiaomi blocks USB installation, copy that file to the phone's Downloads and open it with File Manager to install/update it. On the latest attempt, normal `adb install -r` succeeded.
 
-This workstation's Avast TLS certificate is Windows-trusted but absent from Java's default trust store. An ignored, project-local copy of that store includes the certificate; certificate verification remains enabled and the system JDK is unchanged. Terminal builds here use:
+The image is captured once after a fresh local safety check. `/core/step` sends that screenshot and UI data to Spark, then reuses the identical data URL for SAM in the same backend request. The decoded-image SHA-256 is checked and echoed. There is no second capture between models and no continuous frame capture. Native code discards a response when its screen binding is stale, retaining the current task.
 
-```powershell
-$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
-$env:ANDROID_HOME = 'C:\Users\Admin\AppData\Local\Android\Sdk'
-$env:JAVA_TOOL_OPTIONS = '-Djavax.net.ssl.trustStore=E:\Hackathon\GuidingHand\.build-tools\cacerts'
-.\gradlew.bat assembleDebug testDebugUnitTest lintDebug
-```
+UI bounds may seed SAM but never create a production target without a valid SAM result. For a control at the display edge, the renderer may constrain the visible ring to the exact clickable bounds only after SAM overlaps that same control by at least 50%; raw SAM provenance is retained. Missing, ambiguous, mismatched or malformed segmentation means no production ring. A manual Home/navigation instruction can wait for a screen change without inventing a tappable target or SAM region. MockModel's node-bound regions are marked development-only and excluded from the release path.
 
-## Architecture and limits
+Repeated Accessibility events on an identical full screen can reuse a previously validated Step for up to 30 seconds. The cache is RAM-only, contains no screenshot, and is keyed by the exact screen, goal, dialogue, task, app inventory, language, backend and session fingerprint. Stop, a new goal, lock or a sensitive screen clears it. Any changed screen misses the cache and follows the normal Spark → SAM path.
 
-`GuideModel` remains the backend seam. `MockModel` supplies semantic targets and bilingual canned instructions; system TTS chooses an offline voice at 0.85 speed. `GuideEngine` verifies expected screen changes, protects against duplicate taps/stale responses, and saves verified familiar paths. Generic screen changes instead emit `NEEDS_INPUT`, without success/history claims. `LocalScreenGuide` grounds labels in any current app's nodes and refuses ambiguity. `FloatingConversation` owns inline questions. `OfflineVoiceInput` uses a small, separate-task foreground microphone window only on Speak; it never brings Home to the foreground and invalidates late results. No screenshot, tree or recording is persisted by the app.
+The backend handles Meta speech transcription, Spark planning and SAM segmentation. Android system TTS runs on the device; the diagram's arrows show stage order, not provider-to-provider calls.
 
-The service does not inspect screens while the bubble is idle. During requested guidance it reads accessibility nodes, optionally captures a local bitmap, and skips screenshot capture for detected sensitive screens. Password fields and password/payment/OTP text stop guidance before planning. **Call family** opens `ACTION_DIAL`, never an automatic call.
+The bottom card contains one instruction and a fixed **Speak / Repeat / Stop** row outside the scroll area. Normal card height is capped at 42% of available screen height; large-font accessibility minima may require more room, and the card still avoids the ring or collapses. Recognized speech is shown during clarification or errors and hidden while pointing. Only a launcher step bound to a real icon and installed package may offer **Mở giúp tôi**. After the elder presses that button, fresh safety and foreground checks may permit opening that app's launcher activity. It never authorizes a target-app tap, text entry, sending or confirmation. A sensitive pause offers **Call family**, opening the dialer without placing a call.
 
-The mock is deliberately limited by what each launcher/Zalo version exposes. Ambiguous names, unlabeled icons/photos, inaccessible scan results, slider-only font controls, and missing expected state evidence stop rather than fabricate success. Photo delivery requires a newly exposed outgoing-photo description plus new delivery evidence. A QR result leading to payment triggers the hard stop. On Android 11–13, local screenshots may include guide overlays; Android 14+ uses window capture.
+## Kept
 
-The bubble lasts while the accessibility service is enabled and allowed to run; it cannot survive force-stop or service disable. OEM lifecycle behavior, TalkBack speech, offline voice languages, app icons/search, and complete Zalo flows require real-device verification. Phase 2 Meta APIs and screenshot eval datasets are not implemented.
+- Accessibility tree reads, event-driven observation and lock-screen suppression.
+- Every target-app action performed by the elder.
+- One-time family setup for language, respectful address and a family contact; task details are clarified during the request.
+- Screen-state evidence, including recipient and selected-photo checks before guiding Send.
+- The same task and verified progress after a wrong tap.
+- MockModel as a clearly marked Phase 1 development stand-in, selected once behind the same GuideModel interface.
+
+## Cut
+
+- Launcher swipe-for-me, gesture dispatch, default app launching and automatic searches.
+- Fixed per-app task menus and phrase-routing scripts. October 28 authorization restores general model-planned guidance across installed apps; individual workflows require actual phone observation before being described as working.
+- App-finding menus and launcher experiments that obscure the core loop.
+- Hand-only pointers, inconsistent target styles and bubble-anchored multi-action cards.
+- Parallel planner fast paths that mix MockModel and Spark within a production session.
+
+Historical development code is retained in [`phase1/`](phase1/). The development MockModel and production backend model share one interface; model selection happens once, not as a per-step fallback or second product architecture.
+
+## Changed core loop
+
+1. Read the actual tree, then run the safety gate before any provider call.
+2. Keep the original goal, clarification answers, task slots and verified steps as session data.
+   Subsequent standalone spoken requests are identified separately from clarification answers. The latest utterance determines the next operation; previous instruction/target-label/source-app observations support recovery without treating a tap as proof of success.
+3. Capture one safety-checked screenshot, bound to the actual UI data and screen fingerprint.
+4. Send both to Spark for one next step or one clarification; reuse the exact image for SAM. Never invent a control or phrase-specific workflow.
+5. Speak the short Vietnamese instruction with Android system offline TTS at rate 0.85; Muse Voice Transcribe is reserved for input.
+6. Wait for the elder; verify the resulting screen diff. A wrong tap replans from that state without restarting the task.
+7. For Zalo photos, mark verified completion only with new outgoing-photo and delivery evidence. General guidance asks the elder whether the goal is reached; it never labels that answer as machine-verified sending or delivery.
+
+GuideEngine records a bounded, content-free transition graph (`from`, `to`, reason, stage and task kind) for recovery evidence. Wrong taps and unexpected screens have distinct reasons; goals and user content are not written into the graph.
+
+Safety pauses are latched: a later safe-looking frame does not automatically resume. Stop, lock and changed screens invalidate pending regions and audio.
+
+## Accessible design changes
+
+The interaction remains voice-first, one instruction and one ring, with elder-operated actions and recovery from the observed new screen. Family setup is for language, respectful address and contact details; the assistant never impersonates a grandchild.
+
+- Instruction text: **at least 24sp**. Button labels: **at least 22sp**. Body text: **at least 20sp**. Respect system font scaling rather than clipping.
+- Main touch targets: **at least 72dp**; secondary targets: **at least 48dp**.
+- Card: opaque `#FFFCF5`; instruction ink: `#18332A`. Measured with an sRGB/WCAG Node calculation: **13.258279585:1**, or **13.26:1**, exceeding the required **7:1**. `GuideDesign` tests check the same formula and threshold.
+- Ring: non-touchable **black outer + bright-yellow inner**, each border **at least 6dp**, with **at least 12dp target padding**.
+- The card collapses and avoids the pointed area, navigation and keyboard. Outside the card may be transparent. If a readable card cannot fit without hiding the target, collapse instead of covering it.
+- Every cue includes words or shape; color alone does not carry meaning. Wrong taps do not use red, and no red/green or blue distinction is required.
+
+See [the product direction](docs/product-direction-2026-10-27.md) and [the real-phone send-photo protocol](docs/send-photo-phone-test.md). These dimensions and color measurements do not establish usability with an older person; that remains a real-user test.
+
+## Backend and configuration
+
+### Respectful forms of address
+
+In family setup, **Cách trò chuyện** lets the user choose how they are addressed, how the assistant refers to itself, and a gentle or concise style. The screen previews the resulting wording. The same wording is used on the guide card and by offline TTS; speech stays at rate 0.85. Changing only these preferences preserves the current task and verified progress. Recipient names, photo labels, target identities and SAM regions remain unchanged.
+
+Android uses one backend model interface. Configure the project's own HTTPS endpoint and app-session authentication. The Meta provider key stays server-side and must never enter the APK, client resources, preferences or source control.
+
+The backend owns Muse Voice Transcribe input and Spark → SAM orchestration. Android owns speech output. Prompts stay short; typed, validated results do not contain executable actions or invented tap coordinates. See [the core contract and verification rules](docs/core-redesign.md).
+
+Production backend configuration and deployment, plus complete live task verification, remain required. No Muse Voice synthesis API is required or claimed. Source-level adapters do not establish production readiness.
+
+## Validation and evidence
+
+| Evidence for this candidate | Result |
+| --- | --- |
+| Android build, unit/state-machine checks and lint | **91/91 tests; lint and Candidate assemble pass locally** |
+| Backend safety, identical-image, trace-viewer and provider-adapter fixture checks | **79/79 tests pass locally; zero provider calls** |
+| Deterministic safety/fusion evaluation | **24 safety + 8 fusion fixtures pass; ring accuracy remains TBD** |
+| Candidate identity | **`vn.guidinghand.candidate`, 1.5.27-candidate/code36; distinct label verified** |
+| Complete real-phone Zalo send-photo task | **TBD — not yet passed** |
+| Live Muse Voice Transcribe input | **TBD** |
+| Per-button ring accuracy and panel coverage | **TBD** |
+| Wrong-tap recovery and sensitive-screen hard stop on device | **TBD** |
+| Per-step latency | **TBD** |
+| Demo video | **TBD** |
+
+The deterministic evaluation harness runs the native pre-model safety gate and production target-fusion geometry from fixture files. Its generated report explicitly leaves ring accuracy and older-adult usability as `TBD`. The separate Meta trace viewer renders only whitelisted event names, timing, state transitions, reason codes, bounded fusion scores and request IDs; it never renders screenshots, audio, goals, messages, recipients, tokens or credentials. These are local results until the pushed revision passes GitHub CI; neither result is a real-phone task pass.
+
+Old phone confirmations and Phase 1 tests are not evidence for this candidate. Run the [send-photo protocol](docs/send-photo-phone-test.md), logging actual results and failures. For password, OTP or payment hard-stop checks, open the screen only; never enter real credentials or financial details. A separate candidate installation may be used for testing without replacing the current phone build; it is not a production replacement or a passing result.
+
+The combined budget remains **150 USD total, including prior usage**. Keep persistent reservations and measured usage; do not reset the ledger or invent latency/success numbers. The backend key is supplied from the server environment only and never embedded in the APK or committed. Final deployment and complete live task verification remain required.
+
+## Source map
+
+[Task and model contracts](app/src/main/java/vn/guidinghand/GuideData.kt) · [GuideEngine](app/src/main/java/vn/guidinghand/GuideEngine.kt) · [Accessibility service](app/src/main/java/vn/guidinghand/GuidingHandService.kt) · [Ring, fusion and card geometry](app/src/main/java/vn/guidinghand/GuidePanelLayout.kt) · [Overlay](app/src/main/java/vn/guidinghand/GuideOverlay.kt) · [Exact-screen cache](app/src/main/java/vn/guidinghand/ExactScreenDecisionCache.kt) · [Goal entry and family setup](app/src/main/java/vn/guidinghand/MainActivity.kt) · [Backend core](backend/core.py) · [Evaluation report](backend/generate_evaluation_report.py) · [Meta trace viewer](backend/generate_meta_trace_viewer.py) · [Detailed redesign](docs/core-redesign.md)

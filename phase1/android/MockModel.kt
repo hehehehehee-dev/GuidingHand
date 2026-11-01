@@ -63,6 +63,14 @@ class MockModel(private val context: Context, private val preferences: FamilyPre
                 return ModelStep(step, node, sentence)
             }
         }
+        if (goal.id == "open") {
+            LauncherNavigation.folder(screenshot.screen, goal.appLabel)?.let {
+                return LauncherNavigation.step(it, goal.appLabel, preferences.language, true)
+            }
+            LauncherNavigation.drawerButton(screenshot.screen)?.let {
+                return LauncherNavigation.step(it, goal.appLabel, preferences.language, false)
+            }
+        }
         val recipient = if (goal.id == "open") goal.appLabel else goal.recipient ?: preferences.contact
         if (recipient.isNotBlank() && goal.id in listOf("open", "message", "video", "photo")) {
             val searchNodes = screenshot.screen.nodes.filter { node -> node.region != null &&
@@ -74,7 +82,7 @@ class MockModel(private val context: Context, private val preferences: FamilyPre
             if (search != null) {
                 val ui = UiText(preferences.language)
                 val instruction = if (search.focused) ui.pick("Type $recipient in this search box.", "Gõ $recipient vào ô tìm kiếm.")
-                    else ui.pick("Tap Search near the top.", "Bấm Tìm kiếm ở phía trên.")
+                    else ui.pick("Tap the highlighted search box.", "Bấm ô Tìm kiếm được đánh dấu.")
                 val goalStep = StepGoal(if (search.focused) "enterRecipient" else "search", listOf(search.text), instruction,
                     listOf(recipient), if (search.focused) "text" else "focus")
                 return ModelStep(goalStep, search, instruction)
