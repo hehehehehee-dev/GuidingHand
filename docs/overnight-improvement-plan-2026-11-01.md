@@ -49,7 +49,7 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: each item names observable pass/fail evidence and never treats simulation as phone proof.
   Verify: generated checklist reviewed against current product rules.
 
-- [ ] **7. Full verification and candidate handoff**
+- [x] **7. Full verification and candidate handoff**
   What to build: Run backend tests, Android unit tests, lint, assemble, diff check, and secret scan; update the concise handoff.
   Acceptance: all gates pass; APK identity remains Candidate; no key or provider content is committed.
   Verify: command outputs and GitHub CI after push.
@@ -60,4 +60,11 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
 - New task-specific scripts: they would inflate scope without proving general understanding.
 - Automatic tap/type/swipe/send/call: prohibited by the product safety model.
 - Invented latency or usability claims: remain TBD until measured on the current phone build.
+
+## Verified outcome
+
+- Commit: `04204b5` on `main`.
+- Local: 79 backend tests passed; Android unit tests, lint, and Candidate assemble passed; diff and secret checks passed.
+- GitHub Actions: run `41286612609` passed the backend, Android, and container jobs.
+- Phone status: not installed or phone-certified during unattended work; current-device UX and latency remain `TBD` until a real interaction is reviewed.
 

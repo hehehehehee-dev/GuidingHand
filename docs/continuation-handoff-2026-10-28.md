@@ -684,3 +684,21 @@ label in every locale. APK SHA-256 is
 `41259582278` passed Android, backend and container jobs for commit `92a9b6d`, including Candidate
 identity and deterministic evidence generation. The build is not installed or phone-certified in
 this entry; cloud deployment remains deferred.
+
+## Stable waiting UX and perceived-latency evidence — November 1 local time
+
+The overlay now treats an identical rendered state as idempotent, so repeated Accessibility events
+do not rebuild the same bubble/card and cause visible flicker. Active transcription uses a dedicated
+working state with only Stop available instead of presenting a misleading retry action that could
+start duplicate work. Hiding the overlay resets the render identity so a later legitimate show still
+renders normally.
+
+Privacy-safe `goal_started` events now let the submission report derive goal-to-first-guidance
+latency without recording goal text, transcript, screen content, recipient, image, audio, token, or
+provider output. The report also counts exact-screen cache hits as duplicate model work avoided.
+These measurements remain trace-dependent and do not turn fixture data into phone claims.
+
+Local verification is **79/79 backend tests**, Android unit tests, lint, and Candidate assemble.
+GitHub verification run `41286612609` passed the backend, Android, and container jobs for commit
+`04204b5`. The change is pushed to `main` but was not installed or phone-certified while the user
+was away; current-device UX and latency remain `TBD` until reviewed through a real interaction.
