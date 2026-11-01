@@ -352,10 +352,13 @@ class GuideOverlay(
 
     fun render(state: GuideViewState, canOpenLauncher: Boolean) {
         busyLabel = null
+        // IDLE is a privacy boundary. Clear before computing identity so repeated IDLE events
+        // stay idempotent after the one intentional transcript-removal reflow.
+        if (state.status == GuideStatus.IDLE) clearHeardSpeech()
         val safeNow = safeArea()
         val renderKey = GuideRenderIdentity.key(state, canOpenLauncher, userCollapsed, safeNow,
             GuideRenderPreferences(prefs.language, prefs.reduceMotion, prefs.cardSize, prefs.visionProfile,
-                prefs.showPointer, context.resources.configuration.fontScale))
+                prefs.showPointer, context.resources.configuration.fontScale), heardSpeechMemory.revision)
         val expectedRing = state.status == GuideStatus.WAITING_TAP && state.step?.sam?.region != null
         val mounted = bubbleAttached && (userCollapsed || cardAttached) && (!expectedRing || ringAttached)
         if (renderKey == lastRenderKey && mounted && DeviceVisibility.allowed(context)) {
@@ -371,7 +374,6 @@ class GuideOverlay(
         pointingClipped = false
         if (!DeviceVisibility.allowed(context)) { hide(); return }
         if (state.status == GuideStatus.IDLE) {
-            clearHeardSpeech()
             userCollapsed = false; autoCollapsed = false; draggedCard = null; lastRejectedFrame = null; clearCard(); showBubble(); return
         }
         if (state.status == GuideStatus.SAFETY_PAUSED && previousStatus != GuideStatus.SAFETY_PAUSED) userCollapsed = false

@@ -29,10 +29,11 @@ data class GuideRenderPreferences(val language: String, val reduceMotion: Boolea
 /** Content-free identity for suppressing duplicate renders without suppressing preference changes. */
 object GuideRenderIdentity {
     fun key(state: GuideViewState, canOpenLauncher: Boolean, userCollapsed: Boolean,
-            safe: GuideBox, preferences: GuideRenderPreferences): String = listOf(
+            safe: GuideBox, preferences: GuideRenderPreferences,
+            ephemeralContentRevision: Long = 0): String = listOf(
         state.status, state.instructionVi, state.draftText, state.options, state.speechPurpose,
         state.step?.stage, state.step?.sam?.region, state.step?.sam?.frameFingerprint,
-        canOpenLauncher, userCollapsed, safe, preferences
+        canOpenLauncher, userCollapsed, safe, preferences, ephemeralContentRevision
     ).joinToString("\u001f")
 }
 

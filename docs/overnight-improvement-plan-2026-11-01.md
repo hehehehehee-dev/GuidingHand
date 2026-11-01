@@ -89,6 +89,18 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: no old transcript can reappear after lock/unlock, a password/payment/OTP pause, Stop, or a new task; safe screenshot suspension keeps the current task context; no transcript content enters logs or persisted storage.
   Verify: deterministic ephemeral-text clearing regression, Android Candidate unit tests, lint, assemble, diff/secret checks, and read-only phone smoke. Visual unlock/safety confirmation remains `TBD` until a person performs it.
 
+- [x] **14. Reflow the guide card when the visible transcript changes**
+  Evidence: `setHeardSpeech` makes a previously hidden row visible and then calls `render`, but the duplicate-render identity does not include this auxiliary row. The early return can leave the WindowManager card at its old fixed height, clipping the transcript or footer actions.
+  What to build: add a content-free in-memory revision for ephemeral transcript changes and include only that revision in the render identity. Clear IDLE content before identity calculation. Do not place transcript text, length, or a hash in the identity or traces.
+  Acceptance: showing, replacing, or clearing the transcript forces exactly one card measurement; unchanged Accessibility events stay idempotent; compact and large-text layouts keep the existing scroll/footer behavior; no user content enters diagnostics.
+  Verify: deterministic render-identity and ephemeral revision regressions, Android Candidate unit tests, lint, assemble, diff/secret checks, and read-only phone smoke. Visual card coverage remains `TBD` until a person reviews it.
+
+- [x] **15. Bound phone-smoke Logcat evidence without clearing device logs**
+  Evidence: the collector compares two full Logcat snapshots by string prefix. When the circular buffer drops old lines, the second snapshot no longer starts with the first, so the tool counts historical bubble events as new churn and produces a false failure.
+  What to build: write one random, content-free `GuidingHandSmoke` marker before the observation and analyze only text after its last occurrence. Never clear Logcat and never include speech, screen text, package content, device identifiers, or the marker in the report.
+  Acceptance: historical attach/detach events cannot affect the current observation; a missing marker fails closed; the report schema and no-input/no-user-claim limits remain unchanged.
+  Verify: run the corrected read-only smoke on the connected Xiaomi after Candidate install and inspect the bounded counts; diff/secret checks; no ADB input or screenshot capture.
+
 ## Deferred deliberately
 
 - Cloud deployment and paid live benchmarks: final phase, after behavior stabilizes.

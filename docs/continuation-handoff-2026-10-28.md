@@ -790,3 +790,21 @@ verification is **96/96 Android tests**, lint, Candidate assemble, and **79/79 b
 Candidate was updated in place and the read-only Xiaomi smoke check passed without a new fatal
 exception or idle overlay churn. A person confirming the lock/unlock and safety-pause visuals remains
 `TBD`; no phone interaction is claimed by the smoke check.
+
+## Transcript-row reflow and bounded smoke evidence — November 1 local time
+
+Changing the visible “Bác nói / You said” transcript now advances a content-free in-memory revision
+used by the overlay render identity. Showing, replacing, or clearing that row therefore triggers one
+card remeasurement, while identical Accessibility events remain idempotent. The identity stores no
+transcript text, length, or hash. This preserves the existing scrollable body and fixed footer for
+compact screens and large text; human review of card coverage remains `TBD`.
+
+The read-only phone collector no longer compares two complete Logcat buffers by prefix. It writes a
+random content-free marker and considers only later lines, so circular-buffer rotation cannot turn
+historical bubble events into current churn. It does not clear Logcat, use ADB input, or add the marker
+to its report. The corrected collector passed on the connected Xiaomi with zero bounded attach or
+detach events and no new fatal exception.
+
+Local verification remains **96/96 Android tests**, lint, Candidate assemble, and **79/79 backend
+tests**. The Candidate was updated in place before the bounded smoke check. The original GuidingHand
+package remains untouched.

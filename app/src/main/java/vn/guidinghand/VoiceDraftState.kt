@@ -8,15 +8,19 @@ enum class VoiceDraftPhase { EMPTY, REVIEW, CONFIRMED, COPIED }
 /** RAM-only text already shown by the overlay. It has no persistence or logging surface. */
 class EphemeralDisplayText {
     private var characters: CharArray? = null
+    var revision: Long = 0; private set
     val isEmpty get() = characters == null
     fun replace(value: String) {
-        clear()
+        characters?.fill('\u0000')
         characters = value.toCharArray()
+        revision++
     }
     fun value(): String? = characters?.concatToString()
     fun clear() {
+        if (characters == null) return
         characters?.fill('\u0000')
         characters = null
+        revision++
     }
 }
 

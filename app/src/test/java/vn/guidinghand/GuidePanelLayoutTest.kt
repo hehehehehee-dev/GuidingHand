@@ -61,6 +61,7 @@ class GuidePanelLayoutTest {
         assertEquals(key, GuideRenderIdentity.key(state, false, false, safe, base))
         assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(language = "en")))
         assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(reduceMotion = false)))
+        assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base, ephemeralContentRevision = 1))
     }
     @Test fun overlayIdentityChangesWhenSpeakPurposeChangesWithoutParsingCopy() {
         val safe = GuideBox(12, 30, 348, 760)

@@ -33,6 +33,10 @@ package/state metadata and event counts, not screen text, transcripts, goals, re
 audio, provider output, credentials, or the device serial. A screenshot is opt-in and refused outside the safe
 foreground allowlist.
 
+The collector writes one random, content-free Logcat marker before its eight-second observation and
+counts only events after that marker. It does not clear device logs. If the marker is unavailable, the
+check stops instead of counting historical events as current evidence.
+
 ## What it proves
 
 - the connected device is authorized, awake, and unlocked;

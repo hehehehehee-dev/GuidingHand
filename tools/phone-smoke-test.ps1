@@ -95,16 +95,17 @@ $policyDump = Invoke-Adb -Arguments @("shell", "dumpsys", "window", "policy")
 $activityDump = Invoke-Adb -Arguments @("shell", "dumpsys", "activity", "activities")
 $accessibilityEnabled = Invoke-Adb -Arguments @("shell", "settings", "get", "secure", "enabled_accessibility_services")
 $accessibilityDump = Invoke-Adb -Arguments @("shell", "dumpsys", "accessibility")
-$logBefore = Invoke-Adb -Arguments @("logcat", "-d", "-v", "brief")
+$logMarker = "GUIDINGHAND_SMOKE_START_$([Guid]::NewGuid().ToString('N'))"
+Invoke-Adb -Arguments @("shell", "log", "-t", "GuidingHandSmoke", $logMarker) | Out-Null
 
 Start-Sleep -Seconds 8
 
 $logAfter = Invoke-Adb -Arguments @("logcat", "-d", "-v", "brief")
-$newLog = if ($logAfter.Length -ge $logBefore.Length -and $logAfter.StartsWith($logBefore)) {
-    $logAfter.Substring($logBefore.Length)
-} else {
-    $logAfter
+$markerIndex = $logAfter.LastIndexOf($logMarker, [StringComparison]::Ordinal)
+if ($markerIndex -lt 0) {
+    throw "The bounded Logcat marker was not found; refusing to treat historical logs as current evidence."
 }
+$newLog = $logAfter.Substring($markerIndex + $logMarker.Length)
 
 $foregroundPackage = Get-MatchValue -Text $activityDump -Pattern 'topResumedActivity=.*?\s([A-Za-z0-9._]+)/'
 $versionName = Get-MatchValue -Text $packageDump -Pattern '^\s*versionName=(\S+)'

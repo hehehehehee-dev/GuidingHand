@@ -6,13 +6,22 @@ import org.junit.Test
 class VoiceDraftStateTest {
     @Test fun visibleTranscriptIsReplacedAndClearedAtAPrivacyBoundary() {
         val visible = EphemeralDisplayText()
+        val emptyRevision = visible.revision
         visible.replace("Bác nói: nội dung cũ")
+        assertTrue(visible.revision > emptyRevision)
         assertEquals("Bác nói: nội dung cũ", visible.value())
+        val firstRevision = visible.revision
         visible.replace("Bác nói: nội dung mới")
+        assertTrue(visible.revision > firstRevision)
         assertEquals("Bác nói: nội dung mới", visible.value())
+        val secondRevision = visible.revision
         visible.clear()
+        assertTrue(visible.revision > secondRevision)
         assertTrue(visible.isEmpty)
         assertNull(visible.value())
+        val clearedRevision = visible.revision
+        visible.clear()
+        assertEquals(clearedRevision, visible.revision)
     }
 
     @Test fun structuredPurposeIsRequiredAndCopyNeedsTwoExplicitTransitions() {
