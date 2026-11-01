@@ -80,7 +80,7 @@ if ($InstallCandidate) {
     }
     $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
     if ($metadata.applicationId -ne $candidatePackage) {
-        throw "Refusing to install applicationId '$($metadata.applicationId)'; expected Candidate package '$candidatePackage'."
+        throw "Refusing to install applicationId '$($metadata.applicationId)'; expected Candidate package '$candidatePackage'. Build with -PcandidateBuild=true first."
     }
     Invoke-Adb -Arguments @("install", "-r", $resolvedApk) | Out-Null
 }

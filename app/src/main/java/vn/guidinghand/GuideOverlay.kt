@@ -538,15 +538,17 @@ class GuideOverlay(
                         val left = (originX + dx.toInt()).coerceIn(safe.left, maxOf(safe.left, safe.right - window.width))
                         val top = (originY + dy.toInt()).coerceIn(safe.top, maxOf(safe.top, safe.bottom - window.height))
                         val candidate = GuideBox(left, top, left + window.width, top + window.height)
-                        if (pointedBox()?.inflate(dp(8))?.intersects(candidate) != true) {
+                        if (GuidePanelLayout.acceptsDrag(candidate, pointedBox(), dp(8))) {
                             p.x = left; p.y = top; wm.updateViewLayout(window, p)
-                            if (window === card) { draggedCard = candidate; savedState?.let { recordMeasurement(candidate, scroll.height < content.height, it) } }
-                        else {
-                            draggedBubble = candidate
-                            // Help is the anchor. Move the card in the same frame so it never
-                            // lags behind or becomes detached from the control being dragged.
-                            if (window === bubble && cardAttached) savedState?.let { layoutCard(it) }
-                        }
+                            if (window === card) {
+                                draggedCard = candidate
+                                savedState?.let { recordMeasurement(candidate, scroll.height < content.height, it) }
+                            } else if (window === bubble) {
+                                draggedBubble = candidate
+                                // Help is the anchor. Move the card in the same frame so it never
+                                // lags behind or becomes detached from the control being dragged.
+                                if (cardAttached) savedState?.let { layoutCard(it) }
+                            }
                         }
                     }
                     true

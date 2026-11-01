@@ -99,6 +99,12 @@ object GuideRingGeometry {
 }
 
 object GuidePanelLayout {
+    /** GuidingHand may move only its own window, and never onto the highlighted target. */
+    fun acceptsDrag(candidate: GuideBox, target: GuideBox?, gap: Int): Boolean {
+        require(gap >= 0)
+        return candidate.area > 0 && target?.inflate(gap)?.intersects(candidate) != true
+    }
+
     /** A missing result means collapse safely rather than obscure the pointed region or clip controls. */
     fun place(safe: GuideBox, desiredWidth: Int, desiredHeight: Int, minimumHeight: Int,
               target: GuideBox?, gap: Int, preferred: GuideBox? = null, anchor: GuideBox? = null): GuidePlacement? {

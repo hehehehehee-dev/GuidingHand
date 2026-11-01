@@ -718,3 +718,18 @@ content, and stores output only under the ignored build directory. A single ADB 
 that Xiaomi still rejects injected input with `INJECT_EVENTS`; it was not repeated or bypassed.
 Speech, transcript correction, ring accuracy, step advancement, and target-app completion therefore
 remain `TBD` until the user performs those interactions.
+
+## Help-anchor drag correction — November 1 local time
+
+The previous drag branch moved a safe Help bubble but persisted its new anchor and re-laid out the
+card only when the candidate position overlapped the highlighted target—the rejected case. This
+could leave the card behind the bubble or remember an invalid anchor. Accepted Help drags now update
+the bubble window, persist the safe anchor, and place the attached card in the same frame. A drag
+that would cover the padded pointed area changes neither window nor anchor. The behavior remains
+limited to GuidingHand's own overlay and never injects an action into the target app.
+
+A pure geometry regression test covers accepted, rejected, absent-target, and empty candidates.
+Android Candidate unit tests, lint, and assemble plus all 79 backend tests pass. The Candidate APK
+was installed in place and the read-only Xiaomi smoke check passed with no new fatal exception or
+idle overlay churn. Because Xiaomi blocks injected input, the actual finger-drag/card-follow motion
+remains `TBD` until the user performs it.

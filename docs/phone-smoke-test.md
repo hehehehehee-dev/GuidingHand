@@ -15,8 +15,12 @@ powershell -ExecutionPolicy Bypass -File tools/phone-smoke-test.ps1
 To update only the side-by-side Candidate first:
 
 ```powershell
+./gradlew.bat assembleDebug -PcandidateBuild=true
 powershell -ExecutionPolicy Bypass -File tools/phone-smoke-test.ps1 -InstallCandidate
 ```
+
+The installer verifies `output-metadata.json` and refuses an APK built as the original
+`vn.guidinghand` package.
 
 To capture a screenshot only when the foreground package is Xiaomi Home or GuidingHand Candidate:
 

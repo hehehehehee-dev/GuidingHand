@@ -45,6 +45,13 @@ class GuidePanelLayoutTest {
         val placement = GuidePanelLayout.place(safe, 336, 300, 200, target, 24, preferred)!!
         assertFalse(placement.bounds.intersects(target.inflate(24)))
     }
+    @Test fun ownWindowDragAcceptsClearCandidateAndRejectsPointedArea() {
+        val target = GuideBox(100, 400, 200, 500)
+        assertTrue(GuidePanelLayout.acceptsDrag(GuideBox(240, 120, 340, 220), target, 8))
+        assertFalse(GuidePanelLayout.acceptsDrag(GuideBox(190, 390, 290, 490), target, 8))
+        assertTrue(GuidePanelLayout.acceptsDrag(GuideBox(240, 120, 340, 220), null, 8))
+        assertFalse(GuidePanelLayout.acceptsDrag(GuideBox(0, 0, 0, 0), null, 8))
+    }
     @Test fun placementSweepAcrossScreenAndLargeFontHeightsHasNoTargetCoverage() {
         val safe = GuideBox(12, 30, 348, 760)
         for (top in 40..680 step 40) for (height in listOf(220, 380, 600, 900)) {

@@ -59,6 +59,12 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: never inject input or claim a user interaction; never record screen text, speech, goals, recipients, credentials, provider content, or device serial; screenshot capture is opt-in and limited to Home/Candidate.
   Verify: run against the connected Xiaomi and preserve only the content-free JSON result under the ignored build directory.
 
+- [x] **9. Keep the guide card attached during a safe Help drag**
+  Evidence: the bubble drag path updates the bubble window inside the safe area but records its new anchor and repositions the card only in the rejected target-overlap branch. This can leave the card behind or save an invalid anchor.
+  What to build: accept a drag only when it stays clear of the pointed area; on an accepted Help drag, persist the Help bounds and re-layout the attached card in the same frame. A rejected drag changes neither anchor.
+  Acceptance: accepted Help drag updates both bubble anchor and card placement; target-overlapping drag is rejected; dragging GuidingHand never injects an action into the target app.
+  Verify: pure geometry tests for accepted/rejected candidates, Android unit tests, lint, assemble, and manual phone status remains `TBD` until the user drags it.
+
 ## Deferred deliberately
 
 - Cloud deployment and paid live benchmarks: final phase, after behavior stabilizes.
