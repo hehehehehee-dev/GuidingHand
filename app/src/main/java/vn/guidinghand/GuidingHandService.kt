@@ -405,7 +405,11 @@ class GuidingHandService : AccessibilityService() {
         }
         if (engine.status == GuideStatus.IDLE) overlay.showBubble()
         val source = event.source
-        val hints = event.text.map { ScreenNode("hint", it.toString(), null, false) }.toMutableList()
+        // Xiaomi can deliver null entries in AccessibilityEvent.text during transient
+        // window changes. Treat them as absent; a null must never crash the service and
+        // make the Help bubble disappear.
+        val hints = event.text.mapNotNull { it?.toString()?.takeIf { text -> text.isNotBlank() } }
+            .map { ScreenNode("hint", it, null, false) }.toMutableList()
         if (source?.isPassword == true) hints += ScreenNode("password", "", null, false, password = true)
         val hint = ScreenState(event.packageName?.toString().orEmpty(), hints)
         if (SafetyPolicy.sensitive(hint)) {
