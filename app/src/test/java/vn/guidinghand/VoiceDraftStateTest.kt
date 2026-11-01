@@ -4,6 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class VoiceDraftStateTest {
+    @Test fun visibleTranscriptIsReplacedAndClearedAtAPrivacyBoundary() {
+        val visible = EphemeralDisplayText()
+        visible.replace("Bác nói: nội dung cũ")
+        assertEquals("Bác nói: nội dung cũ", visible.value())
+        visible.replace("Bác nói: nội dung mới")
+        assertEquals("Bác nói: nội dung mới", visible.value())
+        visible.clear()
+        assertTrue(visible.isEmpty)
+        assertNull(visible.value())
+    }
+
     @Test fun structuredPurposeIsRequiredAndCopyNeedsTwoExplicitTransitions() {
         val state = VoiceDraftSession()
         assertFalse(state.capture("Xin chào Minh"))

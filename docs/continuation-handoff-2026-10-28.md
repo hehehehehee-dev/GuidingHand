@@ -776,3 +776,17 @@ assemble, and **79/79 backend tests**. The Candidate was updated in place, prese
 GuidingHand package, and the read-only Xiaomi smoke check passed with no new fatal exception or idle
 overlay churn. A person triggering the missing-voice failure remains `TBD`; the smoke check does not
 claim that interaction.
+
+## Ephemeral visible-transcript boundary — November 1 local time
+
+The overlay's “Bác nói / You said” line now has explicit RAM-only ownership instead of living only
+inside a `TextView`. Its backing characters and visible text are cleared before lock hiding,
+password/payment/OTP safety rendering, Stop, and every new task. Overlay suspension for one
+safety-checked screenshot does not clear it because capture is not a privacy boundary and the
+current task must remain intact.
+
+A deterministic regression covers replacement and clearing of the ephemeral display text. Local
+verification is **96/96 Android tests**, lint, Candidate assemble, and **79/79 backend tests**. The
+Candidate was updated in place and the read-only Xiaomi smoke check passed without a new fatal
+exception or idle overlay churn. A person confirming the lock/unlock and safety-pause visuals remains
+`TBD`; no phone interaction is claimed by the smoke check.

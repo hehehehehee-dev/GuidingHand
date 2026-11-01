@@ -5,6 +5,21 @@ enum class SpeechPurpose { GENERAL, RECIPIENT, MESSAGE_CONTENT }
 
 enum class VoiceDraftPhase { EMPTY, REVIEW, CONFIRMED, COPIED }
 
+/** RAM-only text already shown by the overlay. It has no persistence or logging surface. */
+class EphemeralDisplayText {
+    private var characters: CharArray? = null
+    val isEmpty get() = characters == null
+    fun replace(value: String) {
+        clear()
+        characters = value.toCharArray()
+    }
+    fun value(): String? = characters?.concatToString()
+    fun clear() {
+        characters?.fill('\u0000')
+        characters = null
+    }
+}
+
 /**
  * Volatile message content for the current guide session only.
  *

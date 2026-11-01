@@ -152,10 +152,17 @@ class GuideOverlay(
         ellipsize = android.text.TextUtils.TruncateAt.END; visibility = View.GONE
         setPadding(0, 0, 0, dp(8))
     }
+    private val heardSpeechMemory = EphemeralDisplayText()
     fun setHeardSpeech(value: String) {
-        heardSpeech.text = tr("Bác nói: ", "You said: ") + value
+        heardSpeechMemory.replace(tr("Bác nói: ", "You said: ") + value)
+        heardSpeech.text = heardSpeechMemory.value().orEmpty()
         heardSpeech.visibility = View.VISIBLE
         savedState?.let { render(it, savedCanOpen) }
+    }
+    fun clearHeardSpeech() {
+        heardSpeechMemory.clear()
+        heardSpeech.text = ""
+        heardSpeech.visibility = View.GONE
     }
     private val primaryActions = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val footer = LinearLayout(context)
@@ -364,7 +371,7 @@ class GuideOverlay(
         pointingClipped = false
         if (!DeviceVisibility.allowed(context)) { hide(); return }
         if (state.status == GuideStatus.IDLE) {
-            heardSpeech.text = ""; heardSpeech.visibility = View.GONE
+            clearHeardSpeech()
             userCollapsed = false; autoCollapsed = false; draggedCard = null; lastRejectedFrame = null; clearCard(); showBubble(); return
         }
         if (state.status == GuideStatus.SAFETY_PAUSED && previousStatus != GuideStatus.SAFETY_PAUSED) userCollapsed = false

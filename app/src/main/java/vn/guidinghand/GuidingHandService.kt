@@ -44,7 +44,7 @@ class GuidingHandService : AccessibilityService() {
             if (!DeviceVisibility.allowed(this@GuidingHandService)) {
                 voicePermitUntil = 0L; voiceSubmission?.cancel(); voiceDraft.clear()
                 if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
-                model.cancel(); overlay.hide()
+                model.cancel(); overlay.clearHeardSpeech(); overlay.hide()
                 scope.launch { engine.onScreen(ScreenState("locked", emptyList(), complete = false, isLocked = true)) }
             } else {
                 if (ownSetupForeground() && !VoiceActivity.visible) overlay.hide()
@@ -90,6 +90,7 @@ class GuidingHandService : AccessibilityService() {
     private fun newEngine() = GuideEngine(model, { state ->
         if (state.status == GuideStatus.SAFETY_PAUSED) {
             voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
+            overlay.clearHeardSpeech()
         }
         viewState = if (model.developmentStandIn && state.status != GuideStatus.IDLE) state.copy(instructionVi = "Phase 1 dev · ${state.instructionVi}") else state
         GuideTrace.event(this, "state", code = state.status.name)
@@ -113,6 +114,7 @@ class GuidingHandService : AccessibilityService() {
     fun reloadModel() { engine.stop(); model.close(); model = makeModel(); engine = newEngine() }
     fun startGoal(goal: String) {
         voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
+        overlay.clearHeardSpeech()
         engine.stop(); engine = newEngine()
         GuideTrace.event(this, "goal_started") // Content-free timing anchor for real-phone evidence.
         engine.startGoal(goal); updates.trySend(Unit)
@@ -122,6 +124,7 @@ class GuidingHandService : AccessibilityService() {
     fun startPhotoTaskForRecipient(recipient: String) {
         if (!::engine.isInitialized || !DeviceVisibility.allowed(this)) return
         voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
+        overlay.clearHeardSpeech()
         engine.stop(); engine = newEngine()
         GuideTrace.event(this, "goal_started")
         engine.startGoal(tr("Gửi ảnh trên Zalo", "Send a photo on Zalo"), PhotoTask(recipient.trim(), prefs.photo))
@@ -129,12 +132,13 @@ class GuidingHandService : AccessibilityService() {
     }
     fun startPhotoDevTask() {
         if (!model.developmentStandIn) return
+        overlay.clearHeardSpeech()
         engine.stop(); engine = newEngine()
         engine.startGoal("Gửi ảnh đã chọn cho người nhận trên Zalo", PhotoTask(prefs.contact, prefs.photo)); updates.trySend(Unit)
     }
     fun answer(text: String) { engine.answer(text); updates.trySend(Unit) }
     fun resumeGuide() { engine.resume(); updates.trySend(Unit) }
-    fun stopGuide() { voiceGeneration++; voicePermitUntil = 0L; voiceSubmission?.cancel(); voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned(); engine.stop() }
+    fun stopGuide() { voiceGeneration++; voicePermitUntil = 0L; voiceSubmission?.cancel(); voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned(); overlay.clearHeardSpeech(); engine.stop() }
     private var voiceAnswersCurrent = false
     private fun openIntake() = openVoice()
     fun openVoice() {

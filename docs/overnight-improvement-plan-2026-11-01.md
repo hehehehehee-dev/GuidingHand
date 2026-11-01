@@ -83,6 +83,12 @@ Increase hackathon readiness without adding fragile demo-only features. Improve 
   Acceptance: no offline-TTS failure message asks the elder to check a network connection; Vietnamese and English both identify the offline voice; the unavailable state still exposes the existing recovery actions and never falls back to cloud speech.
   Verify: deterministic GuideEngine copy regression, Android Candidate unit tests, lint, assemble, diff/secret checks, and read-only phone smoke. Rendered elder interaction remains `TBD` until a person triggers the failure.
 
+- [x] **13. Clear the visible transcript on every privacy boundary**
+  Evidence: `VoiceDraft` and the temporary clipboard are cleared on Stop, lock, sensitive screens, and a new goal, but the overlay's separate “Bác nói / You said” `TextView` is not. Hiding the overlay does not erase that text, so an old transcript can reappear after unlock or a safety pause.
+  What to build: add one explicit overlay transcript reset and invoke it before lock hiding, sensitive rendering, Stop, and every new task. Do not clear it during overlay-free screenshot capture because capture is not a privacy boundary.
+  Acceptance: no old transcript can reappear after lock/unlock, a password/payment/OTP pause, Stop, or a new task; safe screenshot suspension keeps the current task context; no transcript content enters logs or persisted storage.
+  Verify: deterministic ephemeral-text clearing regression, Android Candidate unit tests, lint, assemble, diff/secret checks, and read-only phone smoke. Visual unlock/safety confirmation remains `TBD` until a person performs it.
+
 ## Deferred deliberately
 
 - Cloud deployment and paid live benchmarks: final phase, after behavior stabilizes.
