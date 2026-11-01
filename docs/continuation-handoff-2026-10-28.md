@@ -680,5 +680,7 @@ backend tests**. The fixture suite covers 24 safety cases and eight fusion-geome
 provider calls; it deliberately leaves human-reviewed ring accuracy and older-adult usability as
 `TBD`. Candidate identity is `vn.guidinghand.candidate`, `1.5.27-candidate`/code 36, with a distinct
 label in every locale. APK SHA-256 is
-`aaf5cbf950e5d8b9f605e6e920c83c8b24fe0702231716d2e06d94f4949eb454`. The build is not installed
-or phone-certified in this entry; cloud deployment remains deferred.
+`f5f76e5c001848696a567925bd9e3c3aabde10de7191f983579437f772cb021f`. GitHub verification run
+`41259582278` passed Android, backend and container jobs for commit `92a9b6d`, including Candidate
+identity and deterministic evidence generation. The build is not installed or phone-certified in
+this entry; cloud deployment remains deferred.
