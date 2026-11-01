@@ -6,7 +6,8 @@ import kotlinx.coroutines.CancellationException
 class GuideEngine(
     private val model: GuideModel, private val present: (GuideViewState) -> Unit,
     private val family: FamilyContext = FamilyContext(), private val allowDevStandIn: Boolean = false,
-    private var language: RespectfulLanguage = RespectfulLanguage(), private var locale: String = "vi"
+    private var language: RespectfulLanguage = RespectfulLanguage(), private var locale: String = "vi",
+    private val onTransition: (GuideTransition) -> Unit = {}
 ) {
     var status = GuideStatus.IDLE; private set
     var task: PhotoTask? = null; private set
@@ -40,6 +41,9 @@ class GuideEngine(
     private var awaitingAnswer = false
     private var generation = 0L
     private var staleResponses = 0
+    private var transitionSequence = 0L
+    private val transitions = ArrayDeque<GuideTransition>()
+    val transitionHistory: List<GuideTransition> get() = transitions.toList()
     private var utteranceRevision = 0L
     private var boundUtteranceRevision = 0L
     private val canUpdateGeneralTask get() = task?.id == "guide_app" && utteranceRevision > boundUtteranceRevision
@@ -96,6 +100,13 @@ class GuideEngine(
 
     private fun emit(next: GuideStatus, instruction: String, step: GuidanceStep? = null, options: List<String> = emptyList(),
                      reasonCode: String? = null, speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL) {
+        val previous = status
+        if (previous != next || reasonCode != null) {
+            val transition = GuideTransition(++transitionSequence, previous, next, reasonCode, step?.stage, task?.id)
+            transitions += transition
+            while (transitions.size > 64) transitions.removeFirst()
+            onTransition(transition)
+        }
         status = next; rawView = GuideViewState(next, instruction, step, options, reasonCode, speechPurpose)
         present(rawView.copy(instructionVi = wording(instruction), step = step?.let(::wording),
             options = options.map(::wording)))
@@ -107,11 +118,12 @@ class GuideEngine(
         emit(GuideStatus.READING, "Đang đọc màn hình…")
     }
     fun stop() {
-        generation++; staleResponses = 0; model.cancel(); goal = ""; task = null; answers.clear(); dialogue.clear(); userUpdates.clear(); verified.clear(); observations.clear()
+        generation++; staleResponses = 0; model.cancel(); model.clearSessionMemory(); goal = ""; task = null; answers.clear(); dialogue.clear(); userUpdates.clear(); verified.clear(); observations.clear()
         current = null; baseline = null; sendBaseline = null; latest = null; lastPlanned = null; clicked = false; tapObserved = false; awaitingAnswer = false
         recipientContext = false; photoContext = false
         utteranceRevision = 0; boundUtteranceRevision = 0
         conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
+        transitions.clear(); transitionSequence = 0
         emit(GuideStatus.IDLE, "")
     }
     fun answer(text: String) {
@@ -143,12 +155,12 @@ class GuideEngine(
         // Accessibility can repeat the same protected-screen event. The first pause already
         // cancelled work and cleared the ring; do not regenerate overlays/events in a loop.
         if (status == GuideStatus.SAFETY_PAUSED) return
-        generation++; model.cancel(); current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = true
+        generation++; model.cancel(); model.clearSessionMemory(); current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = true
         recipientContext = false; photoContext = false; sendBaseline = null
         conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
         val message = messageVi?.takeIf { it.isNotBlank() && it.length <= 200 && !it.contains('\n') }
             ?: "Đã tạm dừng để bảo vệ thông tin. Ông bà có thể chọn Gọi người thân hoặc Dừng."
-        emit(GuideStatus.SAFETY_PAUSED, message)
+        emit(GuideStatus.SAFETY_PAUSED, message, reasonCode = "safety_gate")
     }
     private fun ask(message: String, reasonCode: String? = null) {
         current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = true
@@ -175,7 +187,7 @@ class GuideEngine(
         // A missing/incomplete frame must never turn a previously latched safety pause into ASKING.
         if (status == GuideStatus.SAFETY_PAUSED) return false
         if (verdict == ScreenReadVerdict.CANNOT_READ) {
-            generation++; model.cancel(); ask("Chưa đọc rõ màn hình. Kiểm tra lại rồi chọn Tiếp tục nhé.")
+            generation++; model.cancel(); ask("Chưa đọc rõ màn hình. Kiểm tra lại rồi chọn Tiếp tục nhé.", "cannot_read")
             return false
         }
         return true
@@ -330,7 +342,8 @@ class GuideEngine(
             current = null; baseline = null
             // A matched general-app tap is interaction evidence, not completion proof. Replan
             // from the resulting screen without labelling the elder's correct tap as recovery.
-            if (!success && !matchedGeneralAction) emit(GuideStatus.RECOVERING, "Mình sẽ hướng dẫn tiếp từ màn hình này.")
+            if (!success && !matchedGeneralAction) emit(GuideStatus.RECOVERING, "Mình sẽ hướng dẫn tiếp từ màn hình này.",
+                reasonCode = if (tapObserved) "wrong_tap" else "unexpected_screen")
         } else if (old != null) return
         if (lastPlanned == screen.planningFingerprint && status == GuideStatus.PLANNING) return
         clicked = false; tapObserved = false

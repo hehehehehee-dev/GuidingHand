@@ -269,7 +269,10 @@ class GuideOverlay(
         val display = GuideBox(0, 0, bounds.width(), bounds.height())
         val target = GuideBox(floor(it.left * bounds.width()).toInt(), floor(it.top * bounds.height()).toInt(),
             ceil(it.right * bounds.width()).toInt(), ceil(it.bottom * bounds.height()).toInt())
-        val ringBounds = GuideRingGeometry.paddedBounds(target, density)
+        if (!display.contains(target)) return@let null
+        // Match what is actually drawn. At a legitimate display edge both stroke centers move
+        // inward, so panel placement must not reserve an imaginary off-screen rectangle.
+        val ringBounds = GuideRingGeometry.visibleBands(target, display, density).blackCenter
         if (prefs.showPointer) ringBounds.union(GuideRingGeometry.pointerPlacement(target, display, dp(56), dp(12)).bounds)
         else ringBounds
     }

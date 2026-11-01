@@ -53,7 +53,7 @@ class GuidePanelLayoutTest {
             assertTrue(safe.contains(result.bounds)); assertFalse(result.bounds.intersects(target.inflate(24)))
         }
     }
-    @Test fun ringAtDisplayEdgeIsRejectedRatherThanShrunk() {
+    @Test fun rawPaddingDetectsDisplayEdgeBeforeEdgeAwareRendering() {
         val display = GuideBox(0, 0, 360, 800)
         assertFalse(GuideRingGeometry.fitsDisplay(GuideBox(8, 400, 64, 456), display, 1f))
         assertFalse(GuideRingGeometry.fitsDisplay(GuideBox(300, 400, 352, 456), display, 1f))
@@ -66,17 +66,21 @@ class GuidePanelLayoutTest {
         assertEquals(64, padded.bottom - target.bottom)
         assertFalse(GuideRingGeometry.fitsDisplay(GuideBox(63, 200, 180, 280), GuideBox(0, 0, 1000, 1000), 2.63f))
     }
-    @Test fun oversizedSamHeaderMayUseVerifiedClickableBoundsWithoutClippingRing() {
+    @Test fun oversizedSamHeaderMayUseVerifiedClickableBounds() {
         val display = GuideBox(0, 0, 1268, 2756)
         val sam = GuideBox(0, 105, 930, 285)
         val searchControl = GuideBox(118, 125, 910, 270)
         assertFalse(GuideRingGeometry.fitsDisplay(sam, display, 2.63f))
-        assertEquals(searchControl, GuideRingGeometry.displayTarget(sam, searchControl, display, 2.63f))
+        assertEquals(searchControl, GuideRingGeometry.fuseTarget(sam, searchControl, display, 2.63f)?.target)
     }
-    @Test fun edgeFallbackRequiresStrongSamOverlapAndACompletelyVisibleRing() {
+    @Test fun edgeFusionRequiresStrongSamOverlapButNotImaginaryOffscreenPadding() {
         val display = GuideBox(0, 0, 1000, 1000)
-        assertNull(GuideRingGeometry.displayTarget(GuideBox(0, 100, 100, 200), GuideBox(300, 100, 400, 200), display, 1f))
-        assertNull(GuideRingGeometry.displayTarget(GuideBox(0, 100, 100, 200), GuideBox(5, 100, 100, 200), display, 1f))
+        assertNull(GuideRingGeometry.fuseTarget(GuideBox(0, 100, 100, 200), GuideBox(300, 100, 400, 200), display, 1f))
+        val accepted = GuideRingGeometry.fuseTarget(GuideBox(0, 100, 100, 200), GuideBox(5, 100, 100, 200), display, 1f)!!
+        assertEquals("sam_ui_edge_bounded", accepted.mode)
+        assertTrue(accepted.edgeAdjusted)
+        assertEquals(GuideBox(5, 100, 100, 200), accepted.target)
+        assertEquals(1000, accepted.overlapPermille)
     }
     @Test fun realEdgeTargetKeepsBothStrokeCentersInsideDisplay() {
         val display = GuideBox(0, 0, 360, 800)

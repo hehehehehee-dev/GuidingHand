@@ -1,6 +1,6 @@
 # GuidingHand
 
-Implementation branch: `feat/elder-coach-core`. The installed phone build is not proof that this candidate has passed the send-photo task. Main is retained; no GitHub push is part of this work.
+Implementation branch: `feat/submission-reliability`. The installed phone build is not proof that this candidate has passed the send-photo task. Main and the original `vn.guidinghand` installation remain separate from the Candidate package.
 
 GuidingHand helps an older person use their own Android phone, one step at a time. **The elder performs every tap, every keystroke and every final action.**
 
@@ -21,6 +21,8 @@ The October 28 direction expands guidance to readable, non-sensitive installed A
 | Android system TTS | Offline Vietnamese speech output at rate 0.85 | November 4 build output |
 | MockModel | Phase 1 development stand-in behind the same GuideModel interface | Explicitly selected development stand-in only; Core is the default, never a parallel fast path |
 | Overlay | Non-touchable black/yellow ring; solid collapsible card avoiding its target | Native core; 24/22/20sp text and 72/48dp targets |
+| Target fusion | Require Spark target, SAM region and the same live Accessibility control to agree | Native deterministic validator; edge controls remain valid |
+| Exact-screen cache | Reuse only a verified Step for an identical full screen + goal/task state | RAM-only, 30-second TTL; cleared on Stop/new goal/sensitive screen |
 | Own HTTPS backend | Hold the Meta key and orchestrate the providers | Configuration and deployment required; no hosted endpoint claimed |
 
 **The complete production loop is not yet live-verified.** Spark and SAM have core adapters, but the project's production backend is not configured or deployed here. Muse Voice Transcribe recognizes speech; its lack of a synthesis API does not block Android system TTS output. [Meta speech-input documentation](https://dev.meta.ai/docs/speech-to-text)
@@ -43,10 +45,13 @@ flowchart LR
     gate -->|"Safe; pending speech"| transcribe["Own backend: Muse Voice Transcribe 1.0 · core input"]
     transcribe --> engine["GuideEngine: goal + dialogue; read screen-state diff"]
     gate -->|"Safe; existing task"| engine
-    engine --> frame["One safety-checked screenshot + UI data + SHA-256"]
+    engine --> cache{"Exact full-screen + task cache hit?"}
+    cache -->|"No"| frame["One safety-checked screenshot + UI data + SHA-256"]
     frame --> spark["Own backend: Muse Spark · multi-app core planner"]
     spark -->|"Exact same image bytes"| sam["Own backend: SAM 3.1 · core region"]
-    sam -->|"Validate current screen; discard stale results"| output["Android offline TTS · 0.85"]
+    sam --> fusion["Spark + SAM + live Accessibility target fusion"]
+    fusion -->|"Validate current screen; discard stale results"| output["Android offline TTS · 0.85"]
+    cache -->|"Yes; exact state only"| output
     output --> guide["One solid card + non-touchable black/yellow ring"]
     guide --> elder["Elder performs the step"]
     elder -->|"Correct or wrong tap: read new state"| read
@@ -60,7 +65,9 @@ flowchart LR
 
 The image is captured once after a fresh local safety check. `/core/step` sends that screenshot and UI data to Spark, then reuses the identical data URL for SAM in the same backend request. The decoded-image SHA-256 is checked and echoed. There is no second capture between models and no continuous frame capture. Native code discards a response when its screen binding is stale, retaining the current task.
 
-UI bounds may seed SAM, but **never replace SAM's returned production region**. Missing, ambiguous or malformed segmentation means no production ring. A manual Home/navigation instruction can wait for a screen change without inventing a tappable target or SAM region. MockModel's node-bound regions are marked development-only and excluded from the release path.
+UI bounds may seed SAM but never create a production target without a valid SAM result. For a control at the display edge, the renderer may constrain the visible ring to the exact clickable bounds only after SAM overlaps that same control by at least 50%; raw SAM provenance is retained. Missing, ambiguous, mismatched or malformed segmentation means no production ring. A manual Home/navigation instruction can wait for a screen change without inventing a tappable target or SAM region. MockModel's node-bound regions are marked development-only and excluded from the release path.
+
+Repeated Accessibility events on an identical full screen can reuse a previously validated Step for up to 30 seconds. The cache is RAM-only, contains no screenshot, and is keyed by the exact screen, goal, dialogue, task, app inventory, language, backend and session fingerprint. Stop, a new goal, lock or a sensitive screen clears it. Any changed screen misses the cache and follows the normal Spark → SAM path.
 
 The backend handles Meta speech transcription, Spark planning and SAM segmentation. Android system TTS runs on the device; the diagram's arrows show stage order, not provider-to-provider calls.
 
@@ -96,6 +103,8 @@ Historical development code is retained in [`phase1/`](phase1/). The development
 6. Wait for the elder; verify the resulting screen diff. A wrong tap replans from that state without restarting the task.
 7. For Zalo photos, mark verified completion only with new outgoing-photo and delivery evidence. General guidance asks the elder whether the goal is reached; it never labels that answer as machine-verified sending or delivery.
 
+GuideEngine records a bounded, content-free transition graph (`from`, `to`, reason, stage and task kind) for recovery evidence. Wrong taps and unexpected screens have distinct reasons; goals and user content are not written into the graph.
+
 Safety pauses are latched: a later safe-looking frame does not automatically resume. Stop, lock and changed screens invalidate pending regions and audio.
 
 ## Accessible design changes
@@ -127,8 +136,10 @@ Production backend configuration and deployment, plus complete live task verific
 
 | Evidence for this candidate | Result |
 | --- | --- |
-| Android build, unit/state-machine checks and lint | **TBD — final candidate run pending** |
-| Backend safety, identical-image and provider-adapter fixture checks | **TBD — final integrated run pending** |
+| Android build, unit/state-machine checks and lint | **91/91 tests; lint and Candidate assemble pass locally** |
+| Backend safety, identical-image, trace-viewer and provider-adapter fixture checks | **79/79 tests pass locally; zero provider calls** |
+| Deterministic safety/fusion evaluation | **24 safety + 8 fusion fixtures pass; ring accuracy remains TBD** |
+| Candidate identity | **`vn.guidinghand.candidate`, 1.5.27-candidate/code36; distinct label verified** |
 | Complete real-phone Zalo send-photo task | **TBD — not yet passed** |
 | Live Muse Voice Transcribe input | **TBD** |
 | Per-button ring accuracy and panel coverage | **TBD** |
@@ -136,10 +147,12 @@ Production backend configuration and deployment, plus complete live task verific
 | Per-step latency | **TBD** |
 | Demo video | **TBD** |
 
+The deterministic evaluation harness runs the native pre-model safety gate and production target-fusion geometry from fixture files. Its generated report explicitly leaves ring accuracy and older-adult usability as `TBD`. The separate Meta trace viewer renders only whitelisted event names, timing, state transitions, reason codes, bounded fusion scores and request IDs; it never renders screenshots, audio, goals, messages, recipients, tokens or credentials. These are local results until the pushed revision passes GitHub CI; neither result is a real-phone task pass.
+
 Old phone confirmations and Phase 1 tests are not evidence for this candidate. Run the [send-photo protocol](docs/send-photo-phone-test.md), logging actual results and failures. For password, OTP or payment hard-stop checks, open the screen only; never enter real credentials or financial details. A separate candidate installation may be used for testing without replacing the current phone build; it is not a production replacement or a passing result.
 
 The combined budget remains **150 USD total, including prior usage**. Keep persistent reservations and measured usage; do not reset the ledger or invent latency/success numbers. The backend key is supplied from the server environment only and never embedded in the APK or committed. Final deployment and complete live task verification remain required.
 
 ## Source map
 
-[Task and model contracts](app/src/main/java/vn/guidinghand/GuideData.kt) · [GuideEngine](app/src/main/java/vn/guidinghand/GuideEngine.kt) · [Accessibility service](app/src/main/java/vn/guidinghand/GuidingHandService.kt) · [Ring and card](app/src/main/java/vn/guidinghand/GuideOverlay.kt) · [Goal entry and family setup](app/src/main/java/vn/guidinghand/MainActivity.kt) · [Backend core](backend/core.py) · [Detailed redesign](docs/core-redesign.md)
+[Task and model contracts](app/src/main/java/vn/guidinghand/GuideData.kt) · [GuideEngine](app/src/main/java/vn/guidinghand/GuideEngine.kt) · [Accessibility service](app/src/main/java/vn/guidinghand/GuidingHandService.kt) · [Ring, fusion and card geometry](app/src/main/java/vn/guidinghand/GuidePanelLayout.kt) · [Overlay](app/src/main/java/vn/guidinghand/GuideOverlay.kt) · [Exact-screen cache](app/src/main/java/vn/guidinghand/ExactScreenDecisionCache.kt) · [Goal entry and family setup](app/src/main/java/vn/guidinghand/MainActivity.kt) · [Backend core](backend/core.py) · [Evaluation report](backend/generate_evaluation_report.py) · [Meta trace viewer](backend/generate_meta_trace_viewer.py) · [Detailed redesign](docs/core-redesign.md)

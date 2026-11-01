@@ -20,6 +20,8 @@ data class GuideBox(val left: Int, val top: Int, val right: Int, val bottom: Int
 data class GuidePlacement(val bounds: GuideBox, val scrollContent: Boolean)
 data class GuideRingBands(val blackCenter: GuideBox, val yellowCenter: GuideBox, val edgeAdjusted: Boolean)
 data class GuidePointerPlacement(val bounds: GuideBox, val rotationDegrees: Float)
+data class GuideTargetFusion(val target: GuideBox, val mode: String, val overlapPermille: Int,
+                             val edgeAdjusted: Boolean)
 
 object GuideRingGeometry {
     /** Full outside edge: 12dp gap + 6dp yellow band + 6dp black band. Never round the minimum down. */
@@ -72,18 +74,28 @@ object GuideRingGeometry {
     }
 
     /**
-     * SAM remains the visual source. If its box includes surrounding header chrome and
-     * would clip, use the exact clickable UI bounds only after independently confirming
-     * at least 50% overlap and that the full 12dp + 6dp + 6dp ring remains visible.
+     * Fuse SAM's visual region with the exact clickable Accessibility bounds. Display-edge
+     * proximity is never uncertainty by itself: a real edge-mounted control is accepted when
+     * both sources overlap strongly, then both ring strokes are pulled inward by visibleBands.
      */
-    fun displayTarget(sam: GuideBox, ui: GuideBox?, display: GuideBox, density: Float): GuideBox? {
-        if (fitsDisplay(sam, display, density)) return sam
+    fun fuseTarget(sam: GuideBox, ui: GuideBox?, display: GuideBox, density: Float): GuideTargetFusion? {
+        if (!display.contains(sam) || density <= 0 || !density.isFinite()) return null
         val control = ui ?: return null
-        if (!fitsDisplay(control, display, density)) return null
+        if (!display.contains(control) || sam.area <= 0 || control.area <= 0) return null
         val overlap = sam.intersection(control)?.area ?: return null
-        if (overlap * 2 < minOf(sam.area, control.area)) return null
-        return control
+        val denominator = minOf(sam.area, control.area)
+        val overlapPermille = ((overlap * 1000) / denominator).toInt().coerceIn(0, 1000)
+        if (overlapPermille < 500) return null
+        if (fitsDisplay(sam, display, density))
+            return GuideTargetFusion(sam, "sam_visual", overlapPermille, false)
+        val edge = !fitsDisplay(control, display, density)
+        return GuideTargetFusion(control, if (edge) "sam_ui_edge_bounded" else "sam_ui_bounded",
+            overlapPermille, edge)
     }
+
+    @Deprecated("Use fuseTarget so acceptance provenance and edge adjustment are retained")
+    fun displayTarget(sam: GuideBox, ui: GuideBox?, display: GuideBox, density: Float): GuideBox? =
+        fuseTarget(sam, ui, display, density)?.target
 }
 
 object GuidePanelLayout {

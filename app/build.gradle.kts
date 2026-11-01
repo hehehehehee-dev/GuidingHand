@@ -8,10 +8,11 @@ android {
     compileSdk = 36
     defaultConfig {
         applicationId = "vn.guidinghand"
+        manifestPlaceholders["appLabel"] = "GuidingHand"
         minSdk = 30
         targetSdk = 36
-        versionCode = 35
-        versionName = "1.5.26"
+        versionCode = 36
+        versionName = "1.5.27"
         buildConfigField("int", "DEV_BACKEND_PORT", "8766")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -21,6 +22,7 @@ android {
                 applicationIdSuffix = ".candidate"
                 versionNameSuffix = "-candidate"
                 buildConfigField("int", "DEV_BACKEND_PORT", "8768")
+                manifestPlaceholders["appLabel"] = "GuidingHand Candidate"
                 resValue("string", "app_name", "GuidingHand Candidate")
             }
         }

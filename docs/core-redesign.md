@@ -32,7 +32,7 @@ For the November 4 build, the service selects one GuideModel implementation for 
 | Presentation | Validated step and production SAM region, or explicitly marked development region | One non-touchable ring and one bottom card |
 | Verification | Before/after screen states and elder tap | Evidence-based progress, waiting or recovery |
 
-Accessibility bounds may seed production segmentation but cannot substitute for SAM's returned region. Development MockModel regions are separate, explicitly labelled node-bound regions, never SAM results. A successful production Spark response without valid SAM grounding is not a complete guide step. Speech output uses Android system TTS and does not depend on a Muse Voice synthesis API.
+Accessibility bounds may seed production segmentation but cannot create a ring without a valid SAM result. When a real control touches a display edge, native code may constrain the visible ring to that exact clickable node only after the SAM region overlaps it by at least 50%; the raw SAM region and provenance are retained. Development MockModel regions are separate, explicitly labelled node-bound regions, never SAM results. A successful production Spark response without valid SAM grounding is not a complete guide step. Speech output uses Android system TTS and does not depend on a Muse Voice synthesis API.
 
 ## Backend exchange
 
@@ -79,7 +79,7 @@ Gesture dispatch, swipe-for-me, automatic search intents and all target-app inpu
 
 ## Wiring truth
 
-Spark and SAM have server adapter paths in the redesign; contract/fixture verification is separate from complete live-session evidence. SAM must be called through its documented API. The parser rejects no matches, ambiguous matches, malformed output, incorrect image dimensions and stale screen provenance. It never substitutes Accessibility bounds.
+Spark and SAM have server adapter paths in the redesign; contract/fixture verification is separate from complete live-session evidence. SAM must be called through its documented API. The parser rejects no matches, ambiguous matches, malformed output, incorrect image dimensions and stale screen provenance. Accessibility may validate and edge-bound a returned SAM region, but never replaces a missing or rejected SAM result.
 
 **Muse Voice Transcribe 1.0 is core speech input only.** Published `muse-voice-transcribe-1.0` recognizes speech and does not synthesize speech. The November 4 build uses Android system offline Vietnamese TTS at rate 0.85 for output; there is no Muse Voice output dependency or unavailable-output blocker. Speech-input wiring and live verification must be reported separately from Spark planning, SAM grounding and local TTS output. [Meta models](https://dev.meta.ai/docs/models), [SAM segmentation](https://dev.meta.ai/docs/sam/segmenting), [SAM output grammar](https://dev.meta.ai/docs/sam/reading-segmentation)
 
@@ -95,7 +95,7 @@ MockModel remains a Phase 1 development stand-in behind the same GuideModel inte
 | Conservative screen-state verification and development MockModel | Parallel MockModel/Spark fast paths | Production SAM region; explicitly labelled development bounds |
 | Demand-driven image capture | Hand-only pointer UI | One bottom instruction card |
 
-Android 1.2 debug build passed with 34 tests and zero lint errors. Backend checks passed 48 tests with fixture transports, without live provider requests. The development photo task calls the speech-output port in its tested complete flow; that test does not prove physical Android audio playback. Complete live Spark → SAM → Android TTS session and live Muse Voice Transcribe input remain unverified; speech-input recording/transcription is wired but not yet live-verified. The phone build was not replaced. The production backend remains unconfigured here; source adapters are not proof of production readiness. Held-out ring-hit rate, guidance accuracy, latency, device coverage and demo video remain **TBD**.
+Candidate 1.5.27/code36 passes 91 Android unit tests, lint and assemble locally. Backend checks pass 79 tests with fixture transports, without live provider requests. The deterministic suite contains 24 safety and eight fusion-geometry cases; these are not human-reviewed ring accuracy. The development photo task calls the speech-output port in its tested complete flow, which does not prove physical Android audio playback. Complete live Candidate Spark → SAM → Android TTS and Muse Voice Transcribe evidence remains separate from source verification. The phone build was not replaced. The production backend remains unconfigured here; source adapters are not proof of production readiness. Held-out ring-hit rate, guidance accuracy, device coverage and the final demo remain **TBD**.
 
 
 ## 1.3 overlay and microphone correction

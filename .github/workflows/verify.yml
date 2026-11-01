@@ -37,8 +37,14 @@ jobs:
           test -x "$AAPT"
           "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | head -1 | tee /tmp/package.txt
           grep -q "name='vn.guidinghand.candidate'" /tmp/package.txt
-          grep -q "versionCode='35'" /tmp/package.txt
-          grep -q "versionName='1.5.26-candidate'" /tmp/package.txt
+          grep -q "versionCode='36'" /tmp/package.txt
+          grep -q "versionName='1.5.27-candidate'" /tmp/package.txt
+          "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | grep -q "application-label:'GuidingHand Candidate'"
+      - name: Generate deterministic evaluation evidence
+        run: |
+          python backend/generate_evaluation_report.py --output /tmp/deterministic-evaluation.md
+          grep -q 'Provider calls: \*\*0\*\*' /tmp/deterministic-evaluation.md
+          grep -q 'Ring accuracy: \*\*TBD' /tmp/deterministic-evaluation.md
 
   container:
     runs-on: ubuntu-latest

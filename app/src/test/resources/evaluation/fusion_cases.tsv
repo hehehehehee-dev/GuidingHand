@@ -1,0 +1,9 @@
+# id|expected_mode|sam|ui|display|density
+center_visual|sam_visual|100,200,220,280|110,205,215,278|0,0,1080,1920|2.0
+left_edge|sam_ui_edge_bounded|0,200,180,320|0,210,170,315|0,0,1080,1920|2.63
+top_edge|sam_ui_edge_bounded|100,0,500,140|110,0,490,135|0,0,1080,1920|2.63
+bottom_edge|sam_ui_edge_bounded|300,1780,700,1920|310,1790,690,1920|0,0,1080,1920|2.63
+oversized_header|sam_ui_bounded|0,105,930,285|118,125,910,270|0,0,1268,2756|2.63
+different_control|REJECT|0,100,100,200|300,100,400,200|0,0,1000,1000|1.0
+weak_overlap|REJECT|0,100,100,200|80,100,180,200|0,0,1000,1000|1.0
+sam_outside_display|REJECT|-10,100,100,200|0,100,100,200|0,0,1000,1000|1.0

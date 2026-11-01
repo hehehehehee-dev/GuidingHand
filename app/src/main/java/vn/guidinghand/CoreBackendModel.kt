@@ -22,6 +22,7 @@ class CoreBackendModel(
     @Volatile private var epoch = 0L
     @Volatile private var connection: HttpURLConnection? = null
     private val speech = SystemSpeechOutput(context)
+    private val exactScreenCache = ExactScreenDecisionCache<GuideDecision.Step>()
     private fun safe(screen: ScreenState) = ScreenReadPolicy.verdict(screen) == ScreenReadVerdict.SAFE
     private suspend fun current(expected: ScreenState): Boolean {
         val actual = freshScreen() ?: return false
@@ -31,6 +32,17 @@ class CoreBackendModel(
     private fun stale(reason: String): GuideDecision {
         GuideTrace.event(context, "stale_result", code = reason)
         return GuideDecision.StateChanged
+    }
+    private fun digest(value: String) = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
+        .joinToString("") { "%02x".format(it.toInt() and 255) }
+    private fun cacheKey(input: GuideInput, base: String, token: String, installedApps: List<InstalledApps.App>): String = digest(listOf(
+        input.screen.fingerprint, input.goal, input.answers, input.task, input.verifiedStepIds.sorted(), input.observations,
+        input.family, input.dialogue, input.allowTaskUpdate, input.userUpdates, preferences.language, base,
+        digest(token), installedApps.map { "${it.packageName}:${it.label}" }.sorted()
+    ).joinToString("\u001f"))
+    private suspend fun currentExact(expected: ScreenState): Boolean {
+        val actual = freshScreen() ?: return false
+        return safe(actual) && actual.fingerprint == expected.fingerprint && preferences.screenConsent && DeviceVisibility.allowed(context)
     }
     override suspend fun next(input: GuideInput): GuideDecision {
         if (!safe(input.screen) || SafetyPolicy.sensitiveGoal(input.goal)) return GuideDecision.Await(tr("Màn hình chưa an toàn để hướng dẫn.", "I cannot guide on this screen yet."))
@@ -43,7 +55,13 @@ class CoreBackendModel(
             return GuideDecision.Unavailable("Backend", tr("Cần phiên đăng nhập máy chủ GuidingHand.", "A GuidingHand server session is required."))
         val requestEpoch = epoch
         val requestId = UUID.randomUUID().toString()
-        val hash = MessageDigest.getInstance("SHA-256").digest(input.screen.planningFingerprint.toByteArray()).joinToString("") { "%02x".format(it.toInt() and 255) }
+        val hash = digest(input.screen.planningFingerprint)
+        val installedApps = InstalledApps.read(context)
+        val cacheKey = cacheKey(input, url, token, installedApps)
+        if (currentExact(input.screen)) exactScreenCache.get(cacheKey)?.let {
+            GuideTrace.event(context, "plan_cache_hit", code = "exact_screen")
+            return it
+        }
         val nodes = input.screen.nodes.mapIndexed { index, node -> JSONObject()
             .put("id", "n$index").put("text", node.text.take(300)).put("aliases", JSONArray(node.aliases.take(16).map { it.take(200) }))
             .put("clickable", node.clickable).put("selected", node.selected).put("password", node.password)
@@ -52,7 +70,7 @@ class CoreBackendModel(
         val body = JSONObject().put("request_id", requestId).put("fingerprint", hash).put("consent", true).put("unlocked", true)
             .put("language", preferences.language)
             .put("allow_task_update", input.allowTaskUpdate)
-            .put("installed_apps", JSONArray(InstalledApps.read(context).map { JSONObject().put("label", it.label).put("package", it.packageName) }))
+            .put("installed_apps", JSONArray(installedApps.map { JSONObject().put("label", it.label).put("package", it.packageName) }))
             .put("goal", JSONObject().put("text", input.goal.take(500)).put("answers", JSONArray(input.answers.takeLast(8).map { it.take(200) }))
                 .put("updates", JSONArray(input.userUpdates.takeLast(5).map { it.take(200) }))
                 .put("dialogue", JSONArray(input.dialogue.takeLast(8).map { JSONObject().put("question", it.question.take(200)).put("answer", it.answer.take(200)) })))
@@ -105,7 +123,7 @@ class CoreBackendModel(
             if (returnedTask?.id == "guide_app" && returnedTask.appPackage != input.screen.packageName &&
                 InstalledApps.read(context).none { it.packageName == returnedTask.appPackage })
                 return GuideDecision.Await(tr("Chưa tìm thấy ứng dụng này trên máy. Bác cho tôi biết tên ứng dụng nhé.", "I cannot find that installed app. Which app would you like?"))
-            when (result.optString("status")) {
+            val decision = when (result.optString("status")) {
                 "await" -> if (result.optString("handoff") == "screen_change") GuideDecision.Navigate(result.optString("message_vi"), returnedTask)
                     else GuideDecision.Await(result.optString("message_vi"))
                 "clarify" -> GuideDecision.Clarify(result.getString("question_vi").take(300), result.optJSONArray("options")?.let { array ->
@@ -149,11 +167,15 @@ class CoreBackendModel(
                     val uiRegion = liveNode.region
                     val uiPixels = uiRegion?.let { GuideBox(kotlin.math.floor(it.left * bounds.width()).toInt(), kotlin.math.floor(it.top * bounds.height()).toInt(),
                         kotlin.math.ceil(it.right * bounds.width()).toInt(), kotlin.math.ceil(it.bottom * bounds.height()).toInt()) }
-                    val visibleTarget = GuideRingGeometry.displayTarget(targetPixels, uiPixels,
+                    val fusion = GuideRingGeometry.fuseTarget(targetPixels, uiPixels,
                         GuideBox(0, 0, bounds.width(), bounds.height()), context.resources.displayMetrics.density)
-                    // If the control itself is edge-mounted, the overlay hugs the edge
-                    // while keeping both strokes visible instead of rejecting the step.
-                    val bounded = visibleTarget != null && visibleTarget != targetPixels
+                        ?: return GuideDecision.Await(tr("SAM và nút trên màn hình chưa khớp đủ rõ. Mình dừng lại để hỏi, không đoán.",
+                            "SAM and the on-screen control do not agree clearly enough. I will pause rather than guess."), "target_fusion_mismatch")
+                    GuideTrace.event(context, "target_fusion", code = fusion.mode, requestId = requestId,
+                        value = fusion.overlapPermille.toLong())
+                    // A strongly matched edge control uses its exact clickable bounds while SAM
+                    // remains the visual source recorded in rawRegion.
+                    val bounded = fusion.target != targetPixels
                     val visibleRegion = if (bounded) uiRegion!! else region
                     val stage = PhotoStage.valueOf(result.getString("step_id").uppercase())
                     val task = returnedTask
@@ -163,6 +185,11 @@ class CoreBackendModel(
                 }
                 else -> GuideDecision.Await(tr("Chưa chắc chắn bước tiếp theo. Cần hỏi lại.", "I am not sure about the next step. Please clarify."))
             }
+            if (decision is GuideDecision.Step && currentExact(input.screen) && requestEpoch == epoch) {
+                exactScreenCache.put(cacheKey, decision)
+                GuideTrace.event(context, "plan_cache_store", code = "exact_screen")
+            }
+            decision
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) {
             if (requestEpoch != epoch) stale("request_cancelled")
@@ -201,5 +228,6 @@ class CoreBackendModel(
         epoch++; connection?.disconnect(); connection = null
         speech.stop()
     }
-    override fun close() { cancel(); speech.close() }
+    override fun clearSessionMemory() { exactScreenCache.clear() }
+    override fun close() { cancel(); clearSessionMemory(); speech.close() }
 }

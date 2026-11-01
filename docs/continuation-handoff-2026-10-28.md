@@ -656,3 +656,29 @@ trusted forwarded HTTPS, including the expected snapshot protocol, Muse Voice Tr
 and `automatic_actions=false`. The run made no provider call; all backend, Android, and container
 jobs passed. This is deployment-contract evidence, not evidence of a production cloud deployment
 or a real-phone task pass.
+
+## Candidate 1.5.27 confidence and evaluation evidence — October 31 local time
+
+Spark/SAM/Accessibility target fusion now treats display-edge proximity as geometry rather than
+uncertainty. A production ring still requires a real clickable node and a valid SAM result with at
+least 50% overlap; a legitimate edge control uses its exact UI bounds for visible rendering while
+retaining the raw SAM region and provenance. Both black/yellow strokes and the hand pointer remain
+inside the display. Mismatched sources stop without a ring.
+
+An exact-full-screen Step cache now removes duplicate provider work caused by repeated identical
+Accessibility events. It is RAM-only, bounded to eight entries and 30 seconds, stores no image,
+and keys the exact screen plus complete goal/task/dialogue state and backend/session fingerprint.
+Stop, a new goal, lock or a sensitive screen clears it. Any changed screen misses the cache.
+
+GuideEngine now retains a bounded content-free transition graph with explicit `wrong_tap`,
+`unexpected_screen`, `cannot_read` and `safety_gate` reasons. The privacy-safe Meta trace viewer
+can render this graph together with provider timings, fusion decisions and stale-result events,
+but never reads arbitrary trace fields or displays screen/audio/goal/message/recipient/token data.
+
+Local deterministic evidence is **91/91 Android tests**, lint and Candidate assemble, plus **79/79
+backend tests**. The fixture suite covers 24 safety cases and eight fusion-geometry cases with zero
+provider calls; it deliberately leaves human-reviewed ring accuracy and older-adult usability as
+`TBD`. Candidate identity is `vn.guidinghand.candidate`, `1.5.27-candidate`/code 36, with a distinct
+label in every locale. APK SHA-256 is
+`aaf5cbf950e5d8b9f605e6e920c83c8b24fe0702231716d2e06d94f4949eb454`. The build is not installed
+or phone-certified in this entry; cloud deployment remains deferred.

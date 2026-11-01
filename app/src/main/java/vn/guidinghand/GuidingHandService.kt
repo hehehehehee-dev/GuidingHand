@@ -97,7 +97,12 @@ class GuidingHandService : AccessibilityService() {
         if (VoiceActivity.visible) overlay.showVoiceBusy(tr("Đang nghe…", "Listening…"))
         else if (ownSetupForeground()) overlay.hide()
         else overlay.render(viewState, engine.launcherStep != null)
-    }, FamilyContext(prefs.contact, prefs.photo), allowDevStandIn = model.developmentStandIn, language = prefs.respectfulLanguage, locale = prefs.language)
+    }, FamilyContext(prefs.contact, prefs.photo), allowDevStandIn = model.developmentStandIn, language = prefs.respectfulLanguage,
+        locale = prefs.language, onTransition = { transition ->
+            val reason = transition.reasonCode?.let { ":$it" }.orEmpty()
+            GuideTrace.event(this, "transition", code = "${transition.from.name}.${transition.to.name}$reason",
+                value = transition.sequence)
+        })
     fun refreshLanguage() { engine.updateLanguage(prefs.respectfulLanguage, prefs.language); updates.trySend(Unit) }
     fun refreshPreferences() {
         engine.updateLanguage(prefs.respectfulLanguage, prefs.language)

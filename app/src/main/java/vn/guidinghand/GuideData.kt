@@ -48,13 +48,41 @@ object ScreenReadPolicy {
     }
 }
 object SafetyPolicy {
-    private val terms = listOf("mat khau", "password", "passcode", "thanh toan", "payment", "otp", "ma xac thuc", "ma xac nhan", "verification code", "pin", "cvv")
-    private val sensitivePatterns = terms.map { Regex("(^|[^a-z0-9])${Regex.escape(it)}([^a-z0-9]|$)") }
-    fun sensitive(screen: ScreenState) = screen.nodes.any { node -> node.password || node.labels.any { label ->
-        val normalized = folded(label)
-        sensitivePatterns.any { it.containsMatchIn(normalized) }
-    } }
-    fun sensitiveGoal(goal: String) = sensitive(ScreenState("goal", listOf(ScreenNode("goal", goal, null, false))))
+    private val credentialTerms = listOf("mat khau", "password", "passcode", "otp", "ma xac thuc", "ma xac nhan", "verification code", "pin", "cvv")
+    private val paymentTerms = listOf("thanh toan", "payment", "pay now", "checkout", "card number", "so the")
+    private fun patterns(values: List<String>) = values.map { Regex("(^|[^a-z0-9])${Regex.escape(it)}([^a-z0-9]|$)") }
+    private val credentialPatterns = patterns(credentialTerms)
+    private val paymentPatterns = patterns(paymentTerms)
+    private val explicitScreenPromptPatterns = patterns(listOf(
+        "enter your otp", "nhap ma xac thuc", "nhap ma xac nhan", "enter password", "nhap mat khau",
+        "verification code", "payment details", "card details", "enter pin"
+    ))
+    private fun matches(label: String, patterns: List<Regex>) = patterns.any { it.containsMatchIn(folded(label)) }
+    private fun editable(node: ScreenNode) = node.focused || node.className.contains("EditText", true) ||
+        node.className.contains("AutoCompleteTextView", true)
+
+    fun sensitive(screen: ScreenState): Boolean {
+        if (screen.nodes.any { it.password }) return true
+        val hasEditable = screen.nodes.any(::editable)
+        val exactSensitiveLabel = screen.nodes.any { node -> node.labels.any { label ->
+            folded(label) in credentialTerms || folded(label) in paymentTerms
+        } }
+        val explicitScreenPrompt = screen.nodes.any { node -> node.labels.any { matches(it, explicitScreenPromptPatterns) } }
+        val credentialContext = screen.nodes.any { node -> node.labels.any { matches(it, credentialPatterns) } }
+        val paymentContext = screen.nodes.any { node -> node.labels.any { matches(it, paymentPatterns) } }
+        val sensitiveControl = screen.nodes.any { node -> (editable(node) || node.clickable) && node.labels.any { label ->
+            matches(label, credentialPatterns) || matches(label, paymentPatterns)
+        } }
+        // A plain article mentioning passwords or payments is not a credential screen. A
+        // matching label plus an input control is; so is an explicit sensitive action.
+        return exactSensitiveLabel || explicitScreenPrompt || sensitiveControl || (hasEditable && (credentialContext || paymentContext))
+    }
+
+    /** Spoken goals and draft content have no UI-role context, so use the strict lexical gate. */
+    fun sensitiveGoal(goal: String): Boolean {
+        val normalized = folded(goal)
+        return (credentialPatterns + paymentPatterns).any { it.containsMatchIn(normalized) }
+    }
 }
 enum class PhotoStage { LAUNCHER, RECIPIENT, ATTACH, PHOTO, SEND, DELIVERY, RECOVER, ACTION }
 /** Task data for the one planner; the legacy name preserves the strict photo evidence implementation. */
@@ -106,12 +134,17 @@ interface GuideModel {
     suspend fun repeat(step: GuidanceStep)
     suspend fun speakMessage(text: String, screen: ScreenState) {}
     fun cancel()
+    /** Clear RAM-only task/model memory on Stop, a new goal, lock, or a sensitive screen. */
+    fun clearSessionMemory() {}
     fun close() = cancel()
 }
 enum class GuideStatus { IDLE, READING, PLANNING, CLARIFYING, CONFIRMING_INPUT, CONFIRMING_COPY, WAITING_TAP, WAITING_NAVIGATION, VERIFYING, RECOVERING, SAFETY_PAUSED, ASKING, UNAVAILABLE, UNSUPPORTED, DONE }
 data class GuideViewState(val status: GuideStatus, val instructionVi: String, val step: GuidanceStep? = null,
     val options: List<String> = emptyList(), val reasonCode: String? = null,
     val speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL, val draftText: String? = null)
+data class GuideTransition(val sequence: Long, val from: GuideStatus, val to: GuideStatus,
+                           val reasonCode: String? = null, val stage: PhotoStage? = null,
+                           val taskKind: String? = null)
 
 /** Native evidence only: planner success claims do not complete a task. */
 object PhotoVerification {
