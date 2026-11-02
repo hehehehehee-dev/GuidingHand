@@ -4,6 +4,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GuidePanelLayoutTest {
+    @Test fun ordinaryCoachingIsCompactButQuestionsAndSafetyStayExpanded() {
+        for (status in listOf(GuideStatus.READING, GuideStatus.PLANNING, GuideStatus.VERIFYING,
+            GuideStatus.RECOVERING, GuideStatus.WAITING_TAP, GuideStatus.WAITING_NAVIGATION))
+            assertTrue(status.name, GuideCardMode.compact(status))
+        for (status in listOf(GuideStatus.CLARIFYING, GuideStatus.CONFIRMING_INPUT,
+            GuideStatus.CONFIRMING_COPY, GuideStatus.ASKING, GuideStatus.UNAVAILABLE,
+            GuideStatus.UNSUPPORTED, GuideStatus.SAFETY_PAUSED, GuideStatus.DONE))
+            assertFalse(status.name, GuideCardMode.compact(status))
+    }
+
     @Test fun measuredCreamTextExceedsSevenToOne() {
         val ratio = GuideDesign.contrastRatio(GuideDesign.INK_HEX, GuideDesign.CARD_HEX)
         assertEquals(13.2583, ratio, .001)

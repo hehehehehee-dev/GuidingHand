@@ -824,3 +824,12 @@ package remains untouched.
 - Transcript review opens at the newest text while preserving manual up/down scrolling and full editing before confirmation.
 - The floating confirmation card also scrolls to the transcript on first render while keeping its fixed actions reachable.
 - Android unit tests, lint, and Candidate assemble passed. Candidate 1.5.29/code 38 installed side-by-side; read-only phone smoke passed. Rendered long-transcript interaction remains pending a person-driven check.
+
+# 2026-11-02 — Candidate 1.5.30 compact coach card
+
+- Ordinary reading, planning, recovery, navigation and tap guidance now use one compact card row with a 24sp instruction and a labelled Hand/Hide drag control.
+- The separate Help bubble is removed while a card is open, eliminating the duplicated floating control visible in the phone video.
+- Waiting steps expose Replay and Stop only. Speak appears only in expanded states that can accept a new answer.
+- Clarifications, transcript review, unavailable states and safety pauses keep the full card and all required recovery actions.
+- The compact card is 320dp maximum width and does not reserve the previous extra 72dp content height. Text and touch-target accessibility minima are unchanged.
+- Android unit tests, lint, and Candidate assemble passed. Candidate 1.5.30/code 39 installed side-by-side; read-only phone smoke passed. Rendered compact-card interaction remains pending a person-driven check.

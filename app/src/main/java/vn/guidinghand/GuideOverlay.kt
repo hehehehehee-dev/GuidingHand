@@ -126,9 +126,14 @@ class GuideOverlay(
         elevation = px(4f)
     }
     private val header = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
+    private val compactInstruction = TextView(context).apply {
+        textSize = GuideDesign.INSTRUCTION_SP; setTextColor(ink)
+        setLineSpacing(px(3f), 1f); accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+    }
     private val brand = TextView(context).apply {
         text = "GuidingHand"; textSize = GuideDesign.BODY_SP; setTextColor(ink)
-        setPadding(0, 0, dp(8), 0)
+        gravity = Gravity.CENTER_VERTICAL; minHeight = dp(GuideDesign.SECONDARY_TARGET_DP)
+        setPadding(dp(8), 0, dp(8), 0); compoundDrawablePadding = dp(6)
     }
     private val instruction = TextView(context).apply {
         textSize = GuideDesign.INSTRUCTION_SP; setTextColor(ink)
@@ -211,6 +216,7 @@ class GuideOverlay(
     var lastMeasurement: Measurement? = null; private set
 
     init {
+        header.addView(compactInstruction, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(brand, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(collapse, LinearLayout.LayoutParams(-2, -2))
         content.addView(heardSpeech, LinearLayout.LayoutParams(-1, -2))
@@ -221,6 +227,10 @@ class GuideOverlay(
         card.addView(scroll, LinearLayout.LayoutParams(-1, -2))
         card.addView(footer, LinearLayout.LayoutParams(-1, -2))
         draggable(brand, card) { cardPosition }
+        brand.setOnClickListener {
+            userCollapsed = true
+            savedState?.let { render(it, savedCanOpen) }
+        }
         draggable(bubble, bubble) { bubble.layoutParams as? WindowManager.LayoutParams }
         bubble.setOnClickListener {
             if (autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED) callFamily()
@@ -365,7 +375,8 @@ class GuideOverlay(
             GuideRenderPreferences(prefs.language, prefs.reduceMotion, prefs.cardSize, prefs.visionProfile,
                 prefs.showPointer, context.resources.configuration.fontScale), heardSpeechMemory.revision)
         val expectedRing = state.status == GuideStatus.WAITING_TAP && state.step?.sam?.region != null
-        val mounted = bubbleAttached && (userCollapsed || cardAttached) && (!expectedRing || ringAttached)
+        val mounted = (if (userCollapsed || autoCollapsed || state.status == GuideStatus.IDLE) bubbleAttached else cardAttached) &&
+            (!expectedRing || ringAttached)
         if (renderKey == lastRenderKey && mounted && DeviceVisibility.allowed(context)) {
             savedState = state; savedCanOpen = canOpenLauncher
             return
@@ -382,10 +393,11 @@ class GuideOverlay(
             userCollapsed = false; autoCollapsed = false; draggedCard = null; lastRejectedFrame = null; clearCard(); showBubble(); return
         }
         if (state.status == GuideStatus.SAFETY_PAUSED && previousStatus != GuideStatus.SAFETY_PAUSED) userCollapsed = false
-        // Keep Help visible as the movable anchor while the card is open. The card is placed
-        // beside this anchor and follows it, so the elder never loses the way back to Help.
-        showBubble()
+        // The compact card contains its own labelled Hide/drag handle. Do not duplicate a
+        // separate Help bubble while the card is already open.
+        removeBubble()
         instruction.text = state.instructionVi
+        compactInstruction.text = state.instructionVi
         instruction.accessibilityLiveRegion = when (state.status) {
             GuideStatus.SAFETY_PAUSED, GuideStatus.UNAVAILABLE, GuideStatus.ASKING ->
                 View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
@@ -394,10 +406,27 @@ class GuideOverlay(
         draftValue.text = state.draftText?.let { "“$it”" }.orEmpty()
         draftRow.visibility = if (state.draftText.isNullOrBlank()) View.GONE else View.VISIBLE
         heardSpeech.visibility = if (heardSpeech.text.isNotBlank() && state.status !in setOf(GuideStatus.WAITING_TAP, GuideStatus.WAITING_NAVIGATION)) View.VISIBLE else View.GONE
+        val compact = GuideCardMode.compact(state.status)
         collapse.text = tr("Thu gọn", "Hide")
-        header.orientation = if (context.resources.configuration.fontScale > 1.3f) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
-        brand.layoutParams = if (header.orientation == LinearLayout.VERTICAL) LinearLayout.LayoutParams(-1, -2)
-            else LinearLayout.LayoutParams(0, -2, 1f)
+        compactInstruction.visibility = if (compact) View.VISIBLE else View.GONE
+        scroll.visibility = if (compact) View.GONE else View.VISIBLE
+        collapse.visibility = if (compact) View.GONE else View.VISIBLE
+        header.orientation = LinearLayout.HORIZONTAL
+        if (compact) {
+            brand.text = tr("Ẩn", "Hide")
+            brand.textSize = GuideDesign.LABEL_SP
+            brand.contentDescription = tr("Giữ để kéo thẻ. Chạm để thu gọn.", "Hold to move the card. Tap to hide it.")
+            val hand = context.getDrawable(R.drawable.guidinghand_icon)?.mutate()?.apply { setBounds(0, 0, dp(30), dp(30)) }
+            brand.setCompoundDrawablesRelative(hand, null, null, null)
+            brand.layoutParams = LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(8) }
+        } else {
+            brand.text = "GuidingHand"; brand.textSize = GuideDesign.BODY_SP
+            brand.contentDescription = tr("Giữ để kéo thẻ hướng dẫn", "Hold to move the guide card")
+            brand.setCompoundDrawablesRelative(null, null, null, null)
+            brand.layoutParams = if (context.resources.configuration.fontScale > 1.3f) LinearLayout.LayoutParams(-1, -2)
+                else LinearLayout.LayoutParams(0, -2, 1f)
+            header.orientation = if (context.resources.configuration.fontScale > 1.3f) LinearLayout.VERTICAL else LinearLayout.HORIZONTAL
+        }
         primaryActions.removeAllViews(); footer.removeAllViews()
         if (state.status != GuideStatus.SAFETY_PAUSED) {
             if (state.status in setOf(GuideStatus.CLARIFYING, GuideStatus.UNSUPPORTED)) state.options.forEach { option -> addPrimary(option) { answer(option) } }
@@ -436,11 +465,13 @@ class GuideOverlay(
             if (!busy && state.status !in setOf(GuideStatus.CONFIRMING_INPUT, GuideStatus.CONFIRMING_COPY)) {
                 // The three 22sp labels share one row; short visible names keep them on one
                 // line at normal font scale. Screen readers still get the full action.
-                footerAction(tr("Nói", "Speak"), true, openIntake)
-                footer.getChildAt(footer.childCount - 1).contentDescription =
-                    if (state.speechPurpose == SpeechPurpose.MESSAGE_CONTENT)
-                        tr("Nói nội dung tin nhắn", "Dictate the message")
-                    else tr("Nói việc cần giúp", "Speak your request")
+                if (!compact) {
+                    footerAction(tr("Nói", "Speak"), true, openIntake)
+                    footer.getChildAt(footer.childCount - 1).contentDescription =
+                        if (state.speechPurpose == SpeechPurpose.MESSAGE_CONTENT)
+                            tr("Nói nội dung tin nhắn", "Dictate the message")
+                        else tr("Nói việc cần giúp", "Speak your request")
+                }
                 footerAction(tr("Nghe", "Replay"), callback = repeat)
                 footer.getChildAt(footer.childCount - 1).contentDescription =
                     tr("Nghe lại hướng dẫn", "Replay the instruction")
@@ -460,7 +491,7 @@ class GuideOverlay(
                 if (!ringAttached) { wm.addView(ring, params(-1, -1, true)); ringAttached = true }
                 ring.invalidate()
                 // The target is known only now. Re-anchor Help before placing the card.
-                showBubble()
+                removeBubble()
             } else {
                 // Invalid/off-display geometry still stops. Legitimate edge targets are
                 // rendered above with both strokes pulled fully inside the display.
@@ -488,18 +519,19 @@ class GuideOverlay(
     private fun layoutCard(state: GuideViewState) {
         val contentKey = listOf(state.status, state.instructionVi, state.draftText, state.options).joinToString("\u001f")
         val contentChanged = contentKey != lastCardContentKey
-        val safe = safeArea(); val width = minOf(safe.width, dp(344))
+        val compact = GuideCardMode.compact(state.status)
+        val safe = safeArea(); val width = minOf(safe.width, dp(if (compact) 320 else 344))
         if (width <= 0) { clearCard(); return }
         scroll.layoutParams = LinearLayout.LayoutParams(-1, -2)
         card.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
-        val minimumHeight = header.measuredHeight + footer.measuredHeight + card.paddingTop + card.paddingBottom + dp(72)
+        val minimumHeight = header.measuredHeight + footer.measuredHeight + card.paddingTop + card.paddingBottom +
+            if (compact) 0 else dp(72)
         val naturalHeight = card.measuredHeight
         // Cap screen coverage, not text size. Large text and choices scroll inside a solid card;
         // Repeat/Stop stay outside the scroll area. Accessibility minima win over the cap.
         val desiredHeight = minOf(naturalHeight, maxOf(minimumHeight, (safe.height * prefs.cardSize.fraction).toInt()))
-        val placement = GuidePanelLayout.place(safe, width, desiredHeight, minimumHeight, pointedBox(), dp(8), draggedCard,
-            anchor = bubbleBounds())
+        val placement = GuidePanelLayout.place(safe, width, desiredHeight, minimumHeight, pointedBox(), dp(8), draggedCard)
         if (placement == null) {
             clearCard(); autoCollapsed = true; showBubble(); recordMeasurement(null, false, state); return
         }

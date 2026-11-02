@@ -26,6 +26,14 @@ data class GuideRenderPreferences(val language: String, val reduceMotion: Boolea
                                   val cardSize: GuideCardSize, val visionProfile: VisionProfile,
                                   val showPointer: Boolean, val fontScale: Float)
 
+/** Ordinary coaching stays compact. Questions, editable text, errors and safety remain expanded. */
+object GuideCardMode {
+    fun compact(status: GuideStatus) = status in setOf(
+        GuideStatus.READING, GuideStatus.PLANNING, GuideStatus.VERIFYING,
+        GuideStatus.RECOVERING, GuideStatus.WAITING_TAP, GuideStatus.WAITING_NAVIGATION
+    )
+}
+
 /** Content-free identity for suppressing duplicate renders without suppressing preference changes. */
 object GuideRenderIdentity {
     fun key(state: GuideViewState, canOpenLauncher: Boolean, userCollapsed: Boolean,
