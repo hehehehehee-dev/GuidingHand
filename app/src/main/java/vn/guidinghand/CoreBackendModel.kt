@@ -65,7 +65,7 @@ class CoreBackendModel(
         val nodes = input.screen.nodes.mapIndexed { index, node -> JSONObject()
             .put("id", "n$index").put("text", node.text.take(300)).put("aliases", JSONArray(node.aliases.take(16).map { it.take(200) }))
             .put("clickable", node.clickable).put("selected", node.selected).put("password", node.password)
-            .put("class_name", node.className.take(200)).put("heading", node.heading)
+            .put("focused", node.focused).put("class_name", node.className.take(200)).put("heading", node.heading)
             .put("region", node.region?.let { JSONArray(listOf(it.left, it.top, it.right, it.bottom)) } ?: JSONObject.NULL) }
         val body = JSONObject().put("request_id", requestId).put("fingerprint", hash).put("consent", true).put("unlocked", true)
             .put("language", preferences.language)

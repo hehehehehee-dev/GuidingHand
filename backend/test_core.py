@@ -14,7 +14,7 @@ import urllib.request
 import wave
 from unittest.mock import patch
 
-from core import CoreError, CoreGateway, SamSegmenter, SparkPlanner, blocked_result, create_application, image_info, parse_sam, spark_body
+from core import CoreError, CoreGateway, SamSegmenter, SparkPlanner, blocked_result, create_application, image_info, parse_sam, spark_body, validate
 from gateway import Budget, Gateway, serve
 
 
@@ -30,7 +30,7 @@ def frame():
 
 
 def decision(status='step'):
-    return {'intent': 'send_photo_zalo', 'status': status, 'instruction_vi': 'Bấm Hình ảnh.', 'target_node_id': 'attach', 'step_id': 'attach',
+    return {'intent': 'send_photo_zalo', 'output_language': 'vi', 'status': status, 'instruction_vi': 'Bấm Hình ảnh.', 'target_node_id': 'attach', 'step_id': 'attach',
             'question_vi': '', 'options': [], 'speech_purpose': 'general', 'task_kind': 'send_photo_zalo', 'recipient': 'An', 'photo': 'Bông hoa', 'content': '', 'app_package': '', 'block_reason': None}
 
 
@@ -64,6 +64,31 @@ class Sam:
 
 
 class CoreTests(unittest.TestCase):
+    def test_structured_safety_does_not_block_articles_or_email_fields(self):
+        for label, class_name in [('How to create a password', 'android.widget.TextView'),
+                                  ('Email address', 'android.widget.EditText')]:
+            value = frame(); value['screen']['nodes'] = [{
+                'id': 'field', 'text': label, 'aliases': [], 'clickable': False,
+                'selected': False, 'password': False, 'focused': class_name.endswith('EditText'),
+                'heading': False, 'class_name': class_name, 'region': [.1, .1, .9, .2]}]
+            self.assertIs(value, validate(value))
+
+    def test_structured_safety_blocks_password_otp_and_payment_before_models(self):
+        for label, password in [('Password', True), ('Enter your OTP', False), ('Payment details', False)]:
+            value = frame(); value['screen']['nodes'][0].update(
+                text=label, password=password, focused=True, heading=False,
+                class_name='android.widget.EditText')
+            result = self.core.step(value)
+            self.assertEqual(('blocked', 'sensitive'), (result['status'], result['reason_category']))
+        self.assertEqual([], self.planner.calls); self.assertEqual(0, self.sam.calls)
+
+    def test_wrong_language_echo_is_rejected_before_sam(self):
+        value = frame(); value['language'] = 'en'
+        self.planner.result = {**decision(), 'output_language': 'vi'}
+        result = self.core.step(value)
+        self.assertEqual(('blocked', 'invalid_spark_response'), (result['status'], result['reason']))
+        self.assertEqual(0, self.sam.calls)
+
     def test_actionable_error_copy_keeps_transient_failures_distinct(self):
         changed = blocked_result({'language': 'en'}, 'snapshot_changed')
         offline = blocked_result({'language': 'en'}, 'provider_unavailable')

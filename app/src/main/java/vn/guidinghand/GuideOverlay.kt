@@ -340,7 +340,12 @@ class GuideOverlay(
         bubble.measure(View.MeasureSpec.makeMeasureSpec(safeArea().width, View.MeasureSpec.AT_MOST),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         val placement = GuidePanelLayout.place(safeArea(), bubble.measuredWidth.coerceAtLeast(dp(72)),
-            bubble.measuredHeight.coerceAtLeast(dp(72)), dp(72), pointedBox(), dp(8), draggedBubble) ?: return
+            bubble.measuredHeight.coerceAtLeast(dp(72)), dp(72), pointedBox(), dp(8), draggedBubble)
+        if (placement == null) {
+            // Never leave the old Help position covering a newly selected target.
+            removeBubble()
+            return
+        }
         val box = placement.bounds
         val p = params(box.width, box.height, false).apply { x = box.left; y = box.top }
         if (!bubbleAttached) { wm.addView(bubble, p); bubbleAttached = true; GuideTrace.event(context, "bubble_attached") }
@@ -454,6 +459,8 @@ class GuideOverlay(
                 pointingClipped = !display.contains(ringBounds)
                 if (!ringAttached) { wm.addView(ring, params(-1, -1, true)); ringAttached = true }
                 ring.invalidate()
+                // The target is known only now. Re-anchor Help before placing the card.
+                showBubble()
             } else {
                 // Invalid/off-display geometry still stops. Legitimate edge targets are
                 // rendered above with both strokes pulled fully inside the display.

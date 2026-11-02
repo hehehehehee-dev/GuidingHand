@@ -80,6 +80,7 @@ class GuideEngine(
         "Đang đọc màn hình…" to "Reading this screen…",
         "Đang đọc lại màn hình…" to "Reading the current screen again…",
         "Màn hình đang đổi liên tục. Bác chờ nội dung đứng yên rồi chọn Kiểm tra lại nhé." to "The screen keeps changing. Let it settle, then choose Check again.",
+        "Màn hình đang đổi. Tôi sẽ tự chờ rồi hướng dẫn tiếp." to "The screen is changing. I will wait and continue automatically.",
         "Đang kiểm tra lại màn hình…" to "Checking the screen again…",
         "Đã tạm dừng để bảo vệ thông tin. Ông bà có thể chọn Gọi người thân hoặc Dừng." to "Guidance is paused to protect private information. Choose Call family or Stop.",
         "Chưa đọc rõ màn hình. Kiểm tra lại rồi chọn Tiếp tục nhé." to "I cannot read this screen clearly. Check the screen, then choose Continue.",
@@ -359,11 +360,9 @@ class GuideEngine(
         when (decision) {
             GuideDecision.StateChanged -> {
                 generation++; model.cancel(); current = null; baseline = null; clicked = false; tapObserved = false
-                if (++staleResponses >= 3) {
-                    ask("Màn hình đang đổi liên tục. Bác chờ nội dung đứng yên rồi chọn Kiểm tra lại nhé."); return
-                }
+                staleResponses++
                 awaitingAnswer = false; lastPlanned = null
-                emit(GuideStatus.READING, "Màn hình đã đổi. Đang đọc lại để hướng dẫn tiếp…")
+                emit(GuideStatus.READING, "Màn hình đang đổi. Tôi sẽ tự chờ rồi hướng dẫn tiếp.", reasonCode = "screen_settling")
             }
             is GuideDecision.Clarify -> {
                 awaitingAnswer = true; emit(GuideStatus.CLARIFYING, decision.questionVi,
@@ -407,6 +406,15 @@ class GuideEngine(
                 }
             }
         }
+    }
+
+    /** Keep the current goal while the service waits for a stable native screen. */
+    fun waitForStableScreen() {
+        if (!hasGoal || status == GuideStatus.SAFETY_PAUSED) return
+        current = null; baseline = null; awaitingAnswer = false; lastPlanned = null
+        val text = "Màn hình đang đổi. Tôi sẽ tự chờ rồi hướng dẫn tiếp."
+        if (status != GuideStatus.READING || rawView.instructionVi != wording(text))
+            emit(GuideStatus.READING, text, reasonCode = "screen_settling")
     }
     suspend fun repeat(screen: ScreenState) {
         latest = screen

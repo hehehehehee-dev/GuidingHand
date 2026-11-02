@@ -74,7 +74,13 @@ class GuidingHandService : AccessibilityService() {
                 if (!DeviceVisibility.allowed(this@GuidingHandService)) { overlay.hide(); continue }
                 if (ownSetupForeground()) { overlay.hide(); continue }
                 if (engine.status == GuideStatus.IDLE) continue
-                val fresh = readSettledForGuidance() ?: ScreenState("unavailable", emptyList(), complete = false, readIssue = "no_window")
+                val fresh = readSettledForGuidance()
+                if (fresh == null) {
+                    engine.waitForStableScreen()
+                    delay(320)
+                    updates.trySend(Unit)
+                    continue
+                }
                 if (fresh.packageName == packageName) continue // Own setup/answer UI is never model input.
                 screen = fresh
                 val began = android.os.SystemClock.elapsedRealtime()
@@ -354,13 +360,13 @@ class GuidingHandService : AccessibilityService() {
         if (!transition) return candidate
         var consecutive = 0
         repeat(8) {
-            delay(140)
+            delay(160)
             val next = readFresh() ?: return@repeat
             consecutive = if (ScreenReadPolicy.verdict(next) == ScreenReadVerdict.SAFE && next.planningFingerprint == candidate?.planningFingerprint) consecutive + 1 else 0
             candidate = next
-            if (consecutive >= 1) return candidate
+            if (consecutive >= 2) return candidate
         }
-        return candidate
+        return null
     }
     private val resolvedLauncher by lazy { Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).resolveActivity(packageManager)?.packageName }
     private fun launcherPackage() = resolvedLauncher

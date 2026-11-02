@@ -11,8 +11,8 @@ android {
         manifestPlaceholders["appLabel"] = "GuidingHand"
         minSdk = 30
         targetSdk = 36
-        versionCode = 36
-        versionName = "1.5.27"
+        versionCode = 37
+        versionName = "1.5.28"
         buildConfigField("int", "DEV_BACKEND_PORT", "8766")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

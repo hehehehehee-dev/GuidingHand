@@ -808,3 +808,12 @@ detach events and no new fatal exception.
 Local verification remains **96/96 Android tests**, lint, Candidate assemble, and **79/79 backend
 tests**. The Candidate was updated in place before the bounded smoke check. The original GuidingHand
 package remains untouched.
+# 2026-11-02 — Candidate 1.5.28
+
+- Dynamic screens now require three matching safe reads before planning. An unstable screen keeps the current goal, shows an automatic waiting state, and never asks the elder to find a missing retry control.
+- A stale Spark result returns to automatic settling. Repeated stale results no longer become a manual “Check again” loop.
+- The Help bubble is re-laid out after the SAM ring is known. If no safe position exists, Help hides instead of covering the target.
+- Backend safety now uses password flags, editable roles, clickable controls, and explicit OTP/payment prompts. Plain articles and ordinary email fields no longer hard-stop from words alone.
+- Spark must echo the requested locale. Instructions, questions, and options that conflict with it are rejected before SAM instead of reaching mixed-language UI.
+- Planner guidance now forbids using ads, unrelated edge controls, or generic arrows as substitutes for scroll/navigation.
+- Verified locally: 82 backend tests; 96 Android unit tests; Android lint and Candidate assemble passed. Candidate 1.5.28/code 37 installed side-by-side; read-only phone smoke passed with Accessibility enabled and no new fatal exception. Elder-driven task behavior remains pending a real interaction test.

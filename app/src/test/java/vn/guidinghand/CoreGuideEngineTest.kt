@@ -58,14 +58,15 @@ class CoreGuideEngineTest {
         assertTrue(partial.acceptsRefinement(task))
         assertFalse(task.acceptsRefinement(task.copy(recipient = "Other person")))
     }
-    @Test fun continuouslyChangingScreensPauseWithoutSpendingForeverOrLosingTheTask() = runBlocking {
+    @Test fun continuouslyChangingScreensAutoWaitWithoutAskingOrLosingTheTask() = runBlocking {
         val model = Model { GuideDecision.StateChanged }
         val engine = GuideEngine(model, {})
         engine.startGoal("Share my photo", task)
         repeat(4) { engine.onScreen(home) }
-        assertEquals(3, model.inputs.size)
-        assertEquals(GuideStatus.ASKING, engine.status)
+        assertEquals(GuideStatus.READING, engine.status)
         assertTrue(engine.hasGoal); assertEquals(task, engine.task)
+        engine.waitForStableScreen()
+        assertEquals(GuideStatus.READING, engine.status)
     }
     @Test fun aDatedThumbnailNeedsAnActualMatchedTapAndNewSelection() = runBlocking {
         val before = zalo(attach)
