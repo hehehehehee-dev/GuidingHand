@@ -24,7 +24,7 @@ data class GuideTargetFusion(val target: GuideBox, val mode: String, val overlap
                              val edgeAdjusted: Boolean)
 data class GuideRenderPreferences(val language: String, val reduceMotion: Boolean,
                                   val cardSize: GuideCardSize, val visionProfile: VisionProfile,
-                                  val showPointer: Boolean, val fontScale: Float)
+                                  val showPointer: Boolean, val mascot: GuideMascot, val fontScale: Float)
 
 /** Ordinary coaching stays compact. Questions, editable text, errors and safety remain expanded. */
 object GuideCardMode {
@@ -62,7 +62,7 @@ object GuideRenderIdentity {
     fun key(state: GuideViewState, canOpenLauncher: Boolean, userCollapsed: Boolean,
             safe: GuideBox, preferences: GuideRenderPreferences,
             ephemeralContentRevision: Long = 0): String = listOf(
-        state.status, state.instructionVi, state.draftText, state.options, state.speechPurpose,
+        state.status, state.instructionVi, state.draftText, state.options, state.speechPurpose, state.navigationCue,
         state.step?.stage, state.step?.sam?.region, state.step?.sam?.frameFingerprint,
         canOpenLauncher, userCollapsed, safe, preferences, ephemeralContentRevision
     ).joinToString("\u001f")

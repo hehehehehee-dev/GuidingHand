@@ -7,6 +7,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CoreGuideEngineTest {
+    @Test fun structuredHomeGestureReachesWaitingNavigationWithoutInventingATarget() = runBlocking {
+        val appTask = PhotoTask("", "", "guide_app", "com.zing.zalo")
+        val model = Model { GuideDecision.Navigate("Swipe up from the bottom to go Home.",
+            appTask, NavigationCue.HOME_SWIPE_UP) }
+        val views = mutableListOf<GuideViewState>()
+        val engine = GuideEngine(model, views::add, locale = "en")
+        engine.startGoal("Open Zalo"); engine.onScreen(ScreenState("browser",
+            listOf(ScreenNode("page", "News", null, false))))
+        assertEquals(GuideStatus.WAITING_NAVIGATION, engine.status)
+        assertEquals(NavigationCue.HOME_SWIPE_UP, views.last().navigationCue)
+        assertNull(views.last().step)
+    }
+
     @Test fun spokenCorrectionAfterUnsupportedKeepsOriginalGoalAndPairsTheExplanation() = runBlocking {
         val explanation = "I understood a text message. This build guides photo sharing. What did you want to send?"
         val model = Model { input ->

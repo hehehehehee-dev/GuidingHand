@@ -81,22 +81,27 @@ class GuidePanelLayoutTest {
         val state = GuideViewState(GuideStatus.IDLE, "")
         val safe = GuideBox(12, 30, 348, 760)
         val base = GuideRenderPreferences("vi", true, GuideCardSize.STANDARD,
-            VisionProfile.HIGH_CONTRAST, true, 1f)
+            VisionProfile.HIGH_CONTRAST, true, GuideMascot.HAND, 1f)
         val key = GuideRenderIdentity.key(state, false, false, safe, base)
         assertEquals(key, GuideRenderIdentity.key(state, false, false, safe, base))
         assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(language = "en")))
         assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(reduceMotion = false)))
+        assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base.copy(mascot = GuideMascot.YOUNG_HELPER)))
         assertNotEquals(key, GuideRenderIdentity.key(state, false, false, safe, base, ephemeralContentRevision = 1))
     }
     @Test fun overlayIdentityChangesWhenSpeakPurposeChangesWithoutParsingCopy() {
         val safe = GuideBox(12, 30, 348, 760)
         val preferences = GuideRenderPreferences("en", true, GuideCardSize.STANDARD,
-            VisionProfile.HIGH_CONTRAST, true, 1f)
+            VisionProfile.HIGH_CONTRAST, true, GuideMascot.HAND, 1f)
         val general = GuideViewState(GuideStatus.CLARIFYING, "Please tell me more.",
             speechPurpose = SpeechPurpose.GENERAL)
         val message = general.copy(speechPurpose = SpeechPurpose.MESSAGE_CONTENT)
         assertNotEquals(GuideRenderIdentity.key(general, false, false, safe, preferences),
             GuideRenderIdentity.key(message, false, false, safe, preferences))
+        val swipe = general.copy(status = GuideStatus.WAITING_NAVIGATION,
+            navigationCue = NavigationCue.HOME_SWIPE_UP)
+        assertNotEquals(GuideRenderIdentity.key(general, false, false, safe, preferences),
+            GuideRenderIdentity.key(swipe, false, false, safe, preferences))
     }
     @Test fun placementSweepAcrossScreenAndLargeFontHeightsHasNoTargetCoverage() {
         val safe = GuideBox(12, 30, 348, 760)

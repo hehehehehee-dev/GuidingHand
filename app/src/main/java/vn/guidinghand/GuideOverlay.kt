@@ -73,6 +73,7 @@ class GuideOverlay(
         intArrayOf(Color.parseColor("#43534C"), ink, ink, if (primary) cream else ink)
     )
     private var region: Region? = null
+    private var navigationCue = NavigationCue.NONE
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private fun drawPointer(canvas: Canvas, pointer: GuidePointerPlacement) {
         val path = Path().apply {
@@ -95,7 +96,11 @@ class GuideOverlay(
     }
     private val ring = object : View(context) {
         override fun onDraw(canvas: Canvas) {
-            val target = region ?: return
+            val target = region
+            if (target == null) {
+                if (navigationCue == NavigationCue.HOME_SWIPE_UP) drawHomeSwipeCue(canvas)
+                return
+            }
             val actual = RectF(target.left * width, target.top * height, target.right * width, target.bottom * height)
             // The inside edge of yellow remains 12dp away from the pointed control.
             val inner = px(GuideDesign.RING_INNER_DP)
@@ -212,7 +217,7 @@ class GuideOverlay(
     private var lastRejectedFrame: String? = null
     private var pointingClipped = false
     private var busyLabel: String? = null
-    private var bubbleHasHand: Boolean? = null
+    private var bubbleIconKey: String? = null
 
     private fun bubbleBounds(): GuideBox? {
         if (!bubbleAttached) return null
@@ -294,17 +299,47 @@ class GuideOverlay(
             minOf(metrics.bounds.height() - maxOf(bars.bottom, keyboard.bottom), keyboardTop) - dp(12))
     }
 
-    private fun pointedBox(): GuideBox? = region?.let {
-        val bounds = wm.currentWindowMetrics.bounds
-        val display = GuideBox(0, 0, bounds.width(), bounds.height())
-        val target = GuideBox(floor(it.left * bounds.width()).toInt(), floor(it.top * bounds.height()).toInt(),
-            ceil(it.right * bounds.width()).toInt(), ceil(it.bottom * bounds.height()).toInt())
-        if (!display.contains(target)) return@let null
-        // Match what is actually drawn. At a legitimate display edge both stroke centers move
-        // inward, so panel placement must not reserve an imaginary off-screen rectangle.
-        val ringBounds = GuideRingGeometry.visibleBands(target, display, density).blackCenter
-        if (prefs.showPointer) ringBounds.union(GuideRingGeometry.pointerPlacement(target, display, dp(56), dp(12)).bounds)
-        else ringBounds
+    private fun gestureCueBox(): GuideBox? {
+        if (navigationCue != NavigationCue.HOME_SWIPE_UP) return null
+        val safe = safeArea()
+        val width = minOf(dp(112), safe.width)
+        val height = minOf(dp(152), safe.height)
+        val left = safe.left + (safe.width - width) / 2
+        return GuideBox(left, safe.bottom - height, left + width, safe.bottom)
+    }
+
+    private fun drawHomeSwipeCue(canvas: Canvas) {
+        val box = gestureCueBox() ?: return
+        val centerX = box.left + box.width / 2f
+        val arrowTop = box.top + px(8f)
+        val arrowBottom = box.bottom - px(58f)
+        val arrow = Path().apply {
+            moveTo(centerX, arrowBottom); lineTo(centerX, arrowTop)
+            moveTo(centerX - px(18f), arrowTop + px(20f)); lineTo(centerX, arrowTop)
+            lineTo(centerX + px(18f), arrowTop + px(20f))
+        }
+        paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.ROUND; paint.strokeJoin = Paint.Join.ROUND
+        paint.color = Color.BLACK; paint.strokeWidth = px(12f); canvas.drawPath(arrow, paint)
+        paint.color = accent; paint.strokeWidth = px(6f); canvas.drawPath(arrow, paint)
+        if (prefs.showPointer) drawPointer(canvas, GuidePointerPlacement(
+            GuideBox((centerX - px(28f)).toInt(), box.bottom - dp(56),
+                (centerX + px(28f)).toInt(), box.bottom), 0f))
+    }
+
+    private fun pointedBox(): GuideBox? {
+        gestureCueBox()?.let { return it }
+        return region?.let {
+            val bounds = wm.currentWindowMetrics.bounds
+            val display = GuideBox(0, 0, bounds.width(), bounds.height())
+            val target = GuideBox(floor(it.left * bounds.width()).toInt(), floor(it.top * bounds.height()).toInt(),
+                ceil(it.right * bounds.width()).toInt(), ceil(it.bottom * bounds.height()).toInt())
+            if (!display.contains(target)) return@let null
+            // Match what is actually drawn. At a legitimate display edge both stroke centers move
+            // inward, so panel placement must not reserve an imaginary off-screen rectangle.
+            val ringBounds = GuideRingGeometry.visibleBands(target, display, density).blackCenter
+            if (prefs.showPointer) ringBounds.union(GuideRingGeometry.pointerPlacement(target, display, dp(56), dp(12)).bounds)
+            else ringBounds
+        }
     }
 
     fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING, text), false) }
@@ -337,13 +372,15 @@ class GuideOverlay(
             else -> tr("Giúp tôi", "Help")
         }
         if (bubble.text.toString() != label) bubble.text = label
-        val showHand = busyLabel == null && !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)
-        if (bubbleHasHand != showHand) {
-            val hand = if (showHand) context.getDrawable(vn.guidinghand.R.drawable.guidinghand_icon)?.mutate()?.apply {
+        val showIcon = busyLabel == null && !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)
+        val iconKey = if (!showIcon) "none" else prefs.mascot.key
+        if (bubbleIconKey != iconKey) {
+            val icon = if (showIcon) context.getDrawable(if (prefs.mascot == GuideMascot.YOUNG_HELPER)
+                vn.guidinghand.R.drawable.guidinghand_companion else vn.guidinghand.R.drawable.guidinghand_icon)?.mutate()?.apply {
                 setBounds(0, 0, dp(40), dp(40))
             } else null
-            bubble.setCompoundDrawablesRelative(hand, null, null, null)
-            bubbleHasHand = showHand
+            bubble.setCompoundDrawablesRelative(icon, null, null, null)
+            bubbleIconKey = iconKey
         }
         val enabled = busyLabel == null
         if (bubble.isEnabled != enabled) bubble.isEnabled = enabled
@@ -383,8 +420,9 @@ class GuideOverlay(
         val safeNow = safeArea()
         val renderKey = GuideRenderIdentity.key(state, canOpenLauncher, userCollapsed, safeNow,
             GuideRenderPreferences(prefs.language, prefs.reduceMotion, prefs.cardSize, prefs.visionProfile,
-                prefs.showPointer, context.resources.configuration.fontScale), heardSpeechMemory.revision)
-        val expectedRing = state.status == GuideStatus.WAITING_TAP && state.step?.sam?.region != null
+                prefs.showPointer, prefs.mascot, context.resources.configuration.fontScale), heardSpeechMemory.revision)
+        val expectedRing = (state.status == GuideStatus.WAITING_TAP && state.step?.sam?.region != null) ||
+            (state.status == GuideStatus.WAITING_NAVIGATION && state.navigationCue != NavigationCue.NONE)
         val mounted = bubbleAttached && (userCollapsed || autoCollapsed || state.status == GuideStatus.IDLE || cardAttached) &&
             (!expectedRing || ringAttached)
         if (renderKey == lastRenderKey && mounted && DeviceVisibility.allowed(context)) {
@@ -396,13 +434,16 @@ class GuideOverlay(
         savedState = state; savedCanOpen = canOpenLauncher
         // Keep the same non-touchable ring mounted while the elder is looking for the target.
         // Window churn here made it appear to blink during ordinary screen events.
-        if (state.status != GuideStatus.WAITING_TAP || region != state.step?.sam?.region) clearRing()
+        val sameVisual = (state.status == GuideStatus.WAITING_TAP && region == state.step?.sam?.region) ||
+            (state.status == GuideStatus.WAITING_NAVIGATION && navigationCue == state.navigationCue)
+        if (!sameVisual) clearRing()
         pointingClipped = false
         if (!DeviceVisibility.allowed(context)) { hide(); return }
         if (state.status == GuideStatus.IDLE) {
             userCollapsed = false; autoCollapsed = false; draggedCard = null; lastRejectedFrame = null; clearCard(); showBubble(); return
         }
         if (state.status == GuideStatus.SAFETY_PAUSED && previousStatus != GuideStatus.SAFETY_PAUSED) userCollapsed = false
+        if (state.status == GuideStatus.WAITING_NAVIGATION) navigationCue = state.navigationCue
         // Help remains the visible anchor while the card is open. The card is placed beside
         // this handle and follows it, so they always read as one movable assistant.
         showBubble()
@@ -525,6 +566,12 @@ class GuideOverlay(
                 }
             }
         }
+        if (state.status == GuideStatus.WAITING_NAVIGATION && navigationCue == NavigationCue.HOME_SWIPE_UP) {
+            if (!ringAttached) { wm.addView(ring, params(-1, -1, true)); ringAttached = true }
+            ring.invalidate()
+            // Re-anchor Help and its card around the gesture cue without touching the app below.
+            showBubble()
+        }
         autoCollapsed = false
         if (userCollapsed) { clearCard(); showBubble(); recordMeasurement(null, false, state); return }
         layoutCard(state)
@@ -628,11 +675,12 @@ class GuideOverlay(
             }
         }
     }
-    private fun clearRing() { region = null; if (ringAttached) { wm.removeView(ring); ringAttached = false } }
+    private fun clearRing() { region = null; navigationCue = NavigationCue.NONE; if (ringAttached) { wm.removeView(ring); ringAttached = false } }
     private fun clearCard() { if (cardAttached) { wm.removeView(card); cardAttached = false }; lastCardContentKey = null }
     private fun removeBubble() { if (bubbleAttached) { wm.removeView(bubble); bubbleAttached = false; GuideTrace.event(context, "bubble_detached") } }
     fun suspendForCapture() { clearRing(); clearCard(); removeBubble() }
     fun refreshPreferences() {
+        bubbleIconKey = null
         bubble.setTextColor(feedbackText(true)); bubble.background = feedbackBackground(true, 28f, 2)
         collapse.setTextColor(feedbackText(false)); collapse.background = feedbackBackground(false)
         savedState?.let { render(it, savedCanOpen) } ?: showBubble()

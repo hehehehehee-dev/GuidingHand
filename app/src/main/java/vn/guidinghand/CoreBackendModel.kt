@@ -141,7 +141,9 @@ class CoreBackendModel(
                 InstalledApps.read(context).none { it.packageName == returnedTask.appPackage })
                 return GuideDecision.Await(tr("Chưa tìm thấy ứng dụng này trên máy. Bác cho tôi biết tên ứng dụng nhé.", "I cannot find that installed app. Which app would you like?"))
             val decision = when (result.optString("status")) {
-                "await" -> if (result.optString("handoff") == "screen_change") GuideDecision.Navigate(result.optString("message_vi"), returnedTask)
+                "await" -> if (result.optString("handoff") == "screen_change") GuideDecision.Navigate(
+                    result.optString("message_vi"), returnedTask,
+                    if (result.optString("navigation_cue") == "home_swipe_up") NavigationCue.HOME_SWIPE_UP else NavigationCue.NONE)
                     else GuideDecision.Await(result.optString("message_vi"))
                 "clarify" -> GuideDecision.Clarify(result.getString("question_vi").take(300), result.optJSONArray("options")?.let { array ->
                     (0 until minOf(array.length(), 6)).map { array.getString(it).take(120) } }.orEmpty(),
@@ -156,6 +158,7 @@ class CoreBackendModel(
                     else {
                         val code = result.optString("reason").takeIf { it in setOf(
                             "task_changed", "missing_task_details", "ungrounded_target", "invalid_general_stage",
+                            "invalid_navigation_cue",
                             "unknown_app_package", "snapshot_changed", "invalid_spark_response", "invalid_region",
                             "message_content", "provider_unavailable", "core_unavailable", "sam_parser_unavailable",
                             "budget_limit", "sam_no_unique_region", "sam_target_mismatch", "invalid_sam_mask",

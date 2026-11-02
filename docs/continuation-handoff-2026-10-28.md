@@ -860,3 +860,11 @@ package remains untouched.
 - The purpose-specific prompt, 72dp microphone action, Type alternative, and Cancel remain. The same row appears only as an essential scroll/edit hint during transcript review.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.33-candidate`, code `42`.
 - Verification: 102 Android unit tests, lint, and Candidate assemble passed. Rendered voice-window height on the Xiaomi remains pending a person-driven open because ADB input injection is blocked.
+
+# 2026-11-02 — Candidate 1.5.34 companion and Home cue
+
+- Added an optional `Hand / Young helper` companion choice in Settings. The fictional young-helper illustration changes only the Help icon; copy states that it remains the GuidingHand assistant and never a real relative. Existing Vietnamese `Cháu` address remains a separate explicit preference.
+- Added a structured `navigation_cue` to the Spark contract. `home_swipe_up` is accepted only for an `await` navigation response when the screenshot visibly supports gesture navigation; it is rejected on tap steps and defaults to `none` when uncertain.
+- The Android overlay renders a static, non-touchable black/accent upward arrow with the optional hand at the bottom. Help and its card avoid the cue. No gesture is injected, and reduced-motion users receive the same static cue.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.34-candidate`, code `43`.
+- Verification: 85 backend tests; 103 Android unit tests; Android lint and Candidate assemble passed. Candidate installed side-by-side, development backend re-paired, and read-only Xiaomi smoke passed. Settings rendered without clipping at the initial viewport. Person-driven mascot selection and a real Spark Home-gesture task remain `TBD`.

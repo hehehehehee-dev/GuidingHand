@@ -31,7 +31,8 @@ def frame():
 
 def decision(status='step'):
     return {'intent': 'send_photo_zalo', 'output_language': 'vi', 'status': status, 'instruction_vi': 'Bấm Hình ảnh.', 'target_node_id': 'attach', 'step_id': 'attach',
-            'question_vi': '', 'options': [], 'speech_purpose': 'general', 'task_kind': 'send_photo_zalo', 'recipient': 'An', 'photo': 'Bông hoa', 'content': '', 'app_package': '', 'block_reason': None}
+            'question_vi': '', 'options': [], 'speech_purpose': 'general', 'navigation_cue': 'none',
+            'task_kind': 'send_photo_zalo', 'recipient': 'An', 'photo': 'Bông hoa', 'content': '', 'app_package': '', 'block_reason': None}
 
 
 def png(width=100, height=100):
@@ -168,6 +169,16 @@ class CoreTests(unittest.TestCase):
         self.assertEqual('', result['task']['recipient'])
         self.assertEqual('screen_change', result['handoff'])
         self.assertEqual(0, self.sam.calls)
+
+    def test_home_swipe_visual_is_structured_and_only_allowed_for_navigation(self):
+        self.planner.result = {**decision('await'), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.zing.zalo', 'target_node_id': None, 'step_id': 'recover',
+            'navigation_cue': 'home_swipe_up', 'instruction_vi': 'Bác vuốt từ dưới lên để về màn hình chính.'}
+        result = self.core.step(frame())
+        self.assertEqual(('await', 'home_swipe_up'), (result['status'], result['navigation_cue']))
+        self.assertEqual(0, self.sam.calls)
+        self.planner.result = {**decision(), 'navigation_cue': 'home_swipe_up'}
+        self.assertEqual('invalid_navigation_cue', self.core.step(frame())['reason'])
 
     def test_only_missing_slots_can_be_refined_and_send_still_requires_both(self):
         value = frame(); value['task'] = {'kind': 'send_photo_zalo', 'recipient': '', 'photo': '', 'verified_steps': []}

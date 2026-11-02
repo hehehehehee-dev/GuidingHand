@@ -114,6 +114,7 @@ data class VoiceOutput(val audioBytes: ByteArray = byteArrayOf(), val mimeType: 
                        val provider: String = "Android system TTS", val rate: Float = .85f)
 data class GuidanceStep(val id: String, val stage: PhotoStage, val instructionVi: String, val target: ScreenNode,
                         val sam: SamRegion, val voice: VoiceOutput)
+enum class NavigationCue { NONE, HOME_SWIPE_UP }
 sealed interface GuideDecision {
     data object StateChanged : GuideDecision
     data class Step(val step: GuidanceStep, val task: PhotoTask? = null) : GuideDecision
@@ -125,7 +126,8 @@ sealed interface GuideDecision {
     data class Sensitive(val messageVi: String) : GuideDecision
     data class Await(val messageVi: String, val reasonCode: String = "model_ask") : GuideDecision
     /** A real user navigation/gesture instruction; no invented tappable target or ring. */
-    data class Navigate(val messageVi: String, val task: PhotoTask? = null) : GuideDecision
+    data class Navigate(val messageVi: String, val task: PhotoTask? = null,
+                        val navigationCue: NavigationCue = NavigationCue.NONE) : GuideDecision
     data class DoneProposal(val messageVi: String) : GuideDecision
 }
 interface GuideModel {
@@ -141,7 +143,8 @@ interface GuideModel {
 enum class GuideStatus { IDLE, READING, PLANNING, CLARIFYING, CONFIRMING_INPUT, CONFIRMING_COPY, WAITING_TAP, WAITING_NAVIGATION, VERIFYING, RECOVERING, SAFETY_PAUSED, ASKING, UNAVAILABLE, UNSUPPORTED, DONE }
 data class GuideViewState(val status: GuideStatus, val instructionVi: String, val step: GuidanceStep? = null,
     val options: List<String> = emptyList(), val reasonCode: String? = null,
-    val speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL, val draftText: String? = null)
+    val speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL, val draftText: String? = null,
+    val navigationCue: NavigationCue = NavigationCue.NONE)
 data class GuideTransition(val sequence: Long, val from: GuideStatus, val to: GuideStatus,
                            val reasonCode: String? = null, val stage: PhotoStage? = null,
                            val taskKind: String? = null)

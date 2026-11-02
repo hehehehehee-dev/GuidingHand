@@ -328,6 +328,23 @@ private fun cardSizeLabel(size: GuideCardSize, vi: Boolean) = when (size) {
     }
 }
 
+@Composable private fun MascotChoiceButton(selected: Boolean, label: String, supporting: String,
+                                            drawable: Int, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 84.dp),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(if (selected) 4.dp else 1.dp, if (selected) guideInk else Color(0xFF66766F)),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = guideInk),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) {
+        Image(painterResource(drawable), contentDescription = null, modifier = Modifier.size(56.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text((if (selected) "✓  " else "") + label, fontSize = 22.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
+            Text(supporting, fontSize = 20.sp, fontWeight = FontWeight.Normal)
+        }
+    }
+}
+
 @Composable private fun GuidePreview(profile: VisionProfile, showPointer: Boolean, vi: Boolean) {
     val accent = accentColor(profile)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -360,6 +377,7 @@ class SettingsActivity : SetupActivity() {
             var showPointer by remember { mutableStateOf(prefs.showPointer) }
             var reduceMotion by remember { mutableStateOf(prefs.reduceMotion) }
             var cardSize by remember { mutableStateOf(prefs.cardSize) }
+            var mascot by remember { mutableStateOf(prefs.mascot) }
             var technical by remember { mutableStateOf(false) }
             var backend by remember { mutableStateOf(prefs.backendUrl) }
             var session by remember { mutableStateOf(prefs.backendSession) }
@@ -398,6 +416,17 @@ class SettingsActivity : SetupActivity() {
                         }
                     } else SettingsSection("How the assistant speaks") {
                         Text("The assistant speaks respectfully as itself. It never pretends to be a grandchild.")
+                    }
+                    SettingsSection(tr("Người đồng hành", "Companion"), tr(
+                        "Chọn hình xuất hiện trên nút Giúp tôi. Cả hai đều là trợ lý GuidingHand.",
+                        "Choose the character shown on the Help button. Both represent the GuidingHand assistant.")) {
+                        MascotChoiceButton(mascot == GuideMascot.HAND, tr("Bàn tay", "Guiding hand"),
+                            tr("Đơn giản, quen thuộc và tập trung vào thao tác.", "Simple, familiar, and focused on the next action."),
+                            R.drawable.guidinghand_icon) { mascot = GuideMascot.HAND; saved = false }
+                        MascotChoiceButton(mascot == GuideMascot.YOUNG_HELPER, tr("Người cháu đồng hành", "Young helper"),
+                            tr("Tạo cảm giác ấm áp. Đây vẫn là trợ lý, không giả làm người thân thật.",
+                                "Adds warmth while remaining an assistant, never a real family member."),
+                            R.drawable.guidinghand_companion) { mascot = GuideMascot.YOUNG_HELPER; saved = false }
                     }
                     SettingsSection(tr("Thị lực và chuyển động", "Vision and motion"),
                         tr("Chọn kiểu dễ nhìn nhất. GuidingHand luôn dùng thêm hình dạng, đường viền và chữ — không chỉ dùng màu.",
@@ -453,6 +482,7 @@ class SettingsActivity : SetupActivity() {
                         val reload = prefs.backendUrl != backend.trim().trimEnd('/') || prefs.backendSession != session.trim() || prefs.screenConsent != screenConsent || prefs.contact != contact || prefs.devStandIn != devStandIn
                         prefs.language = language; prefs.phone = phone; prefs.contact = contact; prefs.respectfulLanguage = preview
                         prefs.visionProfile = visionProfile; prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion; prefs.cardSize = cardSize
+                        prefs.mascot = mascot
                         prefs.backendUrl = backend; prefs.backendSession = session; prefs.screenConsent = screenConsent; prefs.voiceConsent = voiceConsent
                         if (BuildConfig.DEBUG) prefs.devStandIn = devStandIn
                         if (reload) GuidingHandService.instance?.reloadModel()

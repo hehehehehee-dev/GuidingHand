@@ -100,7 +100,8 @@ class GuideEngine(
     )
 
     private fun emit(next: GuideStatus, instruction: String, step: GuidanceStep? = null, options: List<String> = emptyList(),
-                     reasonCode: String? = null, speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL) {
+                     reasonCode: String? = null, speechPurpose: SpeechPurpose = SpeechPurpose.GENERAL,
+                     navigationCue: NavigationCue = NavigationCue.NONE) {
         val previous = status
         if (previous != next || reasonCode != null) {
             val transition = GuideTransition(++transitionSequence, previous, next, reasonCode, step?.stage, task?.id)
@@ -108,7 +109,8 @@ class GuideEngine(
             while (transitions.size > 64) transitions.removeFirst()
             onTransition(transition)
         }
-        status = next; rawView = GuideViewState(next, instruction, step, options, reasonCode, speechPurpose)
+        status = next; rawView = GuideViewState(next, instruction, step, options, reasonCode, speechPurpose,
+            navigationCue = navigationCue)
         present(rawView.copy(instructionVi = wording(instruction), step = step?.let(::wording),
             options = options.map(::wording)))
     }
@@ -385,7 +387,7 @@ class GuideEngine(
                     ask("Chưa có chỉ dẫn rõ ràng. Vui lòng nói rõ việc cần giúp."); return
                 }
                 current = null; baseline = screen; clicked = false; tapObserved = false; awaitingAnswer = false
-                emit(GuideStatus.WAITING_NAVIGATION, decision.messageVi)
+                emit(GuideStatus.WAITING_NAVIGATION, decision.messageVi, navigationCue = decision.navigationCue)
                 if (generation == request) sayMessage(decision.messageVi, screen)
             }
             is GuideDecision.DoneProposal -> ask("Chưa đủ bằng chứng xác minh ảnh đã gửi. Kiểm tra lại giúp mình nhé.")

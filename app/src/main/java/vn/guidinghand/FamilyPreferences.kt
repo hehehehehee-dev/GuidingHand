@@ -16,6 +16,11 @@ enum class GuideCardSize(val key: String, val fraction: Float) {
     companion object { fun from(value: String) = entries.firstOrNull { it.key == value } ?: STANDARD }
 }
 
+enum class GuideMascot(val key: String) {
+    HAND("hand"), YOUNG_HELPER("young_helper");
+    companion object { fun from(value: String) = entries.firstOrNull { it.key == value } ?: HAND }
+}
+
 /** Family slots and a user session for our backend. No Meta/provider credential belongs here. */
 class FamilyPreferences(context: Context) {
     private val prefs = context.getSharedPreferences("GuidingHand", Context.MODE_PRIVATE)
@@ -72,4 +77,7 @@ class FamilyPreferences(context: Context) {
     var cardSize: GuideCardSize
         get() = GuideCardSize.from(prefs.getString("guideCardSize", GuideCardSize.STANDARD.key).orEmpty())
         set(value) { prefs.edit().putString("guideCardSize", value.key).apply() }
+    var mascot: GuideMascot
+        get() = GuideMascot.from(prefs.getString("guideMascot", GuideMascot.HAND.key).orEmpty())
+        set(value) { prefs.edit().putString("guideMascot", value.key).apply() }
 }

@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#192A30" android:pathData="M0,0H108V108H0Z" />
+    <!-- A warm, fictional young helper. It represents GuidingHand and never a real relative. -->
+    <path android:fillColor="#F7F5EF" android:pathData="M32,42a22,22 0,1 0,44 0a22,22 0,1 0,-44 0" />
+    <path android:fillColor="#18332A" android:pathData="M31,40Q31,16 54,16Q78,16 78,41Q68,32 58,29Q48,39 31,40Z" />
+    <path android:fillColor="#18332A" android:pathData="M44,42a3,3 0,1 0,6 0a3,3 0,1 0,-6 0M59,42a3,3 0,1 0,6 0a3,3 0,1 0,-6 0" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#18332A"
+        android:strokeWidth="3" android:strokeLineCap="round"
+        android:pathData="M46,53Q54,59 63,52" />
+    <path android:fillColor="#FFD35E" android:pathData="M25,104Q27,70 54,69Q81,70 84,104Z" />
+    <path android:fillColor="@android:color/transparent" android:strokeColor="#F7F5EF"
+        android:strokeWidth="7" android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M77,82L84,66L84,51M84,66L92,56M84,66L75,57M84,66L96,66" />
+    <path android:fillColor="#FFD35E" android:pathData="M17,25L20,31L27,34L20,37L17,44L14,37L7,34L14,31Z" />
+</vector>
