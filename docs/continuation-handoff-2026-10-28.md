@@ -844,3 +844,12 @@ package remains untouched.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.31-candidate`, code `40`.
 - Verification: 84 backend tests; 101 Android unit tests; Android lint and Candidate assemble passed. Read-only Xiaomi smoke passed after install and pairing. Safe Candidate home screenshot rendered without clipping.
 - Still requires person-driven evidence: selected-language flow, long transcript scroll, Chrome settle/recovery, popup recovery, ring accuracy, and latency.
+
+# 2026-11-02 — Candidate 1.5.32 attached coach
+
+- Reverted the compact-card regression that separated Help from its guide card and left the card looking fixed to the bottom of the display.
+- Help remains visible as the single draggable anchor whenever guidance is open. The card is placed beside Help and is laid out again in the same frame while Help moves.
+- The card no longer has an independent drag gesture, so the two surfaces cannot drift apart. Compact instructions and the existing large-text/touch-target minima remain unchanged.
+- Added a regression API and unit test that require the open card placement to receive the Help bounds and remain directly adjacent without overlap.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.32-candidate`, code `41`.
+- Verification: 84 backend tests from the unchanged backend; 102 Android unit tests, lint, and Candidate assemble passed. Candidate 1.5.32/code 41 was installed side-by-side and passed the read-only Xiaomi smoke check; person-driven verification of dragging Help with the open card remains `TBD`.

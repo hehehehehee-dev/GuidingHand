@@ -166,7 +166,7 @@ class GuidePanelLayoutTest {
     @Test fun panelStaysAttachedToHelpAnchorWhenSpaceAllows() {
         val safe = GuideBox(0, 0, 1080, 1920)
         val anchor = GuideBox(760, 1200, 960, 1280)
-        val placement = GuidePanelLayout.place(safe, 344, 520, 240, null, 16, anchor = anchor)!!
+        val placement = GuidePanelLayout.placeAttachedToHelp(safe, 344, 520, 240, null, 16, anchor)!!
         assertFalse(placement.bounds.intersects(anchor.inflate(16)))
         assertTrue(placement.bounds.bottom == anchor.top - 16 || placement.bounds.top == anchor.bottom + 16 ||
             placement.bounds.right == anchor.left - 16 || placement.bounds.left == anchor.right + 16)
@@ -174,10 +174,18 @@ class GuidePanelLayoutTest {
     @Test fun oversizedPanelScrollsAboveHelpInsteadOfDroppingToBottom() {
         val safe = GuideBox(12, 30, 348, 760)
         val anchor = GuideBox(250, 560, 336, 632)
-        val placement = GuidePanelLayout.place(safe, 336, 600, 200, null, 12, anchor = anchor)!!
+        val placement = GuidePanelLayout.placeAttachedToHelp(safe, 336, 600, 200, null, 12, anchor)!!
         assertTrue(placement.scrollContent)
         assertTrue(placement.bounds.bottom <= anchor.top - 12 || placement.bounds.top >= anchor.bottom + 12)
         assertFalse(placement.bounds.intersects(anchor.inflate(12)))
+    }
+    @Test fun attachedCoachNeverFallsBackToBottomWhenNoAdjacentLaneIsSafe() {
+        val safe = GuideBox(0, 0, 360, 800)
+        val help = GuideBox(270, 360, 350, 440)
+        val targetBlocksEveryAdjacentLane = GuideBox(0, 0, 360, 800)
+        assertNull(GuidePanelLayout.placeAttachedToHelp(
+            safe, 320, 360, 200, targetBlocksEveryAdjacentLane, 8, help
+        ))
     }
 }
 

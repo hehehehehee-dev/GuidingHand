@@ -226,6 +226,19 @@ object GuidePanelLayout {
         return GuidePlacement(box, height < desiredHeight)
     }
 
+    /** Open guidance is one anchored assistant: Help moves, and the card follows beside it. */
+    fun placeAttachedToHelp(safe: GuideBox, desiredWidth: Int, desiredHeight: Int, minimumHeight: Int,
+                            target: GuideBox?, gap: Int, help: GuideBox): GuidePlacement? {
+        val placement = place(safe, desiredWidth, desiredHeight, minimumHeight, target, gap, anchor = help)
+            ?: return null
+        val card = placement.bounds
+        val attached = card.top == help.bottom + gap || card.bottom == help.top - gap ||
+            card.left == help.right + gap || card.right == help.left - gap
+        // `place` also supports a free-standing fallback for other callers. The open coach
+        // must never use it: collapse safely instead of letting Help and its card drift apart.
+        return placement.takeIf { attached }
+    }
+
     /** Fraction of target area hidden by a panel; use the padded ring bounds as the target for stricter checks. */
     fun coverageRatio(panel: GuideBox, target: GuideBox): Double {
         if (target.width == 0 || target.height == 0) return 0.0
