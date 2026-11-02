@@ -876,3 +876,14 @@ package remains untouched.
 - Model-dependent fields debounce model reload for 450 ms after typing stops. Ordinary visual and language preferences refresh immediately without restarting the current model after every character.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.35-candidate`, code `44`.
 - Verification: 103 Android unit tests, lint, and Candidate assemble passed. Person-driven verification that leaving Settings immediately after a change preserves the selected value remains `TBD`.
+
+# 2026-11-02 — Candidate 1.5.36 concise-flow audit
+
+- Removed the English-only `How the assistant speaks` Settings card. It had no control or recovery action, and the Companion section already provides the required disclosure that GuidingHand never impersonates a real relative.
+- Removed the long non-interactive Settings introduction after checking the real Xiaomi render. The visible automatic-save status remains, while the first actual choice now appears sooner.
+- The confirmed `You said / Bác nói` line now appears only when it helps resolve a clarification, unsupported request, unreadable screen, or unavailable service. It no longer repeats inside reading, planning, verification, navigation, tap guidance, completion, transcript review, or safety states.
+- Removed a fixed 250 ms delay between a completed transcription and transcript review. Session, lock, safety, and stale-result checks still run before the transcript becomes task input.
+- Retained the 120 ms Accessibility-event coalescing, bounded native-screen settling, overlay-free capture pause, and 180 ms two-frame visual stability check. Each prevents duplicate work, stale planning, or guidance from a changing screen. None is a decorative delay.
+- Retained transcript review, explicit copy consent, Repeat, Stop, Call family, family contact, accessibility choices, and the collapsed technical section. Each provides safety, error recovery, or a user choice requested for older adults.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.36-candidate`, code `45`.
+- Verification: 85 backend tests; 104 Android unit tests; Android lint and Candidate assemble passed. Candidate 1.5.36/code 45 was installed side-by-side, the temporary backend connection was paired again, and the read-only Xiaomi smoke check passed without a new fatal exception or idle overlay churn. A safe Settings capture confirms the first real choice appears earlier. Person-driven card-height and perceived-latency review remains `TBD` until a real interaction.

@@ -461,7 +461,8 @@ class GuideOverlay(
         val showDraftHint = TranscriptPresentation.needsScrollHint(state.draftText)
         draftScrollHint.text = tr("Kéo phần lời nói để đọc toàn bộ", "Scroll the transcript to read it all")
         draftScrollHint.visibility = if (showDraftHint) View.VISIBLE else View.GONE
-        heardSpeech.visibility = if (heardSpeech.text.isNotBlank() && state.status !in setOf(GuideStatus.WAITING_TAP, GuideStatus.WAITING_NAVIGATION)) View.VISIBLE else View.GONE
+        heardSpeech.visibility = if (heardSpeech.text.isNotBlank() && ConfirmedSpeechPresentation.showIn(state.status))
+            View.VISIBLE else View.GONE
         val compact = GuideCardMode.compact(state.status)
         collapse.text = tr("Thu gọn", "Hide")
         compactInstruction.visibility = if (compact) View.VISIBLE else View.GONE

@@ -262,7 +262,6 @@ class GuidingHandService : AccessibilityService() {
     fun speakFromHome() = openVoice() // Kept as a source-compatible entry; never moves the elder to Home.
     fun receiveSpeech(text: String, session: Long = voiceGeneration) {
         scope.launch {
-            delay(250)
             if (session != voiceGeneration || !DeviceVisibility.allowed(this@GuidingHandService) || engine.status == GuideStatus.SAFETY_PAUSED) return@launch
             if (!voiceDraft.capture(text)) {
                 if (SafetyPolicy.sensitiveGoal(text)) engine.pauseForSensitive()

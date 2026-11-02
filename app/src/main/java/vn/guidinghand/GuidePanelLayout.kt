@@ -39,6 +39,20 @@ object TranscriptPresentation {
     fun needsScrollHint(value: String?) = value?.let { it.length > 120 || it.count { character -> character == '\n' } >= 3 } == true
 }
 
+/**
+ * The confirmed request is useful only while the assistant needs more information or reports
+ * that it cannot continue. Repeating it during reading/planning adds card height without helping
+ * the elder decide what to do next.
+ */
+object ConfirmedSpeechPresentation {
+    fun showIn(status: GuideStatus): Boolean = status in setOf(
+        GuideStatus.CLARIFYING,
+        GuideStatus.ASKING,
+        GuideStatus.UNAVAILABLE,
+        GuideStatus.UNSUPPORTED
+    )
+}
+
 object VisualFrameStability {
     /** Sampled ARGB frames avoid a third capture and ignore tiny status-bar changes. */
     fun isStable(first: IntArray, second: IntArray): Boolean {

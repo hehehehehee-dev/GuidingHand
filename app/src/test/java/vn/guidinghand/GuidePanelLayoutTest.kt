@@ -29,6 +29,16 @@ class GuidePanelLayoutTest {
             assertFalse(status.name, GuideCardMode.compact(status))
     }
 
+    @Test fun confirmedSpeechAppearsOnlyWhenItHelpsClarifyOrRecover() {
+        for (status in listOf(GuideStatus.CLARIFYING, GuideStatus.ASKING,
+            GuideStatus.UNAVAILABLE, GuideStatus.UNSUPPORTED))
+            assertTrue(status.name, ConfirmedSpeechPresentation.showIn(status))
+
+        for (status in GuideStatus.entries - setOf(GuideStatus.CLARIFYING, GuideStatus.ASKING,
+            GuideStatus.UNAVAILABLE, GuideStatus.UNSUPPORTED))
+            assertFalse(status.name, ConfirmedSpeechPresentation.showIn(status))
+    }
+
     @Test fun measuredCreamTextExceedsSevenToOne() {
         val ratio = GuideDesign.contrastRatio(GuideDesign.INK_HEX, GuideDesign.CARD_HEX)
         assertEquals(13.2583, ratio, .001)

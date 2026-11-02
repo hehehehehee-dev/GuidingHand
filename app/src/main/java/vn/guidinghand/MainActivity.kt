@@ -416,8 +416,6 @@ class SettingsActivity : SetupActivity() {
                 Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp).padding(bottom = 56.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     Text(tr("Thiết lập GuidingHand", "GuidingHand settings"), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
-                    Text(tr("Người nhà có thể cùng thiết lập một lần. Bác vẫn là người quyết định và tự thao tác.",
-                        "A family member can help set this up once. The elder stays in control and performs every action."))
                     Text(if (saved) tr("✓ Thay đổi được tự động lưu", "✓ Changes save automatically")
                         else tr("Đang lưu thay đổi…", "Saving changes…"), fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold)
@@ -442,8 +440,6 @@ class SettingsActivity : SetupActivity() {
                                 }
                             }
                         }
-                    } else SettingsSection("How the assistant speaks") {
-                        Text("The assistant speaks respectfully as itself. It never pretends to be a grandchild.")
                     }
                     SettingsSection(tr("Người đồng hành", "Companion"), tr(
                         "Chọn hình xuất hiện trên nút Giúp tôi. Cả hai đều là trợ lý GuidingHand.",
