@@ -103,8 +103,12 @@ class VoiceActivity : ComponentActivity() {
         editor = EditText(this).apply {
             textSize = GuideDesign.INSTRUCTION_SP; setTextColor(ink()); setHintTextColor(Color.rgb(98, 109, 103))
             hint = tr("Gõ điều bác cần giúp", "Type what you need help with")
-            minHeight = dp(96); maxLines = 3; filters = arrayOf(InputFilter.LengthFilter(500)); visibility = View.GONE
+            minHeight = dp(120); minLines = 3; maxLines = 7; gravity = Gravity.TOP or Gravity.START
+            isVerticalScrollBarEnabled = true; overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+            setHorizontallyScrolling(false); filters = arrayOf(InputFilter.LengthFilter(500)); visibility = View.GONE
             background = outlinedBackground(); setPadding(dp(14), dp(10), dp(14), dp(10))
+            contentDescription = tr("Nội dung nhận từ giọng nói. Kéo lên hoặc xuống để đọc và sửa.",
+                "Transcribed speech. Scroll up or down to review and edit.")
         }
         primary = Button(this).apply { isAllCaps = false; textSize = GuideDesign.LABEL_SP; minHeight = dp(GuideDesign.MAIN_TARGET_DP) }
         secondary = Button(this).apply { isAllCaps = false; textSize = GuideDesign.LABEL_SP; minHeight = dp(GuideDesign.SECONDARY_TARGET_DP) }
@@ -153,10 +157,11 @@ class VoiceActivity : ComponentActivity() {
     private fun showTranscriptEditor(text: String) {
         recording.set(false); submitting = false
         status.text = tr("Kiểm tra và sửa câu này", "Review and edit this sentence")
-        example.text = tr("Bác có thể sửa tên người, ứng dụng hoặc nội dung trước khi dùng.",
-            "You can correct a name, app, or message before using it.")
+        example.text = tr("Kéo lên hoặc xuống để đọc hết. Bác có thể sửa trước khi dùng.",
+            "Scroll up or down to read everything. You can edit before using it.")
         example.visibility = View.VISIBLE; waveform.visibility = View.GONE
         editor.visibility = View.VISIBLE; editor.setText(text); editor.setSelection(editor.text.length)
+        editor.post { editor.scrollTo(0, editor.layout?.getLineTop(editor.lineCount) ?: 0) }
         primary.visibility = View.VISIBLE; primary.isEnabled = true
         primary.text = tr("Dùng câu đã sửa", "Use edited text")
         primary.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)

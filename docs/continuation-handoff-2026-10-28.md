@@ -817,3 +817,10 @@ package remains untouched.
 - Spark must echo the requested locale. Instructions, questions, and options that conflict with it are rejected before SAM instead of reaching mixed-language UI.
 - Planner guidance now forbids using ads, unrelated edge controls, or generic arrows as substitutes for scroll/navigation.
 - Verified locally: 82 backend tests; 96 Android unit tests; Android lint and Candidate assemble passed. Candidate 1.5.28/code 37 installed side-by-side; read-only phone smoke passed with Accessibility enabled and no new fatal exception. Elder-driven task behavior remains pending a real interaction test.
+
+# 2026-11-02 — Candidate 1.5.29
+
+- Long batch transcripts now use a 3–7 line editable viewport with a visible vertical scrollbar, large 24sp text, and an explicit scroll instruction.
+- Transcript review opens at the newest text while preserving manual up/down scrolling and full editing before confirmation.
+- The floating confirmation card also scrolls to the transcript on first render while keeping its fixed actions reachable.
+- Android unit tests, lint, and Candidate assemble passed. Candidate 1.5.29/code 38 installed side-by-side; read-only phone smoke passed. Rendered long-transcript interaction remains pending a person-driven check.

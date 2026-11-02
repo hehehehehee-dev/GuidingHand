@@ -514,7 +514,11 @@ class GuideOverlay(
         val p = params(box.width, box.height, false).apply { x = box.left; y = box.top }
         cardPosition = p
         if (!cardAttached) { wm.addView(card, p); cardAttached = true } else wm.updateViewLayout(card, p)
-        if (contentChanged) scroll.post { scroll.scrollTo(0, 0) }
+        if (contentChanged) scroll.post {
+            if (state.status in setOf(GuideStatus.CONFIRMING_INPUT, GuideStatus.CONFIRMING_COPY))
+                scroll.fullScroll(View.FOCUS_DOWN)
+            else scroll.scrollTo(0, 0)
+        }
         lastCardContentKey = contentKey
         recordMeasurement(box, scrolling, state)
     }
