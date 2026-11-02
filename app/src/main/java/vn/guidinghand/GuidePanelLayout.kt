@@ -34,6 +34,29 @@ object GuideCardMode {
     )
 }
 
+object TranscriptPresentation {
+    /** Short drafts fit at a glance. Long drafts get a visible, localized scroll instruction. */
+    fun needsScrollHint(value: String?) = value?.let { it.length > 120 || it.count { character -> character == '\n' } >= 3 } == true
+}
+
+object VisualFrameStability {
+    /** Sampled ARGB frames avoid a third capture and ignore tiny status-bar changes. */
+    fun isStable(first: IntArray, second: IntArray): Boolean {
+        if (first.isEmpty() || first.size != second.size) return false
+        var changed = 0
+        var totalDelta = 0L
+        first.indices.forEach { index ->
+            val a = first[index]; val b = second[index]
+            val delta = kotlin.math.abs((a shr 16 and 255) - (b shr 16 and 255)) +
+                kotlin.math.abs((a shr 8 and 255) - (b shr 8 and 255)) +
+                kotlin.math.abs((a and 255) - (b and 255))
+            totalDelta += delta
+            if (delta > 36) changed++
+        }
+        return changed * 100 <= first.size * 5 && totalDelta <= first.size * 24L
+    }
+}
+
 /** Content-free identity for suppressing duplicate renders without suppressing preference changes. */
 object GuideRenderIdentity {
     fun key(state: GuideViewState, canOpenLauncher: Boolean, userCollapsed: Boolean,

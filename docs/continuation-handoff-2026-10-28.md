@@ -833,3 +833,14 @@ package remains untouched.
 - Clarifications, transcript review, unavailable states and safety pauses keep the full card and all required recovery actions.
 - The compact card is 320dp maximum width and does not reserve the previous extra 72dp content height. Text and touch-target accessibility minima are unchanged.
 - Android unit tests, lint, and Candidate assemble passed. Candidate 1.5.30/code 39 installed side-by-side; read-only phone smoke passed. Rendered compact-card interaction remains pending a person-driven check.
+
+# 2026-11-02 — Candidate 1.5.31 demo regressions
+
+- Added backend and Android language guards. The saved English preference can no longer display Vietnamese planner copy; wrong-language output fails closed while retaining the task.
+- Added a bounded two-frame visual stability gate before upload. Only the final safety-checked frame is shared with Spark and SAM. Visual motion schedules a fresh automatic read without spending a provider call. A real Android capture failure still exposes the existing manual recovery instead of looping forever.
+- Long transcript review now shows a localized 20sp scroll instruction while fixed actions remain outside the scrolling body.
+- Added the device-resolved default browser as grounded context. Spark may use it only after understanding a web goal and an app-neutral answer.
+- Spark prompt now treats dialogs, permission sheets, and ads as temporary obstacles and must continue the bound goal after a real dismiss action.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.31-candidate`, code `40`.
+- Verification: 84 backend tests; 101 Android unit tests; Android lint and Candidate assemble passed. Read-only Xiaomi smoke passed after install and pairing. Safe Candidate home screenshot rendered without clipping.
+- Still requires person-driven evidence: selected-language flow, long transcript scroll, Chrome settle/recovery, popup recovery, ring accuracy, and latency.

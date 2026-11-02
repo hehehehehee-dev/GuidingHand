@@ -152,6 +152,15 @@ class GuideOverlay(
         addView(View(context).apply { setBackgroundColor(Color.parseColor(GuideDesign.YELLOW_HEX)) }, LinearLayout.LayoutParams(dp(5), -1))
         addView(draftValue, LinearLayout.LayoutParams(0, -2, 1f))
     }
+    private val draftScrollHint = TextView(context).apply {
+        textSize = GuideDesign.BODY_SP; setTextColor(ink); visibility = View.GONE
+        setPadding(dp(4), dp(6), dp(4), 0)
+    }
+    private val draftContainer = LinearLayout(context).apply {
+        orientation = LinearLayout.VERTICAL; visibility = View.GONE
+        addView(draftScrollHint, LinearLayout.LayoutParams(-1, -2))
+        addView(draftRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+    }
     private val heardSpeech = TextView(context).apply {
         textSize = GuideDesign.BODY_SP; setTextColor(ink); maxLines = 2
         ellipsize = android.text.TextUtils.TruncateAt.END; visibility = View.GONE
@@ -221,7 +230,7 @@ class GuideOverlay(
         header.addView(collapse, LinearLayout.LayoutParams(-2, -2))
         content.addView(heardSpeech, LinearLayout.LayoutParams(-1, -2))
         content.addView(instruction, LinearLayout.LayoutParams(-1, -2))
-        content.addView(draftRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        content.addView(draftContainer, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         content.addView(primaryActions, LinearLayout.LayoutParams(-1, -2))
         card.addView(header, LinearLayout.LayoutParams(-1, -2))
         card.addView(scroll, LinearLayout.LayoutParams(-1, -2))
@@ -404,7 +413,12 @@ class GuideOverlay(
             else -> View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
         draftValue.text = state.draftText?.let { "“$it”" }.orEmpty()
-        draftRow.visibility = if (state.draftText.isNullOrBlank()) View.GONE else View.VISIBLE
+        val hasDraft = !state.draftText.isNullOrBlank()
+        draftContainer.visibility = if (hasDraft) View.VISIBLE else View.GONE
+        draftRow.visibility = if (hasDraft) View.VISIBLE else View.GONE
+        val showDraftHint = TranscriptPresentation.needsScrollHint(state.draftText)
+        draftScrollHint.text = tr("Kéo phần lời nói để đọc toàn bộ", "Scroll the transcript to read it all")
+        draftScrollHint.visibility = if (showDraftHint) View.VISIBLE else View.GONE
         heardSpeech.visibility = if (heardSpeech.text.isNotBlank() && state.status !in setOf(GuideStatus.WAITING_TAP, GuideStatus.WAITING_NAVIGATION)) View.VISIBLE else View.GONE
         val compact = GuideCardMode.compact(state.status)
         collapse.text = tr("Thu gọn", "Hide")

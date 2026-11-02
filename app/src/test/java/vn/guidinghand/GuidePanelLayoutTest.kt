@@ -4,6 +4,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GuidePanelLayoutTest {
+    @Test fun longTranscriptGetsScrollAffordanceButShortDraftDoesNot() {
+        assertFalse(TranscriptPresentation.needsScrollHint("Gửi lời chào cho Minh"))
+        assertTrue(TranscriptPresentation.needsScrollHint("a".repeat(121)))
+        assertTrue(TranscriptPresentation.needsScrollHint("một\nhai\nba\nbốn"))
+    }
+
+    @Test fun boundedVisualGateIgnoresTinyChangesButRejectsAnimation() {
+        val first = IntArray(100) { 0xff202020.toInt() }
+        val tiny = first.copyOf().also { it[0] = 0xff303030.toInt() }
+        val moving = first.copyOf().also { values -> repeat(20) { values[it] = 0xffffffff.toInt() } }
+        assertTrue(VisualFrameStability.isStable(first, tiny))
+        assertFalse(VisualFrameStability.isStable(first, moving))
+        assertFalse(VisualFrameStability.isStable(first, IntArray(99)))
+    }
+
     @Test fun ordinaryCoachingIsCompactButQuestionsAndSafetyStayExpanded() {
         for (status in listOf(GuideStatus.READING, GuideStatus.PLANNING, GuideStatus.VERIFYING,
             GuideStatus.RECOVERING, GuideStatus.WAITING_TAP, GuideStatus.WAITING_NAVIGATION))

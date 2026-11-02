@@ -544,8 +544,10 @@ class GuidingHandService : AccessibilityService() {
             // Window capture excludes GuidingHand's overlay, so keep progress visible. Some
             // Xiaomi builds return ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR for launcher/Chrome;
             // fall back once to a display capture with only our overlay briefly suspended.
+            var usedWindow = preferWindow
             var captured = if (preferWindow) attempt(true) else null
             if (captured == null) {
+                usedWindow = false
                 overlay.suspendForCapture(); overlaySuspended = true
                 delay(100)
                 val stable = readFresh()
@@ -557,12 +559,43 @@ class GuidingHandService : AccessibilityService() {
                     }) return null
                 captured = attempt(false)
             }
-            captured
+            val first = captured ?: throw SnapshotCaptureUnavailable()
+            // A bounded two-frame gate catches animated pages and popups that can leave the
+            // Accessibility tree unchanged. The second frame is the only image uploaded and
+            // is shared byte-for-byte by Spark and SAM. This is not continuous capture.
+            val firstSample = sampleFrame(first)
+            delay(180)
+            val stableTree = readFresh()
+            if (stableTree == null || !safe(stableTree) || stableTree.planningFingerprint != expected.planningFingerprint) {
+                first.recycle(); return null
+            }
+            val second = attempt(usedWindow)
+            first.recycle()
+            if (second == null) throw SnapshotCaptureUnavailable()
+            if (!VisualFrameStability.isStable(firstSample, sampleFrame(second))) {
+                GuideTrace.event(this@GuidingHandService, "capture_rejected", code = "visual_motion")
+                second.recycle(); return null
+            }
+            second
         } finally {
             // Restore progress after every exit path, including a stale frame or Android capture failure.
             if (overlaySuspended && DeviceVisibility.allowed(this) && !VoiceActivity.activeSession)
                 overlay.render(viewState, engine.launcherStep != null)
         }
+    }
+    private fun sampleFrame(bitmap: Bitmap): IntArray {
+        val columns = minOf(32, bitmap.width)
+        val rows = minOf(48, bitmap.height)
+        val result = IntArray(columns * rows)
+        var index = 0
+        repeat(rows) { row ->
+            val y = ((row + .5f) * bitmap.height / rows).toInt().coerceIn(0, bitmap.height - 1)
+            repeat(columns) { column ->
+                val x = ((column + .5f) * bitmap.width / columns).toInt().coerceIn(0, bitmap.width - 1)
+                result[index++] = bitmap.getPixel(x, y)
+            }
+        }
+        return result
     }
     override fun onInterrupt() { if (::model.isInitialized) model.cancel(); if (::overlay.isInitialized) overlay.hide() }
     override fun onDestroy() {

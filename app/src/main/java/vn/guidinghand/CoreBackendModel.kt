@@ -35,10 +35,10 @@ class CoreBackendModel(
     }
     private fun digest(value: String) = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
         .joinToString("") { "%02x".format(it.toInt() and 255) }
-    private fun cacheKey(input: GuideInput, base: String, token: String, installedApps: List<InstalledApps.App>): String = digest(listOf(
+    private fun cacheKey(input: GuideInput, base: String, token: String, installedApps: List<InstalledApps.App>, defaultBrowser: InstalledApps.App?): String = digest(listOf(
         input.screen.fingerprint, input.goal, input.answers, input.task, input.verifiedStepIds.sorted(), input.observations,
         input.family, input.dialogue, input.allowTaskUpdate, input.userUpdates, preferences.language, base,
-        digest(token), installedApps.map { "${it.packageName}:${it.label}" }.sorted()
+        digest(token), installedApps.map { "${it.packageName}:${it.label}" }.sorted(), defaultBrowser
     ).joinToString("\u001f"))
     private suspend fun currentExact(expected: ScreenState): Boolean {
         val actual = freshScreen() ?: return false
@@ -57,7 +57,8 @@ class CoreBackendModel(
         val requestId = UUID.randomUUID().toString()
         val hash = digest(input.screen.planningFingerprint)
         val installedApps = InstalledApps.read(context)
-        val cacheKey = cacheKey(input, url, token, installedApps)
+        val defaultBrowser = InstalledApps.defaultBrowser(context, installedApps)
+        val cacheKey = cacheKey(input, url, token, installedApps, defaultBrowser)
         if (currentExact(input.screen)) exactScreenCache.get(cacheKey)?.let {
             GuideTrace.event(context, "plan_cache_hit", code = "exact_screen")
             return it
@@ -71,6 +72,7 @@ class CoreBackendModel(
             .put("language", preferences.language)
             .put("allow_task_update", input.allowTaskUpdate)
             .put("installed_apps", JSONArray(installedApps.map { JSONObject().put("label", it.label).put("package", it.packageName) }))
+            .put("default_browser", defaultBrowser?.let { JSONObject().put("label", it.label).put("package", it.packageName) } ?: JSONObject.NULL)
             .put("goal", JSONObject().put("text", input.goal.take(500)).put("answers", JSONArray(input.answers.takeLast(8).map { it.take(200) }))
                 .put("updates", JSONArray(input.userUpdates.takeLast(5).map { it.take(200) }))
                 .put("dialogue", JSONArray(input.dialogue.takeLast(8).map { JSONObject().put("question", it.question.take(200)).put("answer", it.answer.take(200)) })))
@@ -87,9 +89,13 @@ class CoreBackendModel(
         return try {
             if (!current(input.screen) || requestEpoch != epoch) return stale("before_capture")
             val started = android.os.SystemClock.elapsedRealtime()
-            val bitmap = captureForSam(input.screen) ?: return if (!current(input.screen)) stale("capture_state_changed")
-                else GuideDecision.Await(tr("Chưa chụp được màn hình an toàn. Bác giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
-                    "I could not take a safe screen snapshot. Keep this screen open and tap Check again."), "snapshot_unavailable")
+            val bitmap = try { captureForSam(input.screen) }
+            catch (_: SnapshotCaptureUnavailable) {
+                return GuideDecision.Await(tr(
+                    "Chưa chụp được màn hình an toàn. Bác giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
+                    "I could not take a safe screen snapshot. Keep this screen open and tap Check again."
+                ), "snapshot_unavailable")
+            } ?: return stale("snapshot_unstable")
             val bytes: ByteArray
             try {
                 if (!current(input.screen) || requestEpoch != epoch) return stale("during_capture")
@@ -119,6 +125,17 @@ class CoreBackendModel(
             if (requestEpoch != epoch || !current(input.screen)) return stale("after_upload")
             if (result.optString("request_id") != requestId || result.optString("fingerprint") != hash || result.optString("image_sha256") != imageHash)
                 return GuideDecision.Await(tr("Chưa xác minh được phản hồi. Đã dừng để tránh chỉ sai.", "I could not verify the response. Guidance is paused."))
+            val visibleText = buildList {
+                add(result.optString("message_vi")); add(result.optString("question_vi")); add(result.optString("instruction_vi"))
+                result.optJSONArray("options")?.let { options -> repeat(options.length()) { add(options.optString(it)) } }
+            }
+            if (!OutputLanguagePolicy.acceptsAll(visibleText, preferences.language)) {
+                GuideTrace.event(context, "output_rejected", code = "language")
+                return GuideDecision.Unavailable("Language", tr(
+                    "Trợ lý trả lời sai ngôn ngữ đã chọn. Việc đang làm vẫn được giữ lại.",
+                    "The assistant used the wrong language. Your task has been kept."
+                ))
+            }
             val returnedTask = result.optJSONObject("task")?.let { PhotoTask(it.optString("recipient"), it.optString("photo"), it.optString("kind"), it.optString("app_package"), it.optString("content")) }
             if (returnedTask?.id == "guide_app" && returnedTask.appPackage != input.screen.packageName &&
                 InstalledApps.read(context).none { it.packageName == returnedTask.appPackage })

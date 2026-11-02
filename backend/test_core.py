@@ -89,6 +89,31 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(('blocked', 'invalid_spark_response'), (result['status'], result['reason']))
         self.assertEqual(0, self.sam.calls)
 
+    def test_mixed_language_visible_copy_is_rejected_before_sam(self):
+        value = frame(); value['language'] = 'en'
+        self.planner.result = {**decision(), 'output_language': 'en',
+                               'instruction_vi': 'Bác bấm nút Hình ảnh.'}
+        result = self.core.step(value)
+        self.assertEqual(('blocked', 'invalid_output_language'), (result['status'], result['reason']))
+        self.assertEqual(0, self.sam.calls)
+
+    def test_default_browser_is_grounded_context_and_obstacles_keep_the_goal(self):
+        value = frame()
+        value['installed_apps'] = [{'label': 'Chrome', 'package': 'com.android.chrome'}]
+        value['default_browser'] = value['installed_apps'][0]
+        self.assertIs(value, validate(value))
+        body = spark_body(value)
+        facts = json.loads(body['messages'][1]['content'][0]['text'])
+        prompt = body['messages'][0]['content']
+        self.assertEqual(value['default_browser'], facts['default_browser'])
+        self.assertIn('do not ask the same app question again', prompt)
+        self.assertIn('temporary obstacles', prompt)
+        self.assertIn('continue the bound goal after dismissal', prompt)
+
+        invalid = copy.deepcopy(value)
+        invalid['default_browser'] = {'label': 'Invented', 'package': 'example.missing'}
+        with self.assertRaises(CoreError): validate(invalid)
+
     def test_actionable_error_copy_keeps_transient_failures_distinct(self):
         changed = blocked_result({'language': 'en'}, 'snapshot_changed')
         offline = blocked_result({'language': 'en'}, 'provider_unavailable')
