@@ -127,7 +127,7 @@ class VoiceActivity : ComponentActivity() {
         layout.addView(secondary, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         layout.addView(cancel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
         setContentView(layout)
-        updateExample()
+        example.visibility = View.GONE
 
         val sheetWidth = minOf(resources.displayMetrics.widthPixels - dp(24), dp(360))
         window.setLayout(sheetWidth, WindowManager.LayoutParams.WRAP_CONTENT)
@@ -185,7 +185,9 @@ class VoiceActivity : ComponentActivity() {
     private fun showReady() {
         recording.set(false); submitting = false
         status.text = readyText(); waveform.visibility = View.GONE; editor.visibility = View.GONE
-        updateExample()
+        // Keep the listening choice compact. Examples add reading load and duplicate the
+        // purpose-specific prompt above; reserve this row for transcript review guidance.
+        example.visibility = View.GONE
         primary.visibility = View.VISIBLE; secondary.visibility = View.VISIBLE
         primary.isEnabled = true; primary.text = tr("Chạm để nói", "Tap to speak")
         primary.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_gh_mic, 0, 0, 0)
@@ -309,7 +311,7 @@ class VoiceActivity : ComponentActivity() {
     private fun showTyping() {
         if (recording.get() || submitting) return
         status.text = tr("Bác gõ điều cần giúp", "Type what you need help with")
-        waveform.visibility = View.GONE; editor.visibility = View.VISIBLE; editor.requestFocus()
+        example.visibility = View.GONE; waveform.visibility = View.GONE; editor.visibility = View.VISIBLE; editor.requestFocus()
         primary.text = tr("Dùng nội dung này", "Use this text"); primary.contentDescription = primary.text
         primary.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
         primary.isEnabled = true
@@ -334,8 +336,7 @@ class VoiceActivity : ComponentActivity() {
     private fun showError(message: String) {
         recording.set(false); submitting = false
         status.text = if (prefs.language == "vi") prefs.respectfulLanguage.message(message) else message
-        updateExample()
-        example.visibility = View.VISIBLE
+        example.visibility = View.GONE
         waveform.visibility = View.GONE; editor.visibility = View.GONE
         primary.visibility = View.VISIBLE; primary.isEnabled = true
         primary.text = tr("Thử lại", "Try again"); primary.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
@@ -414,11 +415,6 @@ class VoiceActivity : ComponentActivity() {
         SpeechPurpose.GENERAL -> tr("Đang nghe…", "Listening…")
     }
     private fun tr(vi: String, en: String) = if (prefs.language == "en") en else vi
-    private fun updateExample() {
-        val who = prefs.contact.trim()
-        example.text = if (who.isBlank()) tr("Bạn có thể nói: Gửi ảnh trên Zalo", "You can say: Send a photo on Zalo")
-        else tr("Bạn có thể nói: Gửi ảnh cho $who", "You can say: Send a photo to $who")
-    }
     private fun ink() = Color.parseColor(GuideDesign.INK_HEX)
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }

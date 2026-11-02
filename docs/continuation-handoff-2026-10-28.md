@@ -853,3 +853,10 @@ package remains untouched.
 - Added a regression API and unit test that require the open card placement to receive the Help bounds and remain directly adjacent without overlap.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.32-candidate`, code `41`.
 - Verification: 84 backend tests from the unchanged backend; 102 Android unit tests, lint, and Candidate assemble passed. Candidate 1.5.32/code 41 was installed side-by-side and passed the read-only Xiaomi smoke check; person-driven verification of dragging Help with the open card remains `TBD`.
+
+# 2026-11-02 — Candidate 1.5.33 compact voice choice
+
+- Removed the optional “You can say…” example from the ready and error states of the voice window to reduce height and reading load.
+- The purpose-specific prompt, 72dp microphone action, Type alternative, and Cancel remain. The same row appears only as an essential scroll/edit hint during transcript review.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.33-candidate`, code `42`.
+- Verification: 102 Android unit tests, lint, and Candidate assemble passed. Rendered voice-window height on the Xiaomi remains pending a person-driven open because ADB input injection is blocked.
