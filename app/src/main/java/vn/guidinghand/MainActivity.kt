@@ -384,15 +384,43 @@ class SettingsActivity : SetupActivity() {
             var screenConsent by remember { mutableStateOf(prefs.screenConsent) }
             var voiceConsent by remember { mutableStateOf(prefs.voiceConsent) }
             var devStandIn by remember { mutableStateOf(prefs.devStandIn) }
-            var saved by remember { mutableStateOf(false) }
+            var saved by remember { mutableStateOf(true) }
+            var connectionEffectStarted by remember { mutableStateOf(false) }
             fun tr(v: String, e: String) = if (language == "vi") v else e
             val preview = RespectfulLanguage(user, assistant, tone)
+            // Ordinary preferences persist as soon as they change. This removes the easy-to-miss
+            // Save step while keeping the user's current task and explicit safety choices intact.
+            LaunchedEffect(language, phone, contact, user, assistant, tone, visionProfile,
+                showPointer, reduceMotion, cardSize, mascot, backend, session, screenConsent,
+                voiceConsent, devStandIn) {
+                prefs.language = language; prefs.phone = phone; prefs.contact = contact
+                prefs.respectfulLanguage = preview; prefs.visionProfile = visionProfile
+                prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion
+                prefs.cardSize = cardSize; prefs.mascot = mascot
+                prefs.backendUrl = backend; prefs.backendSession = session
+                prefs.screenConsent = screenConsent; prefs.voiceConsent = voiceConsent
+                if (BuildConfig.DEBUG) prefs.devStandIn = devStandIn
+                GuidingHandService.instance?.refreshPreferences()
+                saved = true
+            }
+            // Model construction depends on these fields. Debounce typing so a URL, session,
+            // or family name does not restart the model after every character.
+            LaunchedEffect(backend, session, screenConsent, contact, devStandIn) {
+                if (!connectionEffectStarted) connectionEffectStarted = true
+                else {
+                    delay(450)
+                    GuidingHandService.instance?.reloadModel()
+                }
+            }
             Surface(Modifier.fillMaxSize()) {
                 Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp).padding(bottom = 56.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     Text(tr("Thiết lập GuidingHand", "GuidingHand settings"), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                     Text(tr("Người nhà có thể cùng thiết lập một lần. Bác vẫn là người quyết định và tự thao tác.",
                         "A family member can help set this up once. The elder stays in control and performs every action."))
+                    Text(if (saved) tr("✓ Thay đổi được tự động lưu", "✓ Changes save automatically")
+                        else tr("Đang lưu thay đổi…", "Saving changes…"), fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold)
                     SettingsSection(tr("Ngôn ngữ", "Language"), tr("Toàn bộ lời hướng dẫn chỉ dùng ngôn ngữ đã chọn.", "All guidance uses only the selected language.")) {
                         for ((key, label) in listOf("en" to "English", "vi" to "Tiếng Việt")) {
                             ChoiceButton(language == key, label, onClick = { language = key; saved = false })
@@ -478,17 +506,6 @@ class SettingsActivity : SetupActivity() {
                         Row { Checkbox(voiceConsent, { voiceConsent = it; saved = false }); Text(tr("Cho phép gửi bản ghi khi bấm Nói tới Meta qua máy chủ GuidingHand để chuyển thành chữ.", "Allow recordings made by tapping Speak to be transcribed by Meta through GuidingHand.")) }
                         if (BuildConfig.DEBUG) Row { Checkbox(devStandIn, { devStandIn = it; saved = false }); Text(tr("Chỉ phát triển: MockModel thay cho Meta. Không dùng trong bản chính thức.", "Development only: MockModel instead of Meta. Not the submission path.")) }
                     }
-                    Button(onClick = {
-                        val reload = prefs.backendUrl != backend.trim().trimEnd('/') || prefs.backendSession != session.trim() || prefs.screenConsent != screenConsent || prefs.contact != contact || prefs.devStandIn != devStandIn
-                        prefs.language = language; prefs.phone = phone; prefs.contact = contact; prefs.respectfulLanguage = preview
-                        prefs.visionProfile = visionProfile; prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion; prefs.cardSize = cardSize
-                        prefs.mascot = mascot
-                        prefs.backendUrl = backend; prefs.backendSession = session; prefs.screenConsent = screenConsent; prefs.voiceConsent = voiceConsent
-                        if (BuildConfig.DEBUG) prefs.devStandIn = devStandIn
-                        if (reload) GuidingHandService.instance?.reloadModel()
-                        GuidingHandService.instance?.refreshPreferences()
-                        saved = true
-                    }, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)) { Text(if (saved) tr("Đã lưu", "Saved") else tr("Lưu thiết lập", "Save setup"), fontSize = 22.sp) }
                     OutlinedButton(onClick = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }, modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)) {
                         Text(tr("Mở cài đặt Trợ năng", "Open Accessibility settings"), fontSize = 22.sp)
                     }

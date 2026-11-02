@@ -868,3 +868,11 @@ package remains untouched.
 - The Android overlay renders a static, non-touchable black/accent upward arrow with the optional hand at the bottom. Help and its card avoid the cue. No gesture is injected, and reduced-motion users receive the same static cue.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.34-candidate`, code `43`.
 - Verification: 85 backend tests; 103 Android unit tests; Android lint and Candidate assemble passed. Candidate installed side-by-side, development backend re-paired, and read-only Xiaomi smoke passed. Settings rendered without clipping at the initial viewport. Person-driven mascot selection and a real Spark Home-gesture task remain `TBD`.
+
+# 2026-11-02 — Candidate 1.5.35 automatic Settings save
+
+- Removed the Settings Save button. Language, address, mascot, accessibility choices, family contact, consent, and development connection values now persist automatically when changed.
+- A visible `Changes save automatically / Thay đổi được tự động lưu` status replaces the action button, so saving is not a hidden behavior.
+- Model-dependent fields debounce model reload for 450 ms after typing stops. Ordinary visual and language preferences refresh immediately without restarting the current model after every character.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.35-candidate`, code `44`.
+- Verification: 103 Android unit tests, lint, and Candidate assemble passed. Person-driven verification that leaving Settings immediately after a change preserves the selected value remains `TBD`.
