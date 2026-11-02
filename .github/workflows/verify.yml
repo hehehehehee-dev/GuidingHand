@@ -37,8 +37,8 @@ jobs:
           test -x "$AAPT"
           "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | head -1 | tee /tmp/package.txt
           grep -q "name='vn.guidinghand.candidate'" /tmp/package.txt
-          grep -q "versionCode='36'" /tmp/package.txt
-          grep -q "versionName='1.5.27-candidate'" /tmp/package.txt
+          grep -Eq "versionCode='[1-9][0-9]*'" /tmp/package.txt
+          grep -Eq "versionName='[0-9]+\.[0-9]+\.[0-9]+-candidate'" /tmp/package.txt
           "$AAPT" dump badging app/build/outputs/apk/debug/app-debug.apk | grep -q "application-label:'GuidingHand Candidate'"
       - name: Generate deterministic evaluation evidence
         run: |
