@@ -31,7 +31,7 @@ class GuidingHandService : AccessibilityService() {
     private var receiverRegistered = false
     @Volatile private var voicePermitUntil = 0L
     private var voiceSubmission: Job? = null
-    private var voiceOpening = false
+    private val voiceWindow = VoiceWindowLease()
     private var voiceGeneration = 0L
     private var recordingPurpose = SpeechPurpose.GENERAL
     private val voiceDraft = VoiceDraftSession()
@@ -71,7 +71,7 @@ class GuidingHandService : AccessibilityService() {
         scope.launch {
             for (ignored in updates) {
                 delay(120); while (updates.tryReceive().isSuccess) { /* coalesce UI updates */ }
-                if (VoiceActivity.activeSession || voiceSubmission?.isActive == true) continue
+                if (voiceUiActive() || voiceSubmission?.isActive == true) continue
                 if (!DeviceVisibility.allowed(this@GuidingHandService)) { overlay.hide(); continue }
                 if (ownSetupForeground()) { overlay.hide(); continue }
                 if (engine.status == GuideStatus.IDLE) continue
@@ -102,7 +102,7 @@ class GuidingHandService : AccessibilityService() {
         viewState = if (model.developmentStandIn && state.status != GuideStatus.IDLE) state.copy(instructionVi = "Phase 1 dev · ${state.instructionVi}") else state
         GuideTrace.event(this, "state", code = state.status.name)
         state.reasonCode?.let { GuideTrace.event(this, "guide_stop", code = it) }
-        if (VoiceActivity.activeSession) overlay.hide()
+        if (voiceUiActive()) overlay.hide()
         else if (ownSetupForeground()) overlay.hide()
         else overlay.render(viewState, engine.launcherStep != null)
     }, FamilyContext(prefs.contact, prefs.photo), allowDevStandIn = model.developmentStandIn, language = prefs.respectfulLanguage,
@@ -148,10 +148,13 @@ class GuidingHandService : AccessibilityService() {
     fun stopGuide() { voiceGeneration++; voicePermitUntil = 0L; voiceSubmission?.cancel(); voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned(); overlay.clearHeardSpeech(); engine.stop() }
     private var voiceAnswersCurrent = false
     private fun openIntake() = openVoice()
+    private fun voiceUiActive() = voiceWindow.suppressOverlay(VoiceActivity.activeSession)
     fun openVoice() {
-        if (voiceOpening || VoiceActivity.activeSession || !DeviceVisibility.allowed(this)) return
-        voiceOpening = true; voiceGeneration++; voiceSubmission?.cancel()
+        if (!DeviceVisibility.allowed(this)) return
+        val windowId = voiceWindow.reserve() ?: return
+        voiceGeneration++; voiceSubmission?.cancel()
         scope.launch {
+          var requested = false
           try {
             if (engine.status == GuideStatus.SAFETY_PAUSED) { overlay.render(viewState, false); return@launch }
             SetupActivity.foreground?.get()?.let { own ->
@@ -189,13 +192,30 @@ class GuidingHandService : AccessibilityService() {
             try {
                 startActivity(Intent(this@GuidingHandService, VoiceActivity::class.java)
                     .putExtra(VoiceActivity.EXTRA_SPEECH_PURPOSE, speechPurpose.name)
+                    .putExtra(VoiceActivity.EXTRA_WINDOW_ID, windowId)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                requested = true
                 android.util.Log.i("GuidingHandVoice", "voice_open_requested")
+                scope.launch {
+                    delay(1_500)
+                    if (voiceWindow.pending(windowId) && !VoiceActivity.activeSession && voiceWindow.failed(windowId)) {
+                        overlay.showVoiceNotice(tr("Chưa mở được micro. Bác bấm Nói để thử lại nhé.",
+                            "I could not open the microphone. Tap Speak to try again."))
+                        android.util.Log.w("GuidingHandVoice", "voice_open_timeout")
+                    }
+                }
             } catch (_: Exception) {
+                voiceWindow.failed(windowId)
                 overlay.showVoiceNotice(tr("Chưa mở được micro. Bác bấm Nói để thử lại nhé.", "I could not open the microphone. Tap Speak to try again."))
                 android.util.Log.w("GuidingHandVoice", "voice_open_failed")
             }
-          } finally { voiceOpening = false }
+          } finally { if (!requested) voiceWindow.failed(windowId) }
+        }
+    }
+    fun voiceWindowOpened(windowId: Long) {
+        if (voiceWindow.opened(windowId)) {
+            overlay.hide()
+            GuideTrace.event(this, "voice_window_open")
         }
     }
     suspend fun speechScreen(): ScreenState? = if (engine.status == GuideStatus.SAFETY_PAUSED) null else
@@ -332,14 +352,17 @@ class GuidingHandService : AccessibilityService() {
     }
     private fun editVoiceDraft() {
         val text = voiceDraft.textForReview() ?: return
-        if (VoiceActivity.activeSession || !DeviceVisibility.allowed(this)) return
+        if (!DeviceVisibility.allowed(this)) return
+        val windowId = voiceWindow.reserve() ?: return
         voicePermitUntil = android.os.SystemClock.elapsedRealtime() + 180_000
         try {
             startActivity(Intent(this, VoiceActivity::class.java)
                 .putExtra(VoiceActivity.EXTRA_SPEECH_PURPOSE, voiceDraft.purpose.name)
                 .putExtra(VoiceActivity.EXTRA_REVIEW_TEXT, text)
+                .putExtra(VoiceActivity.EXTRA_WINDOW_ID, windowId)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: Exception) {
+            voiceWindow.failed(windowId)
             overlay.showVoiceNotice(tr("Chưa mở được phần sửa câu. Bác thử Nói lại nhé.", "I could not open the editor. Please record again."))
         }
     }
@@ -366,7 +389,9 @@ class GuidingHandService : AccessibilityService() {
             updates.trySend(Unit)
         }
     }
-    fun voiceClosed(message: String? = null) {
+    fun voiceClosed(windowId: Long, message: String? = null) {
+        if (!voiceWindow.closed(windowId)) return
+        GuideTrace.event(this, "voice_window_close")
         voicePermitUntil = 0L
         if (DeviceVisibility.allowed(this)) {
             if (voiceSubmission?.isActive == true) overlay.showWorking(tr("Đang chuyển lời nói thành chữ…", "Turning speech into text…"))
@@ -439,7 +464,7 @@ class GuidingHandService : AccessibilityService() {
                     (window.id == event.windowId || window.isActive || window.isFocused)
             }
             if (!ownActivityForeground) return
-            if (VoiceActivity.activeSession) overlay.hide()
+            if (voiceUiActive()) overlay.hide()
             else overlay.hide() // The in-app setup has its own large controls; do not cover them with the floating guide.
             return
         }

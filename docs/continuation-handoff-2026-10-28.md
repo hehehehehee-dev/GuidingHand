@@ -911,3 +911,11 @@ package remains untouched.
 - Help keeps its current valid position across repeated renders. An open card uses a zero-gap shared edge with Help, prefers the space above it, and collapses instead of using a detached bottom fallback.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.39-candidate`, code `48`.
 - Verification: 85 backend tests; 111 Android unit tests; Android lint and Candidate assemble passed. Candidate 1.5.39/code 48 installed side-by-side and passed the read-only Xiaomi identity, Accessibility, idle-overlay-stability, and no-new-fatal-exception checks while the device was awake and unlocked. The updated backend is healthy on the temporary USB path, with Spark and Muse Voice Transcribe capabilities present. A person-driven bilingual speech run is still required to verify the language switch, seamless Help/card edge, and absence of the former secondary `Listening…` pill.
+
+# 2026-11-02 — Candidate 1.5.40 exclusive microphone window lease
+
+- Real-phone logs found two microphone-open requests 429 ms apart. The first window could close after the second appeared and clear the shared static activity flag, allowing the Help overlay to reattach as a small `Listening…` pill below the still-visible microphone window.
+- Added a unique service-owned lease for every microphone or transcript-editor window. The lease exists before Android launches the activity, rejects a second open, suppresses every accessibility overlay during opening and display, and ignores a stale close from any older window.
+- A 1.5-second lifecycle timeout is only a failure bound when Android never confirms the requested window. It does not delay a successful open.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.40-candidate`, code `49`.
+- Verification: 85 backend tests; 113 Android unit tests; Android lint and Candidate assemble passed. Candidate 1.5.40/code 49 installed side-by-side, re-paired to the healthy USB backend, and passed the read-only Xiaomi identity, Accessibility, idle-overlay-stability, and no-new-fatal-exception checks while unlocked. A person must still open one real microphone window to confirm that no second `voice_open_requested` event or small `Listening…` overlay appears.

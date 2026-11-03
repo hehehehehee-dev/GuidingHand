@@ -37,6 +37,7 @@ class VoiceActivity : ComponentActivity() {
     companion object {
         const val EXTRA_SPEECH_PURPOSE = "vn.guidinghand.extra.SPEECH_PURPOSE"
         const val EXTRA_REVIEW_TEXT = "vn.guidinghand.extra.REVIEW_TEXT"
+        const val EXTRA_WINDOW_ID = "vn.guidinghand.extra.WINDOW_ID"
         @Volatile var visible = false; private set
         @Volatile var activeSession = false; private set
     }
@@ -56,6 +57,7 @@ class VoiceActivity : ComponentActivity() {
     private var submitting = false
     private var delivered = false
     private var awaitingPermission = false
+    private var windowId = 0L
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         awaitingPermission = false
         if (allowed) startRecording() else showError(tr(
@@ -67,6 +69,8 @@ class VoiceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         visible = true; activeSession = true
+        windowId = intent.getLongExtra(EXTRA_WINDOW_ID, 0L)
+        GuidingHandService.instance?.voiceWindowOpened(windowId)
         prefs = FamilyPreferences(this)
         purpose = runCatching { SpeechPurpose.valueOf(intent.getStringExtra(EXTRA_SPEECH_PURPOSE).orEmpty()) }
             .getOrDefault(SpeechPurpose.GENERAL)
@@ -397,7 +401,7 @@ class VoiceActivity : ComponentActivity() {
     override fun onStop() { visible = false; super.onStop() }
     override fun onDestroy() {
         recording.set(false); scope.cancel(); visible = false; activeSession = false
-        GuidingHandService.instance?.voiceClosed(if (delivered) null else tr(
+        GuidingHandService.instance?.voiceClosed(windowId, if (delivered) null else tr(
             "Đã đóng cửa sổ nghe. Bác có thể bấm Nói khi sẵn sàng.",
             "Listening window closed. Tap Speak when you are ready."
         ))
