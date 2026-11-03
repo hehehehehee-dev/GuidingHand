@@ -1,162 +1,142 @@
 # GuidingHand
 
-Coding-agent handoff: [`META_DEVELOPMENT.md`](META_DEVELOPMENT.md) contains the current component map,
-non-negotiable safety rules, build/test commands, backend contract, and evidence boundaries for a new
-Meta or other coding agent.
+**A little guidance. Your own independence.**
 
-Active integration branch: `main`. An installed phone build is not proof that the Candidate has passed a task; the original `vn.guidinghand` installation remains separate from the Candidate package.
+GuidingHand helps older adults use their Android phones one step at a time. Tap the floating **Help** bubble over the app already in use, say what you want to do, and receive a short spoken instruction with a ring around the next control. You perform the action; GuidingHand observes what changed and guides the next step.
 
-GuidingHand helps an older person use their own Android phone, one step at a time. **The elder performs every tap, every keystroke and every final action.**
+Built with **Muse Spark**, **SAM 3.1**, and **Muse Voice Transcribe**, through GuidingHand's own HTTPS backend.
 
-The October 28 direction expands guidance to readable, non-sensitive installed Android apps. Spark plans from the original goal, actual screen and installed app names/packages; there is no fixed app allowlist or keyword script. This is implemented capability, **not a claim that every app or workflow has been demonstrated**. The Zalo photo flow retains its stricter recipient and new-message evidence checks.
+## Why GuidingHand exists
 
-**Muse Spark plans and SAM 3.1 supplies the production ring region. Muse Voice Transcribe 1.0 is speech input, not speech output.** The November 4 build uses Android's system offline Vietnamese TTS at a speech rate of **0.85** for output. Missing or uncertain production planning or grounding stops guidance.
+A phone can be a connection to family, information, and everyday services. Small controls, unfamiliar screens, and long sequences of steps can make that connection difficult to use independently. Family members cannot always be beside someone when they need help.
 
-## Current status
+GuidingHand brings patient, contextual guidance to the screen where help is needed. Its purpose is to help someone understand and carry out the next action while keeping control of their phone. The optional young-helper character represents a fictional assistant, never an actual grandchild or family member.
 
-| Component | Role | Wiring status |
-| --- | --- | --- |
-| AccessibilityService | Read the actual application window; create an on-demand, safety-checked image for Spark and SAM | Native core |
-| Safety gate | Pause on password, payment or OTP; stop on incomplete or uncertain screens | Native core |
-| GuideEngine | Keep one task session, verify diffs and recover after wrong taps | Native core |
-| Muse Spark | Clarify intent and plan one next step through our backend | Required core; screenshot + UI-data server adapter |
-| SAM 3.1 | Segment the chosen target; supply the only permitted ring region | Required core; identical screenshot reused after Spark; live verification pending |
-| Muse Voice Transcribe 1.0 | Core speech input: audio to text, never speech synthesis | Close local microphone UI before fresh read/upload; device verification pending |
-| Android system TTS | Offline Vietnamese speech output at rate 0.85 | November 4 build output |
-| MockModel | Phase 1 development stand-in behind the same GuideModel interface | Explicitly selected development stand-in only; Core is the default, never a parallel fast path |
-| Overlay | Non-touchable black/yellow ring; solid collapsible card avoiding its target | Native core; 24/22/20sp text and 72/48dp targets |
-| Target fusion | Require Spark target, SAM region and the same live Accessibility control to agree | Native deterministic validator; edge controls remain valid |
-| Exact-screen cache | Reuse only a verified Step for an identical full screen + goal/task state | RAM-only, 30-second TTL; cleared on Stop/new goal/sensitive screen |
-| Own HTTPS backend | Hold the Meta key and orchestrate the providers | Configuration and deployment required; no hosted endpoint claimed |
+## How it works
 
-**The complete production loop is not yet live-verified.** Spark and SAM have core adapters, but the project's production backend is not configured or deployed here. Muse Voice Transcribe recognizes speech; its lack of a synthesis API does not block Android system TTS output. [Meta speech-input documentation](https://dev.meta.ai/docs/speech-to-text)
+1. **Ask from the current screen.** Tap Help, record a request, then stop recording. There is no need to open GuidingHand or type first.
+2. **Review what was heard.** Read, edit, or record the transcript again before using it. If intent, recipient, or content is unclear, the assistant asks one question at a time.
+3. **Follow one step.** A solid guide card stays beside Help. A spoken sentence and a non-touchable ring identify the next action. The card can collapse, and dragging Help moves its attached card.
+4. **Act at your own pace.** You tap, type, swipe, and make final decisions yourself. Repeat the instruction or stop whenever needed.
+5. **Continue from what happened.** GuidingHand reads the resulting screen, checks progress, and keeps the goal after a wrong tap instead of restarting from Home.
 
-The existing USB loopback gateway is a temporary development transport only.
+Guidance is planned from the current screen and goal across installed apps, rather than a fixed script for each app. Compatibility depends on screen readability, available controls, model results, and Android permissions; support for every app or task is not guaranteed.
 
-Daily use starts from **Help / Giúp** over the app already in use. Tap, speak, then finish recording; the microphone window closes before the fresh application read and transcription upload. First use requires microphone and sharing consent. Clarifications use one question and can be answered by voice without MainActivity or typing. Audio stays in memory and recording stops on leaving the microphone or locking the phone.
+## Designed around different needs
 
-The goal follows the elder across apps and actual launcher search/folders. App labels/packages may be cached for one minute; icon coordinates are always read from the current screen. There is no assumed universal swipe, automatic Home action, default launch, typing or sending. The actual package must be verified after opening an app.
+These features are **designed to support** the following needs. Their presence and measured contrast are not a substitute for usability testing with older adults.
+
+| Need | Design response |
+| --- | --- |
+| Difficulty reading small text or low-contrast content | Guide instructions start at **24sp**, button labels at **22sp**, and body text at **20sp**. System font scaling is respected. Dark-green instruction text on opaque cream measures **13.26:1** contrast. |
+| Shaky hands or difficulty selecting small controls | Main GuidingHand targets are at least **72dp** and secondary targets at least **48dp**. The ring leaves the target available for the person's own touch. Third-party app controls retain their original sizes. |
+| Difficulty remembering a sequence or recovering from mistakes | One instruction and target at a time, Repeat and Stop controls, and recovery from the newly observed screen while retaining the goal. |
+| Difficulty typing or unfamiliarity with keyboards | Spoken requests, editable transcription, and spoken guidance. A typing option is also available. |
+| Difficulty distinguishing colors | High-contrast, protanopia, deuteranopia, tritanopia, and monochrome profiles. Words, shapes, checkmarks, and borders supplement color. Wrong taps do not use a red error cue. |
+| Sensitivity to motion or distraction | A reduced-motion setting and short companion gestures tied to state changes. No repeating decorative animation is needed to follow a step. |
+| Different language and communication preferences | English and Vietnamese guidance; Vietnamese choices for how the assistant addresses the person and refers to itself, including “cháu” or “con.” |
+| A guide covering the control being explained | A movable Help anchor, attached collapsible card, selectable card size, and target-aware placement. Instruction surfaces stay opaque over changing app backgrounds. |
+
+The default ring has a **black outer border and bright-yellow inner border**, each at least **6dp**, with **12dp** target padding. Its accent follows the selected vision profile. An optional hand or young-helper cue accompanies the ring. The young helper has poses for listening, thinking, questions, guidance, completion, and pauses.
+
+The interface uses warm cream and dark green, light-catching edges, and shallow shadows. The Help gradient retains at least **8.36:1** text contrast at its lightest endpoint. Decorative depth does not make instruction text transparent.
+
+## The person stays in control
+
+- GuidingHand does not tap, type, paste, swipe, send, confirm, or place calls inside another app.
+- Apps open through the person's own navigation by default. An explicit **Open for me / Mở giúp tôi** button may open an installed app at a verified launcher step only.
+- Password, payment, and OTP screens trigger a hard pause and clear the ring. **Call family** opens the dialer only after the person chooses it; the person decides whether to call.
+- An unreadable or uncertain screen prompts clarification or a retry instead of a guessed target. A safer-looking frame does not automatically dismiss a latched safety pause.
+- For the Zalo photo flow, the recipient must match the conversation title. Completion requires new outgoing-photo evidence in that conversation; closing the library or moving old messages is insufficient.
 
 ## Architecture
 
-One observe → verify → guide loop. Speech input and speech output have separate roles; all Meta calls pass through the project's own backend after the safety check.
+One observe → plan → guide → verify loop. The safety gate runs before provider calls. The production path uses real Meta adapters through the backend.
 
 ```mermaid
 flowchart LR
-    goal["Any app: Help bubble + elder goal"] --> mic["Local microphone; close its window"]
-    mic --> read["AccessibilityService: fresh application screen"]
-    read --> gate{"Safety gate before every model call"}
-    gate -->|"Safe; pending speech"| transcribe["Own backend: Muse Voice Transcribe 1.0 · core input"]
-    transcribe --> engine["GuideEngine: goal + dialogue; read screen-state diff"]
-    gate -->|"Safe; existing task"| engine
-    engine --> cache{"Exact full-screen + task cache hit?"}
-    cache -->|"No"| frame["One safety-checked screenshot + UI data + SHA-256"]
-    frame --> spark["Own backend: Muse Spark · multi-app core planner"]
-    spark -->|"Exact same image bytes"| sam["Own backend: SAM 3.1 · core region"]
-    sam --> fusion["Spark + SAM + live Accessibility target fusion"]
-    fusion -->|"Validate current screen; discard stale results"| output["Android offline TTS · 0.85"]
-    cache -->|"Yes; exact state only"| output
-    output --> guide["One solid card + non-touchable black/yellow ring"]
-    guide --> elder["Elder performs the step"]
-    elder -->|"Correct or wrong tap: read new state"| read
-    spark -->|"Unclear intent or missing detail"| ask["One question; no guessed ring"]
-    ask -->|"Elder answers"| mic
-    gate -->|"Cannot read / cluttered / unsure"| ask
-    gate -->|"Password / payment / OTP"| pause["Hard stop: pause + clear ring"]
-    pause -->|"Elder chooses Call family"| dialer["Open dialer only; never auto-call"]
+    help["Help bubble · speak a goal"] --> read["AccessibilityService · read current screen"]
+    read --> safety{"Safety gate"}
+    safety -->|"Safe · new recording"| voice["Muse Voice Transcribe · speech input"]
+    voice --> review["Review or edit transcript"]
+    review --> engine["GuideEngine · goal, dialogue, screen-state verification"]
+    safety -->|"Safe · continuing task"| engine
+    engine --> frame["One checked screenshot + UI data"]
+    frame --> spark["Muse Spark · next step or question"]
+    spark -->|"Same image"| sam["SAM 3.1 · target region"]
+    sam --> validate["Validate region against live screen"]
+    validate --> guide["Attached card + ring · Android offline TTS"]
+    guide --> elder["Person performs the step"]
+    elder -->|"Correct or wrong tap · keep goal"| read
+    spark -->|"Needs clarification"| ask["Ask one question"]
+    safety -->|"Cannot read or unsure"| ask
+    ask --> help
+    safety -->|"Password, payment, OTP"| pause["Pause · clear ring"]
+    pause -->|"Person chooses Call family"| family["Open dialer · never auto-call"]
 ```
 
-
-The image is captured once after a fresh local safety check. `/core/step` sends that screenshot and UI data to Spark, then reuses the identical data URL for SAM in the same backend request. The decoded-image SHA-256 is checked and echoed. There is no second capture between models and no continuous frame capture. Native code discards a response when its screen binding is stale, retaining the current task.
-
-UI bounds may seed SAM but never create a production target without a valid SAM result. For a control at the display edge, the renderer may constrain the visible ring to the exact clickable bounds only after SAM overlaps that same control by at least 50%; raw SAM provenance is retained. Missing, ambiguous, mismatched or malformed segmentation means no production ring. A manual Home/navigation instruction can wait for a screen change without inventing a tappable target or SAM region. MockModel's node-bound regions are marked development-only and excluded from the release path.
-
-Repeated Accessibility events on an identical full screen can reuse a previously validated Step for up to 30 seconds. The cache is RAM-only, contains no screenshot, and is keyed by the exact screen, goal, dialogue, task, app inventory, language, backend and session fingerprint. Stop, a new goal, lock or a sensitive screen clears it. Any changed screen misses the cache and follows the normal Spark → SAM path.
-
-The backend handles Meta speech transcription, Spark planning and SAM segmentation. Android system TTS runs on the device; the diagram's arrows show stage order, not provider-to-provider calls.
-
-The bottom card contains one instruction and a fixed **Speak / Repeat / Stop** row outside the scroll area. Normal card height is capped at 42% of available screen height; large-font accessibility minima may require more room, and the card still avoids the ring or collapses. Recognized speech is shown during clarification or errors and hidden while pointing. Only a launcher step bound to a real icon and installed package may offer **Mở giúp tôi**. After the elder presses that button, fresh safety and foreground checks may permit opening that app's launcher activity. It never authorizes a target-app tap, text entry, sending or confirmation. A sensitive pause offers **Call family**, opening the dialer without placing a call.
-
-## Kept
-
-- Accessibility tree reads, event-driven observation and lock-screen suppression.
-- Every target-app action performed by the elder.
-- One-time family setup for language, respectful address and a family contact; task details are clarified during the request.
-- Screen-state evidence, including recipient and selected-photo checks before guiding Send.
-- The same task and verified progress after a wrong tap.
-- MockModel as a clearly marked Phase 1 development stand-in, selected once behind the same GuideModel interface.
-
-## Cut
-
-- Launcher swipe-for-me, gesture dispatch, default app launching and automatic searches.
-- Fixed per-app task menus and phrase-routing scripts. October 28 authorization restores general model-planned guidance across installed apps; individual workflows require actual phone observation before being described as working.
-- App-finding menus and launcher experiments that obscure the core loop.
-- Hand-only pointers, inconsistent target styles and bubble-anchored multi-action cards.
-- Parallel planner fast paths that mix MockModel and Spark within a production session.
-
-Historical development code is retained in [`phase1/`](phase1/). The development MockModel and production backend model share one interface; model selection happens once, not as a per-step fallback or second product architecture.
-
-## Changed core loop
-
-1. Read the actual tree, then run the safety gate before any provider call.
-2. Keep the original goal, clarification answers, task slots and verified steps as session data.
-   Subsequent standalone spoken requests are identified separately from clarification answers. The latest utterance determines the next operation; previous instruction/target-label/source-app observations support recovery without treating a tap as proof of success.
-3. Capture one safety-checked screenshot, bound to the actual UI data and screen fingerprint.
-4. Send both to Spark for one next step or one clarification; reuse the exact image for SAM. Never invent a control or phrase-specific workflow.
-5. Speak the short Vietnamese instruction with Android system offline TTS at rate 0.85; Muse Voice Transcribe is reserved for input.
-6. Wait for the elder; verify the resulting screen diff. A wrong tap replans from that state without restarting the task.
-7. For Zalo photos, mark verified completion only with new outgoing-photo and delivery evidence. General guidance asks the elder whether the goal is reached; it never labels that answer as machine-verified sending or delivery.
-
-GuideEngine records a bounded, content-free transition graph (`from`, `to`, reason, stage and task kind) for recovery evidence. Wrong taps and unexpected screens have distinct reasons; goals and user content are not written into the graph.
-
-Safety pauses are latched: a later safe-looking frame does not automatically resume. Stop, lock and changed screens invalidate pending regions and audio.
-
-## Accessible design changes
-
-The interaction remains voice-first, one instruction and one ring, with elder-operated actions and recovery from the observed new screen. Family setup is for language, respectful address and contact details; the assistant never impersonates a grandchild.
-
-- Instruction text: **at least 24sp**. Button labels: **at least 22sp**. Body text: **at least 20sp**. Respect system font scaling rather than clipping.
-- Main touch targets: **at least 72dp**; secondary targets: **at least 48dp**.
-- Card: opaque `#FFFCF5`; instruction ink: `#18332A`. Measured with an sRGB/WCAG Node calculation: **13.258279585:1**, or **13.26:1**, exceeding the required **7:1**. `GuideDesign` tests check the same formula and threshold.
-- Ring: non-touchable **black outer + bright-yellow inner**, each border **at least 6dp**, with **at least 12dp target padding**.
-- The card collapses and avoids the pointed area, navigation and keyboard. Outside the card may be transparent. If a readable card cannot fit without hiding the target, collapse instead of covering it.
-- Every cue includes words or shape; color alone does not carry meaning. Wrong taps do not use red, and no red/green or blue distinction is required.
-
-See [the product direction](docs/product-direction-2026-10-27.md) and [the real-phone send-photo protocol](docs/send-photo-phone-test.md). These dimensions and color measurements do not establish usability with an older person; that remains a real-user test.
-
-## Backend and configuration
-
-### Respectful forms of address
-
-In family setup, **Cách trò chuyện** lets the user choose how they are addressed, how the assistant refers to itself, and a gentle or concise style. The screen previews the resulting wording. The same wording is used on the guide card and by offline TTS; speech stays at rate 0.85. Changing only these preferences preserves the current task and verified progress. Recipient names, photo labels, target identities and SAM regions remain unchanged.
-
-Android uses one backend model interface. Configure the project's own HTTPS endpoint and app-session authentication. The Meta provider key stays server-side and must never enter the APK, client resources, preferences or source control.
-
-The backend owns Muse Voice Transcribe input and Spark → SAM orchestration. Android owns speech output. Prompts stay short; typed, validated results do not contain executable actions or invented tap coordinates. See [the core contract and verification rules](docs/core-redesign.md).
-
-Production backend configuration and deployment, plus complete live task verification, remain required. No Muse Voice synthesis API is required or claimed. Source-level adapters do not establish production readiness.
-
-## Validation and evidence
-
-| Evidence for this candidate | Result |
+| Component | Responsibility |
 | --- | --- |
-| Android build, unit/state-machine checks and lint | **91/91 tests; lint and Candidate assemble pass locally** |
-| Backend safety, identical-image, trace-viewer and provider-adapter fixture checks | **79/79 tests pass locally; zero provider calls** |
-| Deterministic safety/fusion evaluation | **24 safety + 8 fusion fixtures pass; ring accuracy remains TBD** |
-| Candidate identity | **`vn.guidinghand.candidate`, 1.5.27-candidate/code36; distinct label verified** |
-| Complete real-phone Zalo send-photo task | **TBD — not yet passed** |
-| Live Muse Voice Transcribe input | **TBD** |
-| Per-button ring accuracy and panel coverage | **TBD** |
-| Wrong-tap recovery and sensitive-screen hard stop on device | **TBD** |
-| Per-step latency | **TBD** |
-| Demo video | **TBD** |
+| **Muse Spark** (`muse-spark-1.3`) | Understand the goal and dialogue, ask for missing details, and plan one next instruction from screen data. |
+| **SAM 3.1** | Segment the selected target using the **same screenshot bytes** Spark saw. A production ring requires a valid SAM region. |
+| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | Convert the user's recording to text. This is speech input. |
+| **Android system TTS** | Speak guidance using an installed offline voice for the active language at **0.85** speed. |
+| **GuideEngine and AccessibilityService** | Maintain task state, read the app, gate sensitive content, verify screen changes, and recover after wrong taps. |
+| **GuidingHand backend** | Authenticate app requests, orchestrate Meta calls, and enforce a persistent spend ledger. The deployed setup uses **Google Cloud Run and Firestore**. |
 
-The deterministic evaluation harness runs the native pre-model safety gate and production target-fusion geometry from fixture files. Its generated report explicitly leaves ring accuracy and older-adult usability as `TBD`. The separate Meta trace viewer renders only whitelisted event names, timing, state transitions, reason codes, bounded fusion scores and request IDs; it never renders screenshots, audio, goals, messages, recipients, tokens or credentials. These are local results until the pushed revision passes GitHub CI; neither result is a real-phone task pass.
+Screenshots are captured on demand after a safety check, not continuously every frame. Spark and SAM share one image; results bound to an outdated screen are discarded while the task is retained. An exact-screen cache can reuse a previously validated step only while the full screen and task context match.
 
-Old phone confirmations and Phase 1 tests are not evidence for this candidate. Run the [send-photo protocol](docs/send-photo-phone-test.md), logging actual results and failures. For password, OTP or payment hard-stop checks, open the screen only; never enter real credentials or financial details. A separate candidate installation may be used for testing without replacing the current phone build; it is not a production replacement or a passing result.
+`MockModel` is an explicitly selected development stand-in behind the same model interface. It is not the production planner or a parallel per-step shortcut. The USB gateway is a temporary development transport; normal cloud use requires Internet access rather than a USB cable.
 
-The combined budget remains **150 USD total, including prior usage**. Keep persistent reservations and measured usage; do not reset the ledger or invent latency/success numbers. The backend key is supplied from the server environment only and never embedded in the APK or committed. Final deployment and complete live task verification remain required.
+## Privacy and connectivity
 
-## Source map
+Voice recordings and safety-checked screen information are sent to Meta through the configured backend after consent. Recording is user-initiated; audio and drafts are kept in memory, and recording stops when the microphone window is left or the device locks. Spoken guidance uses the device's offline TTS voice.
 
-[Task and model contracts](app/src/main/java/vn/guidinghand/GuideData.kt) · [GuideEngine](app/src/main/java/vn/guidinghand/GuideEngine.kt) · [Accessibility service](app/src/main/java/vn/guidinghand/GuidingHandService.kt) · [Ring, fusion and card geometry](app/src/main/java/vn/guidinghand/GuidePanelLayout.kt) · [Overlay](app/src/main/java/vn/guidinghand/GuideOverlay.kt) · [Exact-screen cache](app/src/main/java/vn/guidinghand/ExactScreenDecisionCache.kt) · [Goal entry and family setup](app/src/main/java/vn/guidinghand/MainActivity.kt) · [Backend core](backend/core.py) · [Evaluation report](backend/generate_evaluation_report.py) · [Meta trace viewer](backend/generate_meta_trace_viewer.py) · [Detailed redesign](docs/core-redesign.md)
+Provider keys stay in server environment variables or Secret Manager. They are not embedded in the APK. App access uses a separate backend session token. The Firestore ledger stores accounting information rather than screenshots, recordings, or message text. Diagnostic traces contain bounded technical metadata rather than user content; see the [development handoff](META_DEVELOPMENT.md).
+
+Speech recognition and AI planning require an Internet connection and an available configured backend. Offline TTS does not make the full assistant an offline app.
+
+## Try or develop GuidingHand
+
+Requirements: **Android 11 or newer**, microphone and Accessibility permissions, sharing consent, an installed offline system voice for the chosen language, and access to a configured backend.
+
+1. Build and install the side-by-side Candidate:
+
+   ```bash
+   ./gradlew assembleDebug -PcandidateBuild=true
+   ```
+
+   The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. The Candidate package is `vn.guidinghand.candidate`.
+
+2. Configure or deploy your own backend using the [cloud deployment guide](docs/cloud-deployment.md). Supply your own Meta credentials server-side and preserve the budget ledger across deployments.
+3. In Settings, confirm the HTTPS server, enter its app-session token, choose language and communication preferences, and enable the required permissions and consent.
+4. Open an app, tap Help, and speak. A Ready status checks backend protocol access; it does not prove a particular task will succeed.
+
+The current source build is **1.5.44** (Android version code **53**). The latest visual changes have not yet been reviewed on the connected Xiaomi; source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
+
+## Validation and demo
+
+Current local checks: **120 Android unit tests** and **93 backend tests** pass; Candidate lint and assembly pass. These are deterministic checks, including real Firestore SDK behavior with mocked network calls, not live model quality measurements.
+
+The project backend is deployed on Cloud Run. Cloud-connected speech transcription was confirmed by the developer on the real Xiaomi after the Firestore fix. That confirmation does not establish complete multi-app reliability or an end-to-end send-photo pass for the latest build.
+
+| Evidence | Status |
+| --- | --- |
+| Latest-build complete real-phone send-photo flow | TBD |
+| Measured per-button ring accuracy | TBD |
+| Measured per-step latency | TBD |
+| Usability evaluation with older adults | TBD |
+| Public demo video | TBD |
+
+Use the [phone smoke check](docs/phone-smoke-test.md) and [send-photo protocol](docs/send-photo-phone-test.md) to record actual outcomes. The repository also includes a [deterministic evaluation harness](backend/generate_evaluation_report.py) and [Meta trace viewer](backend/generate_meta_trace_viewer.py).
+
+## Project map
+
+- [Development and coding-agent handoff](META_DEVELOPMENT.md)
+- [GuideEngine](app/src/main/java/vn/guidinghand/GuideEngine.kt) · [Accessibility service](app/src/main/java/vn/guidinghand/GuidingHandService.kt) · [Overlay](app/src/main/java/vn/guidinghand/GuideOverlay.kt)
+- [Backend orchestration](backend/core.py) · [Speech input](backend/speech_input.py) · [Cloud deployment](docs/cloud-deployment.md)
+- [Design rationale](docs/warm-surface-design-2026-11-03.md) · [Companion interactions](docs/companion-interaction-2026-11-03.md) · [Development history](docs/development-history.md)
+
+## License
+
+GuidingHand project code is available under the [MIT License](LICENSE). Third-party dependencies and Meta services remain subject to their respective licenses and terms. The license does not include provider credentials, API access, or usage credits.
