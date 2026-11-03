@@ -15,6 +15,7 @@ import android.graphics.drawable.StateListDrawable
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -54,6 +55,8 @@ class GuideOverlay(
     private val accent get() = Color.parseColor(prefs.visionProfile.accentHex)
     private fun dp(value: Int) = ceil(value * density).toInt()
     private fun px(value: Float) = value * density
+    private fun sp(value: Float) = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_SP, value, context.resources.displayMetrics)
     private fun tr(vi: String, en: String) = if (prefs.language == "en") en else vi
     private fun feedbackBackground(primary: Boolean, radiusDp: Float = 14f, strokeDp: Int = 1): android.graphics.drawable.Drawable {
         fun shape(fill: Int, stroke: Int) = GradientDrawable().apply {
@@ -94,6 +97,66 @@ class GuideOverlay(
         paint.color = accent; canvas.drawCircle(44.5f, 18f, 7f, paint)
         canvas.restore()
     }
+    private val companionPointer by lazy {
+        context.getDrawable(vn.guidinghand.R.drawable.guidinghand_companion_pointer)?.mutate()
+    }
+    private fun drawCompanionCue(canvas: Canvas, pointer: GuidePointerPlacement, label: String) {
+        val box = pointer.bounds
+        val characterSize = minOf(dp(58), box.width, box.height)
+        val labelWidth = minOf(dp(92), box.width)
+        val labelHeight = minOf(dp(38), box.height)
+        val character: GuideBox
+        val labelBox: GuideBox
+        when (pointer.rotationDegrees) {
+            180f -> {
+                character = GuideBox(box.left + (box.width - characterSize) / 2, box.top,
+                    box.left + (box.width + characterSize) / 2, box.top + characterSize)
+                labelBox = GuideBox(box.left + (box.width - labelWidth) / 2, box.bottom - labelHeight,
+                    box.left + (box.width + labelWidth) / 2, box.bottom)
+            }
+            270f -> {
+                labelBox = GuideBox(box.left, box.top + (box.height - labelHeight) / 2,
+                    box.left + labelWidth, box.top + (box.height + labelHeight) / 2)
+                character = GuideBox(box.right - characterSize, box.top + (box.height - characterSize) / 2,
+                    box.right, box.top + (box.height + characterSize) / 2)
+            }
+            90f -> {
+                character = GuideBox(box.left, box.top + (box.height - characterSize) / 2,
+                    box.left + characterSize, box.top + (box.height + characterSize) / 2)
+                labelBox = GuideBox(box.right - labelWidth, box.top + (box.height - labelHeight) / 2,
+                    box.right, box.top + (box.height + labelHeight) / 2)
+            }
+            else -> {
+                labelBox = GuideBox(box.left + (box.width - labelWidth) / 2, box.top,
+                    box.left + (box.width + labelWidth) / 2, box.top + labelHeight)
+                character = GuideBox(box.left + (box.width - characterSize) / 2, box.bottom - characterSize,
+                    box.left + (box.width + characterSize) / 2, box.bottom)
+            }
+        }
+        companionPointer?.let { drawable ->
+            drawable.bounds = Rect(character.left, character.top, character.right, character.bottom)
+            drawable.draw(canvas)
+        }
+        val callout = RectF(labelBox.left.toFloat(), labelBox.top.toFloat(), labelBox.right.toFloat(), labelBox.bottom.toFloat())
+        paint.style = Paint.Style.FILL; paint.color = cream
+        canvas.drawRoundRect(callout, px(13f), px(13f), paint)
+        paint.style = Paint.Style.STROKE; paint.color = Color.BLACK; paint.strokeWidth = px(2f)
+        canvas.drawRoundRect(callout, px(13f), px(13f), paint)
+        paint.style = Paint.Style.FILL; paint.color = ink; paint.textSize = sp(20f)
+        paint.textAlign = Paint.Align.CENTER; paint.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        val baseline = callout.centerY() - (paint.ascent() + paint.descent()) / 2f
+        canvas.drawText(label, callout.centerX(), baseline, paint)
+        paint.typeface = null; paint.textAlign = Paint.Align.LEFT
+    }
+    private fun pointerSizeDp() = if (prefs.mascot == GuideMascot.YOUNG_HELPER) 104 else 56
+    private fun pointerOverlapDp() = if (prefs.mascot == GuideMascot.YOUNG_HELPER) 0 else 12
+    private fun drawGuidePointer(canvas: Canvas, target: GuideBox, display: GuideBox) {
+        val placement = GuideRingGeometry.pointerPlacement(
+            target, display, dp(pointerSizeDp()), dp(pointerOverlapDp()))
+        if (prefs.mascot == GuideMascot.YOUNG_HELPER)
+            drawCompanionCue(canvas, placement, tr("Bấm đây", "Tap here"))
+        else drawPointer(canvas, placement)
+    }
     private val ring = object : View(context) {
         override fun onDraw(canvas: Canvas) {
             val target = region
@@ -117,8 +180,7 @@ class GuideOverlay(
             canvas.drawRoundRect(black, px(18f), px(18f), paint)
             paint.color = accent; paint.strokeWidth = inner
             canvas.drawRoundRect(yellow, px(12f), px(12f), paint)
-            if (prefs.showPointer) drawPointer(canvas,
-                GuideRingGeometry.pointerPlacement(targetBox, GuideBox(0, 0, width, height), dp(56), dp(12)))
+            if (prefs.showPointer) drawGuidePointer(canvas, targetBox, GuideBox(0, 0, width, height))
         }
     }
     private val card = LinearLayout(context).apply {
@@ -303,7 +365,7 @@ class GuideOverlay(
         if (navigationCue != NavigationCue.HOME_SWIPE_UP) return null
         val safe = safeArea()
         val width = minOf(dp(112), safe.width)
-        val height = minOf(dp(152), safe.height)
+        val height = minOf(dp(if (prefs.mascot == GuideMascot.YOUNG_HELPER) 200 else 152), safe.height)
         val left = safe.left + (safe.width - width) / 2
         return GuideBox(left, safe.bottom - height, left + width, safe.bottom)
     }
@@ -312,7 +374,7 @@ class GuideOverlay(
         val box = gestureCueBox() ?: return
         val centerX = box.left + box.width / 2f
         val arrowTop = box.top + px(8f)
-        val arrowBottom = box.bottom - px(58f)
+        val arrowBottom = box.bottom - px(if (prefs.mascot == GuideMascot.YOUNG_HELPER) 108f else 58f)
         val arrow = Path().apply {
             moveTo(centerX, arrowBottom); lineTo(centerX, arrowTop)
             moveTo(centerX - px(18f), arrowTop + px(20f)); lineTo(centerX, arrowTop)
@@ -321,9 +383,16 @@ class GuideOverlay(
         paint.style = Paint.Style.STROKE; paint.strokeCap = Paint.Cap.ROUND; paint.strokeJoin = Paint.Join.ROUND
         paint.color = Color.BLACK; paint.strokeWidth = px(12f); canvas.drawPath(arrow, paint)
         paint.color = accent; paint.strokeWidth = px(6f); canvas.drawPath(arrow, paint)
-        if (prefs.showPointer) drawPointer(canvas, GuidePointerPlacement(
-            GuideBox((centerX - px(28f)).toInt(), box.bottom - dp(56),
-                (centerX + px(28f)).toInt(), box.bottom), 0f))
+        if (prefs.showPointer) {
+            if (prefs.mascot == GuideMascot.YOUNG_HELPER) {
+                val size = minOf(dp(104), box.width)
+                drawCompanionCue(canvas, GuidePointerPlacement(
+                    GuideBox((centerX - size / 2).toInt(), box.bottom - size,
+                        (centerX + size / 2).toInt(), box.bottom), 0f), tr("Vuốt lên", "Swipe up"))
+            } else drawPointer(canvas, GuidePointerPlacement(
+                GuideBox((centerX - px(28f)).toInt(), box.bottom - dp(56),
+                    (centerX + px(28f)).toInt(), box.bottom), 0f))
+        }
     }
 
     private fun pointedBox(): GuideBox? {
@@ -337,7 +406,8 @@ class GuideOverlay(
             // Match what is actually drawn. At a legitimate display edge both stroke centers move
             // inward, so panel placement must not reserve an imaginary off-screen rectangle.
             val ringBounds = GuideRingGeometry.visibleBands(target, display, density).blackCenter
-            if (prefs.showPointer) ringBounds.union(GuideRingGeometry.pointerPlacement(target, display, dp(56), dp(12)).bounds)
+            if (prefs.showPointer) ringBounds.union(GuideRingGeometry.pointerPlacement(
+                target, display, dp(pointerSizeDp()), dp(pointerOverlapDp())).bounds)
             else ringBounds
         }
     }

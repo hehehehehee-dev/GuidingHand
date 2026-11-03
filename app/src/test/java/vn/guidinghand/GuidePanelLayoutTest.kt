@@ -181,6 +181,15 @@ class GuidePanelLayoutTest {
         assertEquals(180f, bottom.rotationDegrees)
         assertTrue(display.contains(bottom.bounds))
     }
+    @Test fun companionCueStaysVisibleAndNeverCoversTheTarget() {
+        val display = GuideBox(0, 0, 360, 800)
+        for (target in listOf(GuideBox(120, 200, 220, 260), GuideBox(120, 740, 220, 800),
+            GuideBox(0, 300, 70, 380), GuideBox(290, 300, 360, 380))) {
+            val cue = GuideRingGeometry.pointerPlacement(target, display, 104, 0)
+            assertTrue(display.contains(cue.bounds))
+            assertFalse(cue.bounds.intersects(target))
+        }
+    }
     @Test fun panelStaysAttachedToHelpAnchorWhenSpaceAllows() {
         val safe = GuideBox(0, 0, 1080, 1920)
         val anchor = GuideBox(760, 1200, 960, 1280)

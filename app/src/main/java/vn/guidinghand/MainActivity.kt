@@ -472,8 +472,9 @@ class SettingsActivity : SetupActivity() {
                                 VisionProfile.TRITANOPIA -> tr("Tối ưu khi khó phân biệt xanh lam–vàng", "For reduced blue–yellow sensitivity")
                                 VisionProfile.MONOCHROME -> tr("Chỉ trắng, đen và hình dạng", "White, black and shapes only")
                             }) { visionProfile = value; saved = false }
-                        ToggleSetting(tr("Hiện bàn tay chỉ", "Show pointing hand"),
-                            tr("Thêm bàn tay bên cạnh vòng đôi. Tắt nếu bác thấy rối mắt.", "Adds a hand beside the double ring. Turn it off if it feels distracting."),
+                        ToggleSetting(tr("Hiện người chỉ dẫn", "Show guide pointer"),
+                            tr("Thêm bàn tay hoặc nhân vật bên cạnh vòng đôi. Tắt nếu bác thấy rối mắt.",
+                                "Adds the hand or helper beside the double ring. Turn it off if it feels distracting."),
                             showPointer) { showPointer = it; saved = false }
                         ToggleSetting(tr("Giảm chuyển động", "Reduce motion"),
                             tr("Tắt hiệu ứng gợn và chuyển động không cần thiết.", "Removes non-essential ripple and motion effects."),
