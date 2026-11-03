@@ -281,9 +281,27 @@ class GuidingHandService : AccessibilityService() {
                     engine.pauseForSensitive(); overlay.render(viewState, false)
                 } else if (engine.status == GuideStatus.SAFETY_PAUSED || verdict in setOf(ScreenReadVerdict.SENSITIVE, ScreenReadVerdict.LOCKED)) {
                     current?.let { engine.inspectBeforeSpeech(it) }; overlay.render(viewState, false)
-                } else overlay.showVoiceNotice(if (verdict == ScreenReadVerdict.CANNOT_READ)
-                    tr("Tôi chưa nhìn rõ màn hình. Bác đóng bảng đang mở rồi thử lại nhé.", "I cannot read this screen. Close the open panel, then try again.")
-                    else tr("Chưa nhận được lời nói. Bác bấm Nói để thử lại nhé.", "I could not transcribe that. Tap Speak to try again."))
+                } else {
+                    val category = (failure as? SpeechInputFailure)?.category
+                    val notice = when {
+                        verdict == ScreenReadVerdict.CANNOT_READ -> tr(
+                            "Tôi chưa nhìn rõ màn hình. Bác đóng bảng đang mở rồi thử lại nhé.",
+                            "I cannot read this screen. Close the open panel, then try again.")
+                        category == "auth" -> tr(
+                            "Phiên kết nối đã hết hạn. Bác mở Cài đặt và kết nối trợ lý lại nhé.",
+                            "The assistant session is not valid. Reconnect it in Settings, then try again.")
+                        category == "no_transcript" -> tr(
+                            "Tôi chưa nghe thấy lời nói. Bác nói gần micro hơn rồi thử lại nhé.",
+                            "I could not hear any words. Speak closer to the microphone and try again.")
+                        category == "bad_request" -> tr(
+                            "Bản ghi chưa đúng định dạng. Bác thử nói một câu ngắn hơn nhé.",
+                            "The recording was not accepted. Try a shorter sentence.")
+                        else -> tr(
+                            "Chưa kết nối được trợ lý nhận giọng nói. Bác kiểm tra mạng rồi thử lại nhé.",
+                            "The speech assistant could not be reached. Check the connection and try again.")
+                    }
+                    overlay.showVoiceNotice(notice)
+                }
             } finally { wave.fill(0); client.cancel() }
         }
     }

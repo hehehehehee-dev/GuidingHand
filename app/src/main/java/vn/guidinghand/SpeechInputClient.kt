@@ -43,7 +43,14 @@ class SpeechInputClient(private val prefs: FamilyPreferences) {
             http.connectTimeout = 6000; http.readTimeout = 40000
             http.setRequestProperty("Content-Type", "application/json"); http.setRequestProperty("Authorization", "Bearer $token")
             http.setFixedLengthStreamingMode(body.size); http.outputStream.use { it.write(body) }
-            check(http.responseCode == 200)
+            val responseCode = http.responseCode
+            if (responseCode != 200) {
+                throw SpeechInputFailure(when (responseCode) {
+                    401, 403 -> "auth"
+                    400, 413, 422 -> "bad_request"
+                    else -> "server"
+                })
+            }
             val bytes = http.inputStream.use { source -> ByteArrayOutputStream().use { out ->
                 val buffer = ByteArray(1024)
                 while (out.size() <= 16_000) { val n = source.read(buffer); if (n < 0) break; out.write(buffer, 0, n) }
@@ -57,7 +64,10 @@ class SpeechInputClient(private val prefs: FamilyPreferences) {
             }
             check(result.optString("request_id") == id && result.optString("status") == "transcribed" &&
                 result.optString("model") == "muse-voice-transcribe-1.0")
-            result.getString("transcript").trim().also { check(it.isNotBlank() && it.length <= 500) }
+            result.optString("transcript").trim().also {
+                if (it.isBlank()) throw SpeechInputFailure("no_transcript")
+                check(it.length <= 500)
+            }
         } finally { http.disconnect(); if (connection === http) connection = null }
     }
 }
