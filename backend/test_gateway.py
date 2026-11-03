@@ -1,6 +1,7 @@
 import copy
 from decimal import Decimal
 import json
+import os
 from pathlib import Path
 import tempfile
 import threading
@@ -8,7 +9,9 @@ import unittest
 import urllib.error
 import urllib.request
 
-from gateway import Budget, Gateway, Rejected, RESERVE_USD, config, parse_decision, provider_body, serve, validate_frame
+from gateway import (Budget, FirestoreBudget, Gateway, Rejected, RESERVE_USD,
+                      budget_from_environment, config, parse_decision,
+                      provider_body, serve, validate_frame)
 
 
 def frame():
@@ -122,6 +125,66 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(1, len(calls))
         data = json.loads(self.budget.file.read_text())
         self.assertEqual(RESERVE_USD, sum(Decimal(v) for v in data['pending'].values()))
+
+    def test_default_state_backend_remains_local_file(self):
+        previous = os.environ.pop('GUIDINGHAND_STATE_BACKEND', None)
+        previous_dir = os.environ.get('GUIDINGHAND_STATE_DIR')
+        os.environ['GUIDINGHAND_STATE_DIR'] = str(self.directory)
+        try:
+            budget = budget_from_environment(Decimal('5'))
+            self.assertIsInstance(budget, Budget)
+        finally:
+            if previous_dir is None:
+                os.environ.pop('GUIDINGHAND_STATE_DIR', None)
+            else:
+                os.environ['GUIDINGHAND_STATE_DIR'] = previous_dir
+            if previous is not None:
+                os.environ['GUIDINGHAND_STATE_BACKEND'] = previous
+
+    def test_firestore_budget_uses_atomic_shared_document_without_payloads(self):
+        class Transaction:
+            def __init__(self):
+                self.saved = None
+            def get(self, _document):
+                transaction = self
+                class Snapshot:
+                    exists = transaction.saved is not None
+                    def to_dict(self):
+                        return copy.deepcopy(transaction.saved or {})
+                return Snapshot()
+            def set(self, _document, data):
+                self.saved = copy.deepcopy(data)
+
+        class Document:
+            pass
+
+        class Collection:
+            def document(self, _name):
+                return Document()
+
+        class Client:
+            def __init__(self):
+                self.transaction_instance = Transaction()
+            def collection(self, _name):
+                return Collection()
+            def transaction(self):
+                return self.transaction_instance
+
+        class FirestoreModule:
+            @staticmethod
+            def transactional(function):
+                return function
+
+        client = Client()
+        budget = FirestoreBudget('guidinghand', limit=Decimal('5'), client=client,
+                                 firestore_module=FirestoreModule)
+        token = budget.reserve()
+        self.assertTrue(token)
+        self.assertIn(token, client.transaction_instance.saved['pending'])
+        self.assertNotIn('prompt', client.transaction_instance.saved)
+        budget.settle(token, {'prompt_tokens': 100, 'completion_tokens': 50})
+        self.assertEqual({}, client.transaction_instance.saved['pending'])
+        self.assertEqual('0.0003375', client.transaction_instance.saved['spent_usd'])
 
     def test_missing_or_impossible_usage_does_not_release_reservation(self):
         token = self.budget.reserve()

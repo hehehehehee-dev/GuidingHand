@@ -154,6 +154,113 @@ class Budget:
         return self.transaction(update)
 
 
+def _ledger_values(data: dict):
+    """Validate the shared ledger shape and return (spent, pending_total)."""
+    if not isinstance(data, dict) or not isinstance(data.get('pending'), dict):
+        raise Rejected('invalid_usage_ledger')
+    spent = Decimal(data.get('spent_usd', '0'))
+    reservations = [Decimal(value) for value in data['pending'].values()]
+    if any(not value.is_finite() or value < 0 for value in reservations):
+        raise Rejected('invalid_usage_ledger')
+    pending = sum(reservations, Decimal(0))
+    if not spent.is_finite() or spent < 0 or not pending.is_finite() or pending < 0:
+        raise Rejected('invalid_usage_ledger')
+    return spent, pending
+
+
+class FirestoreBudget:
+    """Atomic budget ledger for Cloud Run instances.
+
+    Cloud Run's writable filesystem is ephemeral, so production uses one
+    Firestore document shared by all workers and instances.  The document only
+    contains accounting data; no prompts, screenshots, transcripts, or keys.
+    """
+
+    def __init__(self, database: str, collection: str = 'guidinghand',
+                 document: str = 'budget', limit: Decimal = Decimal('150'),
+                 client=None, firestore_module=None):
+        if client is None or firestore_module is None:
+            try:
+                from google.cloud import firestore as firestore_module  # type: ignore
+            except ImportError as error:
+                raise RuntimeError('Firestore state backend requires google-cloud-firestore.') from error
+        self.firestore_module = firestore_module
+        self.client = client or firestore_module.Client(database=database)
+        self.document = self.client.collection(collection).document(document)
+        self.limit = limit
+        self.mutex = threading.Lock()
+
+    def transaction(self, update):
+        """Run one read/modify/write operation as a retried Firestore transaction."""
+        transaction = self.client.transaction()
+
+        @self.firestore_module.transactional
+        def run(tx):
+            snapshot = tx.get(self.document)
+            data = snapshot.to_dict() if snapshot.exists else {
+                'spent_usd': '0', 'pending': {}, 'requests': 0}
+            try:
+                spent, pending = _ledger_values(data)
+                result = update(data, spent, pending)
+                tx.set(self.document, data)
+                return result
+            except (KeyError, ValueError, TypeError):
+                raise Rejected('invalid_usage_ledger') from None
+
+        # The client retries the transaction on contention.  The lock only
+        # reduces duplicate local work; correctness comes from Firestore.
+        with self.mutex:
+            return run(transaction)
+
+    def reserve(self):
+        def update(data, spent, pending):
+            if spent + pending + RESERVE_USD > self.limit:
+                raise Rejected('budget_limit')
+            token = secrets.token_hex(16)
+            data['pending'][token] = str(RESERVE_USD)
+            data['requests'] = int(data.get('requests', 0)) + 1
+            return token
+        return self.transaction(update)
+
+    def settle(self, token: str, usage: dict):
+        inp, out = usage.get('prompt_tokens'), usage.get('completion_tokens')
+        if type(inp) is not int or type(out) is not int or inp < 0 or out < 0:
+            raise Rejected('missing_usage')
+        cost = (Decimal(inp) * Decimal('1.25') + Decimal(out) * Decimal('4.25')) / Decimal(1_000_000)
+        if inp + out > 1048576 or out > MAX_OUTPUT or cost > RESERVE_USD:
+            raise Rejected('usage_outside_reservation')
+
+        def update(data, spent, pending):
+            if token not in data['pending']:
+                raise Rejected('missing_reservation')
+            del data['pending'][token]
+            data['spent_usd'] = str(spent + cost)
+            data['updated_unix'] = int(time.time())
+            return cost
+        return self.transaction(update)
+
+
+def budget_from_environment(limit: Decimal):
+    """Select the local file ledger or the shared Firestore ledger.
+
+    Local development remains dependency-light and uses ``.state``.  Cloud Run
+    should set ``GUIDINGHAND_STATE_BACKEND=firestore`` and provide only the
+    Firestore database/collection/document identifiers through environment
+    variables; credentials come from the runtime service account.
+    """
+    backend = os.environ.get('GUIDINGHAND_STATE_BACKEND', 'file').strip().lower()
+    if backend == 'file':
+        directory = Path(os.environ.get('GUIDINGHAND_STATE_DIR', ROOT / '.state'))
+        return Budget(directory, limit)
+    if backend == 'firestore':
+        return FirestoreBudget(
+            database=os.environ.get('GUIDINGHAND_FIRESTORE_DATABASE', '(default)'),
+            collection=os.environ.get('GUIDINGHAND_FIRESTORE_COLLECTION', 'guidinghand'),
+            document=os.environ.get('GUIDINGHAND_FIRESTORE_DOCUMENT', 'budget'),
+            limit=limit)
+    raise RuntimeError('Unsupported GUIDINGHAND_STATE_BACKEND.')
+
+
 def folded(text):
     return ''.join(c for c in unicodedata.normalize('NFD', text.lower())
                    if unicodedata.category(c) != 'Mn').replace('đ', 'd')

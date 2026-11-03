@@ -11,7 +11,6 @@ import json
 import logging
 import math
 import os
-from pathlib import Path
 import re
 import secrets
 import struct
@@ -571,7 +570,7 @@ class CoreGateway:
 
 def create_application():
     """WSGI factory for the project's own HTTPS reverse proxy; no URL is deployed by this module."""
-    from gateway import Budget
+    from gateway import budget_from_environment
     key = os.environ.get('MODEL_API_KEY', '')
     session = os.environ.get('GUIDINGHAND_APP_SESSION_TOKEN', '')
     if not key or len(session) < 32:
@@ -579,7 +578,7 @@ def create_application():
     limit = Decimal(os.environ.get('GUIDINGHAND_PROJECT_BUDGET_USD', '150'))
     if not limit.is_finite() or not 0 < limit <= 150:
         raise RuntimeError('Invalid project budget.')
-    core = CoreGateway({'key': key}, Budget(Path(os.environ.get('GUIDINGHAND_STATE_DIR', Path(__file__).parent / '.state')), limit))
+    core = CoreGateway({'key': key}, budget_from_environment(limit))
     from speech_input import SpeechInput
     speech = SpeechInput(key, core.planner.budget)
     trust_proxy_headers = os.environ.get('GUIDINGHAND_TRUST_PROXY_HEADERS', '').strip().lower() == 'true'
