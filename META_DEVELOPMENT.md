@@ -304,4 +304,3 @@ keep provider keys server-side, distinguish deterministic evidence from real-pho
 not claim a pass you did not observe. Show me the intended acceptance criteria before making a
 non-trivial UX, state-machine, safety, or model-contract change.
 ```
-
