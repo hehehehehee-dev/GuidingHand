@@ -276,13 +276,18 @@ class GuidingHandService : AccessibilityService() {
             catch (failure: Exception) {
                 val current = withContext(Dispatchers.IO) { readTree(allowOwn = true) }
                 val verdict = ScreenReadPolicy.verdict(current)
-                GuideTrace.event(this@GuidingHandService, "transcribe_stopped", code = verdict.name)
+                val failureCategory = (failure as? SpeechInputFailure)?.category
+                // Keep the reason privacy-safe but observable on the device: this distinguishes
+                // provider/auth/network failures from an empty recording without logging audio,
+                // transcript text, screen contents, or credentials.
+                GuideTrace.event(this@GuidingHandService, "transcribe_stopped",
+                    code = failureCategory ?: verdict.name)
                 if (failure is SpeechInputFailure && failure.category == "sensitive") {
                     engine.pauseForSensitive(); overlay.render(viewState, false)
                 } else if (engine.status == GuideStatus.SAFETY_PAUSED || verdict in setOf(ScreenReadVerdict.SENSITIVE, ScreenReadVerdict.LOCKED)) {
                     current?.let { engine.inspectBeforeSpeech(it) }; overlay.render(viewState, false)
                 } else {
-                    val category = (failure as? SpeechInputFailure)?.category
+                    val category = failureCategory
                     val notice = when {
                         verdict == ScreenReadVerdict.CANNOT_READ -> tr(
                             "Tôi chưa nhìn rõ màn hình. Bác đóng bảng đang mở rồi thử lại nhé.",
