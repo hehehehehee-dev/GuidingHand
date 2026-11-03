@@ -6,6 +6,7 @@ import json
 import logging
 import secrets
 import time
+import urllib.error
 import urllib.request
 import wave
 
@@ -47,6 +48,7 @@ def speech_settings(language, keywords):
     # Muse Voice detects the spoken language when languageBias is omitted. This lets an elder
     # switch between Vietnamese and English without first changing a Settings control.
     settings = {'model': MODEL, 'mode': 'PUSH_TO_TALK', 'audioEncoding': 'WAV'}
+    settings['languageBias'] = ['Vietnamese'] if language == 'vi' else ['English']
     if clean:
         settings['keywords'] = clean
     return settings
@@ -105,8 +107,22 @@ class SpeechInput:
             LOG.info('voice_input status=transcribed total_ms=%d', elapsed)
             return {**echo, 'status': 'transcribed', 'model': MODEL, 'transcript': transcript.strip(), 'timings_ms': {'transcribe': elapsed}}
         except Exception as error:
-            code = str(error) if isinstance(error, CoreError) else 'speech_unavailable'
-            category = 'sensitive' if code=='sensitive_screen' else 'cannot_read' if code in ('incomplete_screen', 'invalid_nodes', 'unlabeled_screen') else 'unavailable'
+            if isinstance(error, CoreError):
+                code = str(error)
+            elif isinstance(error, urllib.error.HTTPError):
+                code = f'provider_http_{error.code}'
+            elif isinstance(error, urllib.error.URLError):
+                code = 'provider_network'
+            else:
+                code = 'speech_unavailable'
+            category = (
+                'sensitive' if code == 'sensitive_screen' else
+                'cannot_read' if code in ('incomplete_screen', 'invalid_nodes', 'unlabeled_screen') else
+                'provider_auth' if code == 'provider_http_401' else
+                'rate_limited' if code == 'provider_http_429' else
+                'provider_failed' if code.startswith('provider_http_') else
+                'provider_network' if code == 'provider_network' else
+                'unavailable')
             elapsed = max(0, round((time.monotonic()-started)*1000))
             LOG.info('voice_input status=blocked category=%s total_ms=%d', category, elapsed)
             description = message(frame, 'Chưa đọc rõ màn hình. Chưa gửi âm thanh.', 'I cannot read the screen clearly. No audio was uploaded.') if category=='cannot_read' else message(frame, 'Màn hình có thông tin riêng tư. Đã dừng nhận giọng nói.', 'This screen contains private information. Speech input is paused.') if category=='sensitive' else message(frame, 'Chưa nghe rõ lời nói. Bấm mic để nói lại nhé.', 'I could not hear that clearly. Tap the microphone to try again.')

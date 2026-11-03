@@ -60,7 +60,9 @@ class SpeechInputClient(private val prefs: FamilyPreferences) {
             val result = JSONObject(String(bytes, Charsets.UTF_8))
             if (result.optString("status") == "blocked") {
                 val category = result.optString("reason_category")
-                throw SpeechInputFailure(if (category in setOf("sensitive", "cannot_read", "unavailable")) category else "unavailable")
+                throw SpeechInputFailure(if (category in setOf(
+                    "sensitive", "cannot_read", "unavailable", "provider_auth", "rate_limited", "provider_failed", "provider_network"
+                )) category else "unavailable")
             }
             check(result.optString("request_id") == id && result.optString("status") == "transcribed" &&
                 result.optString("model") == "muse-voice-transcribe-1.0")

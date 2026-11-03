@@ -296,6 +296,18 @@ class GuidingHandService : AccessibilityService() {
                         category == "bad_request" -> tr(
                             "Bản ghi chưa đúng định dạng. Bác thử nói một câu ngắn hơn nhé.",
                             "The recording was not accepted. Try a shorter sentence.")
+                        category == "provider_auth" -> tr(
+                            "Khóa nhận giọng nói trên máy chủ không hợp lệ. Nhờ người thân kiểm tra lại máy chủ.",
+                            "The speech service key is not valid. Ask a family member to check the server.")
+                        category == "rate_limited" -> tr(
+                            "Trợ lý đang bận. Bác chờ một chút rồi thử lại nhé.",
+                            "The speech assistant is busy. Wait a moment and try again.")
+                        category == "provider_failed" -> tr(
+                            "Trợ lý nhận giọng nói đang gặp lỗi. Bác thử lại sau một chút nhé.",
+                            "The speech service failed while processing the recording. Try again shortly.")
+                        category == "provider_network" -> tr(
+                            "Máy chủ chưa gọi được dịch vụ nhận giọng nói. Bác kiểm tra mạng rồi thử lại nhé.",
+                            "The server could not reach the speech service. Check the connection and try again.")
                         else -> tr(
                             "Chưa kết nối được trợ lý nhận giọng nói. Bác kiểm tra mạng rồi thử lại nhé.",
                             "The speech assistant could not be reached. Check the connection and try again.")
