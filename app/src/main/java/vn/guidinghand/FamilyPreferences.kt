@@ -23,6 +23,10 @@ enum class GuideMascot(val key: String) {
 
 /** Family slots and a user session for our backend. No Meta/provider credential belongs here. */
 class FamilyPreferences(context: Context) {
+    private companion object {
+        // Public Cloud Run service URL; the session token remains user/backend secret.
+        const val DEFAULT_BACKEND_URL = "https://guidinghand-backend-1132305541.us-central1.run.app"
+    }
     private val prefs = context.getSharedPreferences("GuidingHand", Context.MODE_PRIVATE)
     var voiceConsent: Boolean
         get() = prefs.getBoolean("voiceInputConsent", false)
@@ -57,7 +61,8 @@ class FamilyPreferences(context: Context) {
         get() = prefs.getString("photo", "").orEmpty()
         set(value) { prefs.edit().putString("photo", value.trim()).apply() }
     var backendUrl: String
-        get() = prefs.getString("coreBackendUrl", "").orEmpty()
+        get() = prefs.getString("coreBackendUrl", null)?.trim()?.trimEnd('/')
+            ?.takeIf { it.isNotEmpty() } ?: DEFAULT_BACKEND_URL
         set(value) { prefs.edit().putString("coreBackendUrl", value.trim().trimEnd('/')).apply() }
     var backendSession: String
         get() = prefs.getString("coreBackendSession", "").orEmpty()
