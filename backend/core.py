@@ -588,7 +588,10 @@ def create_application():
         forwarded = environ.get('HTTP_X_FORWARDED_PROTO', '').split(',', 1)[0].strip().lower()
         # Forwarded headers are attacker-controlled unless the container is behind a trusted proxy.
         secure = environ.get('wsgi.url_scheme') == 'https' or (trust_proxy_headers and forwarded == 'https')
-        if method == 'GET' and path == '/healthz':
+        # Cloud Run reserves public paths ending in "z" (including /healthz),
+        # so /health is the production liveness URL. Keep /healthz for local
+        # compatibility and tests where the platform does not intercept it.
+        if method == 'GET' and path in ('/health', '/healthz'):
             # Public liveness only. No provider, budget, configuration or model details.
             result = {'status': 'ok'}
         elif not secure:

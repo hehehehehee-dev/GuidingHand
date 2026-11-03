@@ -60,7 +60,7 @@ overwrites `X-Forwarded-Proto`, and set `GUIDINGHAND_TRUST_PROXY_HEADERS=true`.
 Without that explicit setting, a client-supplied forwarded header is ignored.
 Expose only the managed HTTPS hostname.
 
-- `GET /healthz` is an unauthenticated liveness check. It does not call Meta or
+- `GET /health` is an unauthenticated liveness check. It does not call Meta or
   reveal model, budget, or configuration details.
 - `GET /core/capabilities` requires the app bearer token and confirms the
   protocol expected by Android. It does not spend model credit.

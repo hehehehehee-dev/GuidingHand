@@ -466,7 +466,7 @@ class CoreTests(unittest.TestCase):
             result = app({'wsgi.url_scheme':scheme,'HTTP_X_FORWARDED_PROTO':forwarded,'HTTP_AUTHORIZATION':auth,'REQUEST_METHOD':'GET','PATH_INFO':path},
                          lambda s,h:status.append(s))
             return status[0], json.loads(b''.join(result))
-        self.assertEqual(('200 OK', {'status':'ok'}), request('http','', '/healthz'))
+        self.assertEqual(('200 OK', {'status':'ok'}), request('http','', '/health'))
         self.assertEqual('400 Bad Request',request('http','Bearer '+'session-token-'*4)[0])
         self.assertEqual('400 Bad Request',request('http','Bearer '+'session-token-'*4, forwarded='https')[0])
         self.assertEqual('401 Unauthorized',request('https','wrong')[0])

@@ -161,7 +161,7 @@ All backend files are under `backend/`.
 
 Public backend contract:
 
-- `GET /healthz`: unauthenticated liveness only; reveals no model/key/budget details.
+- `GET /health`: unauthenticated liveness only; reveals no model/key/budget details.
 - `GET /core/capabilities`: authenticated capability contract.
 - `POST /core/transcribe`: authenticated Muse Voice Transcribe input.
 - `POST /core/step`: authenticated Spark -> SAM core step.
