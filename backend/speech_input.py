@@ -136,7 +136,11 @@ class SpeechInput:
                 # Documented $0.18/hour, conservatively use full submitted duration.
                 data['spent_usd'] = str(spent + Decimal(str(seconds)) * Decimal('.18') / Decimal(3600))
                 data['updated_unix'] = int(time.time())
-            self.budget.transaction(settle)
+            try:
+                self.budget.transaction(settle)
+            except Exception:
+                # Do not misreport a Firestore/budget persistence failure as a Meta speech failure.
+                raise CoreError('budget_settlement_failed') from None
             elapsed = max(0, round((time.monotonic()-started)*1000))
             LOG.info('voice_input status=transcribed total_ms=%d', elapsed)
             return {**echo, 'status': 'transcribed', 'model': MODEL, 'transcript': transcript.strip(), 'timings_ms': {'transcribe': elapsed}}
