@@ -62,7 +62,13 @@ class FamilyPreferences(context: Context) {
         set(value) { prefs.edit().putString("photo", value.trim()).apply() }
     var backendUrl: String
         get() {
-            val stored = prefs.getString("coreBackendUrl", null)?.trim()?.trimEnd('/')
+            val rawStored = prefs.getString("coreBackendUrl", null)?.trim()?.trimEnd('/')
+            // Migrate the earlier project-number URL. Cloud Run's stable service URL is
+            // the generated -uc.a.run.app host; keep the session token untouched.
+            val stored = rawStored?.replace(
+                "https://guidinghand-backend-1132305541.us-central1.run.app",
+                DEFAULT_BACKEND_URL
+            )?.also { if (it != rawStored) prefs.edit().putString("coreBackendUrl", it).apply() }
             val isCandidate = BuildConfig.APPLICATION_ID.endsWith(".candidate")
             val isLocalDevEndpoint = stored?.startsWith("http://127.0.0.1") == true ||
                 stored?.startsWith("http://localhost") == true
