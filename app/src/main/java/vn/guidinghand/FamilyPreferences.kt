@@ -61,8 +61,14 @@ class FamilyPreferences(context: Context) {
         get() = prefs.getString("photo", "").orEmpty()
         set(value) { prefs.edit().putString("photo", value.trim()).apply() }
     var backendUrl: String
-        get() = prefs.getString("coreBackendUrl", null)?.trim()?.trimEnd('/')
-            ?.takeIf { it.isNotEmpty() } ?: DEFAULT_BACKEND_URL
+        get() {
+            val stored = prefs.getString("coreBackendUrl", null)?.trim()?.trimEnd('/')
+            val isCandidate = BuildConfig.APPLICATION_ID.endsWith(".candidate")
+            val isLocalDevEndpoint = stored?.startsWith("http://127.0.0.1") == true ||
+                stored?.startsWith("http://localhost") == true
+            return stored?.takeIf { it.isNotEmpty() && !(isCandidate && isLocalDevEndpoint) }
+                ?: DEFAULT_BACKEND_URL
+        }
         set(value) { prefs.edit().putString("coreBackendUrl", value.trim().trimEnd('/')).apply() }
     var backendSession: String
         get() = prefs.getString("coreBackendSession", "").orEmpty()
