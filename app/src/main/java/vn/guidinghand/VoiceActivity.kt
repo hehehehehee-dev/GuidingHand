@@ -300,12 +300,21 @@ class VoiceActivity : ComponentActivity() {
         val recorder = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, rate, AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT, maxOf(minimum, 4096))
         val started = SystemClock.elapsedRealtime(); var lastUpdate = 0L
+        var peak = 0; var sumSquares = 0.0; var sampleCount = 0
         try {
             check(recorder.state == AudioRecord.STATE_INITIALIZED); recorder.startRecording()
             val output = ByteArrayOutputStream(); val buffer = ByteArray(2560)
             while (recording.get() && output.size() < maximumBytes && service.localRecordingAllowed()) {
                 val count = recorder.read(buffer, 0, minOf(buffer.size, maximumBytes - output.size()))
                 check(count > 0); output.write(buffer, 0, count)
+                var index = 0
+                while (index + 1 < count) {
+                    val sample = ((buffer[index].toInt() and 0xff) or (buffer[index + 1].toInt() shl 8)).toShort().toInt()
+                    val magnitude = abs(sample)
+                    peak = maxOf(peak, magnitude)
+                    sumSquares += sample.toDouble() * sample.toDouble()
+                    sampleCount++; index += 2
+                }
                 val now = SystemClock.elapsedRealtime()
                 if (now - lastUpdate >= 120) {
                     lastUpdate = now; val level = pcmLevel(buffer, count); val elapsed = now - started
@@ -314,6 +323,9 @@ class VoiceActivity : ComponentActivity() {
             }
             return output.toByteArray() to rate
         } finally {
+            val rms = if (sampleCount == 0) 0.0 else kotlin.math.sqrt(sumSquares / sampleCount) / 32767.0
+            // Privacy-safe diagnostics only: no audio bytes or transcript are logged.
+            android.util.Log.i("GuidingHandVoice", "audio_capture_samples=$sampleCount peak=$peak rms=${"%.4f".format(Locale.ROOT, rms)}")
             recording.set(false); try { recorder.stop() } catch (_: Exception) {}; recorder.release()
         }
     }
