@@ -111,6 +111,7 @@ class SpeechInput:
     def transcribe(self, frame):
         echo = {'request_id': frame.get('request_id', '')} if isinstance(frame, dict) else {}
         started = time.monotonic()
+        stage = 'validate'
         try:
             validate(frame)  # Same consent, lock, complete-tree and sensitive-screen gate as planning.
             audio, seconds = decode_audio(frame.get('audio_base64'))
@@ -123,8 +124,10 @@ class SpeechInput:
                 token = secrets.token_hex(16)
                 data['pending'][token] = '.01'; data['requests'] += 1
                 return token
+            stage = 'budget_reserve'
             token = self.budget.transaction(reserve)
             validate(frame)  # Recheck immediately before the external speech-input call.
+            stage = 'provider'
             result = self.transport(self.key, audio, frame.get('language', 'vi'), keywords)
             transcript = result.get('transcript') if isinstance(result, dict) else None
             if not isinstance(transcript, str) or not 1 <= len(transcript.strip()) <= 500:
@@ -136,6 +139,7 @@ class SpeechInput:
                 # Documented $0.18/hour, conservatively use full submitted duration.
                 data['spent_usd'] = str(spent + Decimal(str(seconds)) * Decimal('.18') / Decimal(3600))
                 data['updated_unix'] = int(time.time())
+            stage = 'budget_settle'
             try:
                 self.budget.transaction(settle)
             except Exception:
@@ -151,6 +155,8 @@ class SpeechInput:
                 code = f'provider_http_{error.code}'
             elif isinstance(error, urllib.error.URLError):
                 code = 'provider_network'
+            elif stage == 'budget_reserve':
+                code = 'budget_reservation_failed'
             else:
                 code = 'speech_unavailable'
             category = (
@@ -162,7 +168,9 @@ class SpeechInput:
                 'provider_network' if code == 'provider_network' else
                 'unavailable')
             elapsed = max(0, round((time.monotonic()-started)*1000))
-            LOG.info('voice_input status=blocked category=%s code=%s total_ms=%d', category, code, elapsed)
+            # WARNING is emitted by Gunicorn's default logging configuration, unlike INFO.
+            # No exception message/body: provider and database errors may contain private data.
+            LOG.warning('voice_input status=blocked category=%s code=%s stage=%s total_ms=%d', category, code, stage, elapsed)
             description = message(frame, 'Chưa đọc rõ màn hình. Chưa gửi âm thanh.', 'I cannot read the screen clearly. No audio was uploaded.') if category=='cannot_read' else message(frame, 'Màn hình có thông tin riêng tư. Đã dừng nhận giọng nói.', 'This screen contains private information. Speech input is paused.') if category=='sensitive' else message(frame, 'Chưa nghe rõ lời nói. Bấm mic để nói lại nhé.', 'I could not hear that clearly. Tap the microphone to try again.')
             return {**echo, 'status': 'blocked', 'reason': code, 'reason_category': category,
                     'message_vi': description,

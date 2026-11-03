@@ -934,3 +934,11 @@ package remains untouched.
 - The sheet width changed from 360dp to 336dp. The 72dp microphone action remains full width; the 48dp `Type / Cancel` secondary actions share one row. Instruction text remains at least 24sp and button labels remain at least 22sp.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.42-candidate`, code `51`.
 - Verification: 87 backend tests; 118 Android unit tests; Android lint and Candidate assemble passed. Candidate 1.5.42/code 51 installed side-by-side and passed the read-only Xiaomi identity, Accessibility, awake/unlocked, idle-overlay-stability, and no-new-fatal-exception checks. APK SHA256: `6c3f72da8308e78645524c97b57b89868e64882816a7bf3588242d3b80473015`. Person-driven verification of the first visible microphone frame, compact balance, and zero overlay churn during a real recording remains `TBD`.
+
+## 2026-11-03 — Reproduced cloud speech blocker in Firestore transaction API
+
+- The pinned google-cloud-firestore 2.21.0 SDK returns an iterator from `Transaction.get(document)`. `FirestoreBudget.transaction` treated it as a DocumentSnapshot and accessed `.exists`, causing AttributeError during budget reservation, before any Meta speech request. The outer speech handler converted this into `speech_unavailable`.
+- Reproduced with the real SDK and mocked network RPCs: speech failed with `speech_unavailable` before the fix; after using `DocumentReference.get(transaction=tx)`, speech reserves and settles correctly. Existing ledger and budget-limit rejection remain intact; no real provider or Firestore calls were made.
+- Previous explanations blaming parser format, stale revision, or the alternate Cloud Run URL were unproven. The repeated generic error did not establish any of those claims. A successful direct Meta silent-WAV request only verified that particular request, not our budget-backed pipeline.
+- Fixed application logging for blocked speech by using WARNING with fixed stage/reason codes. INFO logs had been suppressed by default configuration. No exception bodies, transcripts, recordings or secrets are logged.
+- Cloud deployment and a subsequent person-driven speech test remain required. This is a backend-only fix; no new APK is needed. Local workstation has no gcloud command configured, so no cloud deployment is claimed.

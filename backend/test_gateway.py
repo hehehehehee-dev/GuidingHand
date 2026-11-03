@@ -156,7 +156,8 @@ class GatewayTests(unittest.TestCase):
                 self.saved = copy.deepcopy(data)
 
         class Document:
-            pass
+            def get(self, transaction):
+                return transaction.get(self)
 
         class Collection:
             def document(self, _name):

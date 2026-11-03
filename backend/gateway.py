@@ -196,7 +196,9 @@ class FirestoreBudget:
 
         @self.firestore_module.transactional
         def run(tx):
-            snapshot = tx.get(self.document)
+            # Transaction.get returns an iterator in google-cloud-firestore 2.21.
+            # DocumentReference.get returns one snapshot within the same transaction.
+            snapshot = self.document.get(transaction=tx)
             data = snapshot.to_dict() if snapshot.exists else {
                 'spent_usd': '0', 'pending': {}, 'requests': 0}
             try:
