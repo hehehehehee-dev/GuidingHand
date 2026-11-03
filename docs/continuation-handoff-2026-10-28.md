@@ -942,3 +942,11 @@ package remains untouched.
 - Previous explanations blaming parser format, stale revision, or the alternate Cloud Run URL were unproven. The repeated generic error did not establish any of those claims. A successful direct Meta silent-WAV request only verified that particular request, not our budget-backed pipeline.
 - Fixed application logging for blocked speech by using WARNING with fixed stage/reason codes. INFO logs had been suppressed by default configuration. No exception bodies, transcripts, recordings or secrets are logged.
 - Cloud deployment and a subsequent person-driven speech test remain required. This is a backend-only fix; no new APK is needed. Local workstation has no gcloud command configured, so no cloud deployment is claimed.
+
+## 2026-11-03 — Companion feedback and respectful narration, Candidate 1.5.43/code 52
+
+- User confirmed cloud transcription works after the Firestore fix. This is user-reported real-phone evidence, not an automatically measured full-task pass.
+- Added finite companion gestures and distinct poses for ready/listening/thinking/guidance/questions/completion/pause. Reuses the Help icon and a 40dp icon beside microphone status. No extra window or decorative repeating timer. Reduced motion and system-disabled animators suppress motion; removal cancels it.
+- Vietnamese model narration now normalizes self-reference to the saved assistant choice (Tôi/Cháu/Con/Trợ lý) and uses the saved elder address in additional system phrases. GuideEngine applies the same wording to card and TTS. Quoted text and protected task labels stay literal; editable transcript is not rewritten.
+- Regression checks cover pronoun conversion, idempotence, protected names inside quotes, and existing card/speech agreement. Design contract: docs/companion-interaction-2026-11-03.md.
+- ADB currently lists no devices. The APK has not been installed for this change. Real-phone visual/motion, large-text, and anchoring review remain pending; reconnect Xiaomi to install Candidate only. No cloud redeploy is required for this Android change.

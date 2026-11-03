@@ -5,6 +5,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RespectfulLanguageTest {
+    @Test fun modelAndSystemSelfReferencesUseChosenVoice() {
+        val language = RespectfulLanguage(UserAddress.BA, AssistantAddress.CHAU)
+        assertEquals("Cháu chưa nghe rõ. Bà nói lại giúp cháu nhé.",
+            language.message("Tôi chưa nghe rõ. Bác nói lại giúp tôi nhé."))
+        assertEquals("Bà giữ nguyên màn hình, cháu sẽ kiểm tra lại.",
+            language.message("Bác giữ nguyên màn hình, tôi sẽ kiểm tra lại."))
+        val text = language.message("Tôi sẽ chờ. Bác muốn gửi ảnh nào?")
+        assertEquals(text, language.message(text))
+        for (assistant in AssistantAddress.entries) {
+            assertTrue(RespectfulLanguage(assistant = assistant).message("Tôi đang đọc màn hình.")
+                .startsWith(assistant.label))
+        }
+    }
+    @Test fun quotedContentAndRecipientAreNeverRewritten() {
+        val language = RespectfulLanguage(UserAddress.ONG, AssistantAddress.CHAU)
+        assertEquals("Cháu sẽ tìm “Bác nói”.", language.message("Tôi sẽ tìm “Bác nói”.", listOf("Bác nói")))
+        assertEquals("Cháu sẽ mở Con Cần.", language.message("Tôi sẽ mở Con Cần.", listOf("Con Cần")))
+    }
     @Test fun chosenAddressAndToneAreUsedWithoutGenderAssumptions() {
         assertEquals("Bà vui lòng bấm nút được đánh dấu ạ.", RespectfulLanguage(UserAddress.BA).message("Bấm nút được đánh dấu."))
         assertEquals("Ông, bấm nút được đánh dấu ạ.", RespectfulLanguage(UserAddress.ONG, tone = GuidanceTone.CONCISE).message("Bấm nút được đánh dấu."))

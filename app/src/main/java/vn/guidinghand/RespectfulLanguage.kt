@@ -36,6 +36,12 @@ data class RespectfulLanguage(
                 text = text.replace(label, token); saved += token to label
             }
         }
+        // Quoted app labels and dictated content are literal, not assistant narration.
+        text = Regex("[\"“][^\"”]+[\"”]").replace(text) { match ->
+            val token = "\uE002${saved.size}\uE003"
+            saved += token to match.value
+            token
+        }
         text = when (text) {
             "Ông bà muốn làm việc gì?" -> goalQuestion
             "Mình sẽ hướng dẫn tiếp từ màn hình này." -> "$self sẽ tiếp tục hướng dẫn từ màn hình hiện tại."
@@ -50,7 +56,15 @@ data class RespectfulLanguage(
         text = Regex("^(?:Xin vui lòng|Vui lòng|Xin|Hãy) (?=(?:$actionWords)\\s)", RegexOption.IGNORE_CASE).replaceFirst(text, "")
         val leadingAddress = Regex("^(Ông bà|Bác|Ông|Bà|Cô|Chú|Anh|Chị) (?=(?:vui lòng|muốn|có thể|cứ|hãy|bấm|kiểm tra|chọn|nhập|tự)\\b)")
         text = leadingAddress.replaceFirst(text, if (address.isEmpty()) "" else "$address ")
-        text = Regex("(^|[.!?]\\s+)Mình(?=\\s)").replace(text) { it.groupValues[1] + self }
+        text = Regex("(?U)\\b(Tôi|Mình|Cháu|Con|Trợ lý)(?=\\s+(?:sẽ|đã|đang|chưa|không|có thể|cần|hiểu|nghe|thấy|xin|muốn|dừng)\\b)", RegexOption.IGNORE_CASE)
+            .replace(text) { match -> if (match.range.first == 0 || text.substring(0, match.range.first).trimEnd().lastOrNull() in listOf('.', '!', '?')) self else self.lowercase() }
+        text = Regex("(?i)(giúp) (tôi|mình)(?=[\\s.!?,]|$)")
+            .replace(text) { "${it.groupValues[1]} ${self.lowercase()}" }
+        text = Regex("(?U)\\b(Ông bà|Bác|Ông|Bà|Cô|Chú|Anh|Chị)(?=\\s+(?:giữ|đóng|mở|nói|thử|chờ|kéo|vuốt|vẫn|đừng|muốn|cần|có thể|cứ|hãy|vui lòng)\\b)", RegexOption.IGNORE_CASE)
+            .replace(text) { match ->
+                if (address.isEmpty()) "" else if (match.range.first == 0 || text.substring(0, match.range.first).trimEnd().lastOrNull() in listOf('.', '!', '?')) address else address.lowercase()
+            }
+        text = text.trim().replace(Regex(" {2,}"), " ")
         val imperative = Regex("^(Bấm|Gõ|Tự gõ|Kiểm tra|Chọn|Nhập|Tự bấm)\\s+", RegexOption.IGNORE_CASE).find(text)
         if (imperative != null) {
             val verb = imperative.groupValues[1].lowercase().replace("tự gõ", "nhập").replace("gõ", "nhập")
@@ -61,7 +75,7 @@ data class RespectfulLanguage(
         } else if (address.isNotEmpty() && text.startsWith("$address ") && text.endsWith("?") && !text.endsWith(" ạ?")) {
             text = text.dropLast(1) + " ạ?"
         }
-        saved.forEach { (token, label) -> text = text.replace(token, label) }
+        saved.asReversed().forEach { (token, label) -> text = text.replace(token, label) }
         return text
     }
     fun step(value: GuidanceStep, protectedLabels: List<String>) = value.copy(instructionVi = message(value.instructionVi, protectedLabels))

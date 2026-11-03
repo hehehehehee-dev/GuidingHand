@@ -58,7 +58,7 @@ class GuideOverlay(
     private fun px(value: Float) = value * density
     private fun sp(value: Float) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_SP, value, context.resources.displayMetrics)
-    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else vi
+    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else prefs.respectfulLanguage.message(vi)
     private fun feedbackBackground(primary: Boolean, radiusDp: Float = 14f, strokeDp: Int = 1): android.graphics.drawable.Drawable {
         fun shape(fill: Int, stroke: Int) = GradientDrawable().apply {
             setColor(fill); cornerRadius = px(radiusDp); setStroke(dp(strokeDp), stroke)
@@ -281,6 +281,7 @@ class GuideOverlay(
     private var lastRejectedFrame: String? = null
     private var pointingClipped = false
     private var bubbleIconKey: String? = null
+    private val bubbleCompanion = CompanionDrawable()
 
     private fun bubbleBounds(): GuideBox? {
         if (!bubbleAttached) return null
@@ -416,7 +417,8 @@ class GuideOverlay(
         }
     }
 
-    fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING, text), false) }
+    fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING,
+        if (prefs.language == "vi") prefs.respectfulLanguage.message(text) else text), false) }
     /** In-flight work is informative, not a recoverable error. Only Stop remains available. */
     fun showWorking(text: String) { render(GuideViewState(GuideStatus.PLANNING, text), false) }
     fun showDraftReview(text: String, purpose: SpeechPurpose) = render(GuideViewState(GuideStatus.CONFIRMING_INPUT,
@@ -440,8 +442,8 @@ class GuideOverlay(
         val showIcon = !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)
         val iconKey = if (!showIcon) "none" else prefs.mascot.key
         if (bubbleIconKey != iconKey) {
-            val icon = if (showIcon) context.getDrawable(if (prefs.mascot == GuideMascot.YOUNG_HELPER)
-                vn.guidinghand.R.drawable.guidinghand_companion else vn.guidinghand.R.drawable.guidinghand_icon)?.mutate()?.apply {
+            val icon = if (showIcon) (if (prefs.mascot == GuideMascot.YOUNG_HELPER)
+                bubbleCompanion else context.getDrawable(vn.guidinghand.R.drawable.guidinghand_icon)?.mutate())?.apply {
                 setBounds(0, 0, dp(40), dp(40))
             } else null
             bubble.setCompoundDrawablesRelative(icon, null, null, null)
@@ -476,6 +478,14 @@ class GuideOverlay(
             val current = bubble.layoutParams as WindowManager.LayoutParams
             if (current.x != p.x || current.y != p.y || current.width != p.width || current.height != p.height) wm.updateViewLayout(bubble, p)
         }
+        if (prefs.mascot == GuideMascot.YOUNG_HELPER) bubbleCompanion.show(when (savedState?.status) {
+            GuideStatus.READING, GuideStatus.PLANNING, GuideStatus.VERIFYING -> CompanionMood.THINKING
+            GuideStatus.WAITING_TAP, GuideStatus.WAITING_NAVIGATION -> CompanionMood.GUIDING
+            GuideStatus.CLARIFYING, GuideStatus.ASKING, GuideStatus.CONFIRMING_INPUT, GuideStatus.CONFIRMING_COPY -> CompanionMood.QUESTION
+            GuideStatus.DONE -> CompanionMood.DONE
+            GuideStatus.SAFETY_PAUSED, GuideStatus.UNAVAILABLE, GuideStatus.UNSUPPORTED -> CompanionMood.PAUSED
+            else -> CompanionMood.READY
+        }, prefs.reduceMotion)
     }
 
     fun render(state: GuideViewState, canOpenLauncher: Boolean) {
@@ -749,7 +759,7 @@ class GuideOverlay(
     }
     private fun clearRing() { region = null; navigationCue = NavigationCue.NONE; if (ringAttached) { wm.removeView(ring); ringAttached = false } }
     private fun clearCard() { if (cardAttached) { wm.removeView(card); cardAttached = false }; lastCardContentKey = null }
-    private fun removeBubble() { if (bubbleAttached) { wm.removeView(bubble); bubbleAttached = false; GuideTrace.event(context, "bubble_detached") } }
+    private fun removeBubble() { bubbleCompanion.stop(); if (bubbleAttached) { wm.removeView(bubble); bubbleAttached = false; GuideTrace.event(context, "bubble_detached") } }
     fun suspendForCapture() { clearRing(); clearCard(); removeBubble() }
     fun refreshPreferences() {
         bubbleIconKey = null

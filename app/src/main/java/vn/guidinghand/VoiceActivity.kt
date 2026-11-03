@@ -62,6 +62,14 @@ class VoiceActivity : ComponentActivity() {
     private var delivered = false
     private var awaitingPermission = false
     private var windowId = 0L
+    private val companion = CompanionDrawable()
+    private fun companionMood(mood: CompanionMood) {
+        if (prefs.mascot != GuideMascot.YOUNG_HELPER) return
+        companion.setBounds(0, 0, dp(40), dp(40))
+        status.compoundDrawablePadding = dp(8)
+        status.setCompoundDrawablesRelative(companion, null, null, null)
+        companion.show(mood, prefs.reduceMotion)
+    }
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
         awaitingPermission = false
         if (allowed) startRecording() else showError(tr(
@@ -210,6 +218,7 @@ class VoiceActivity : ComponentActivity() {
     }
 
     private fun showReady() {
+        companionMood(CompanionMood.READY)
         recording.set(false); submitting = false
         status.text = readyText(); waveform.visibility = View.GONE; editor.visibility = View.GONE
         // Keep the listening choice compact. Examples add reading load and duplicate the
@@ -263,6 +272,7 @@ class VoiceActivity : ComponentActivity() {
                 "This listening session has stopped. Close it and tap Help again.")); return
         }
         service.voiceRecordingStarted()
+        companionMood(CompanionMood.LISTENING)
         status.text = listeningText(); waveform.visibility = View.VISIBLE
         primary.text = tr("Dừng nghe", "Stop listening")
         primary.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_gh_stop, 0, 0, 0)
@@ -277,6 +287,7 @@ class VoiceActivity : ComponentActivity() {
                 val (pcm, capturedRate) = withContext(Dispatchers.IO) { captureAudio(service) }
                 check(pcm.isNotEmpty()); check(service.localRecordingAllowed())
                 status.text = tr("Đang chuyển giọng nói thành chữ…", "Turning speech into text…")
+                companionMood(CompanionMood.THINKING)
                 waveform.text = tr("Xin chờ một chút", "Please wait")
                 val wave = try { PcmWave.encode(pcm, capturedRate) } finally { pcm.fill(0) }
                 submitting = true; primary.isEnabled = false
@@ -373,6 +384,7 @@ class VoiceActivity : ComponentActivity() {
     }
 
     private fun showError(message: String) {
+        companionMood(CompanionMood.QUESTION)
         recording.set(false); submitting = false
         status.text = if (prefs.language == "vi") prefs.respectfulLanguage.message(message) else message
         example.visibility = View.GONE
@@ -435,6 +447,7 @@ class VoiceActivity : ComponentActivity() {
     override fun onPause() { super.onPause(); if (!awaitingPermission) { recording.set(false); finish() } }
     override fun onStop() { visible = false; super.onStop() }
     override fun onDestroy() {
+        companion.stop()
         recording.set(false); scope.cancel(); visible = false; activeSession = false
         GuidingHandService.instance?.voiceClosed(windowId, if (delivered) null else tr(
             "Đã đóng cửa sổ nghe. Bác có thể bấm Nói khi sẵn sàng.",
@@ -453,7 +466,7 @@ class VoiceActivity : ComponentActivity() {
         SpeechPurpose.RECIPIENT -> tr("Đang nghe tên người nhận…", "Listening for the recipient's name…")
         SpeechPurpose.GENERAL -> tr("Đang nghe…", "Listening…")
     }
-    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else vi
+    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else prefs.respectfulLanguage.message(vi)
     private fun ink() = Color.parseColor(GuideDesign.INK_HEX)
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }
