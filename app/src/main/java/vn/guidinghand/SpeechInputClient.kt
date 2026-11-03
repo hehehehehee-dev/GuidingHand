@@ -60,9 +60,12 @@ class SpeechInputClient(private val prefs: FamilyPreferences) {
             val result = JSONObject(String(bytes, Charsets.UTF_8))
             if (result.optString("status") == "blocked") {
                 val category = result.optString("reason_category")
-                throw SpeechInputFailure(if (category in setOf(
+                val safeCategory = if (category in setOf(
                     "sensitive", "cannot_read", "unavailable", "provider_auth", "rate_limited", "provider_failed", "provider_network"
-                )) category else "unavailable")
+                )) category else "unavailable"
+                // Preserve only the server's short diagnostic code (never transcript/audio).
+                val reason = result.optString("reason").take(64).replace(Regex("[^A-Za-z0-9_.-]"), "_")
+                throw SpeechInputFailure(if (reason.isBlank()) safeCategory else "$safeCategory:$reason")
             }
             check(result.optString("request_id") == id && result.optString("status") == "transcribed" &&
                 result.optString("model") == "muse-voice-transcribe-1.0")
