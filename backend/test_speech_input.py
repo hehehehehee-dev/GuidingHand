@@ -62,7 +62,7 @@ class SpeechInputTests(unittest.TestCase):
         self.assertEqual('blocked', self.speech.transcribe(frame())['status'])
         self.assertEqual([], self.calls)
 
-    def test_official_asr_transport_uses_vietnamese_bias_and_no_synthesis(self):
+    def test_official_asr_transport_uses_auto_language_detection_and_no_synthesis(self):
         requests=[]
         class Opener:
             def open(self, request, timeout):
@@ -74,13 +74,13 @@ class SpeechInputTests(unittest.TestCase):
         self.assertEqual('https://api.meta.ai/v1/asr/transcribe',requests[0].full_url)
         multipart=requests[0].data
         settings=json.loads(multipart.split(b'\r\n\r\n',1)[1].split(b'\r\n--',1)[0])
-        self.assertEqual(MODEL,settings['model']);self.assertEqual(['Vietnamese'],settings['languageBias'])
+        self.assertEqual(MODEL,settings['model']);self.assertNotIn('languageBias',settings)
         self.assertEqual(['Zalo','Minh'],settings['keywords'])
         self.assertNotIn('voice',settings);self.assertNotIn('tts',requests[0].full_url)
 
-    def test_language_and_vocabulary_follow_the_selected_language(self):
-        self.assertEqual(['Vietnamese'], speech_settings('vi', [])['languageBias'])
-        self.assertEqual(['English'], speech_settings('en', ['Instagram'])['languageBias'])
+    def test_language_is_validated_but_asr_detects_it_from_speech(self):
+        self.assertNotIn('languageBias', speech_settings('vi', []))
+        self.assertNotIn('languageBias', speech_settings('en', ['Instagram']))
         self.assertEqual(['Zalo'], speech_settings('vi', [' Zalo ', 'zalo'])['keywords'])
         for language, keywords in [('fr', []), ('vi', ['x'] * 33), ('vi', ['bad\nword'])]:
             with self.assertRaises(Exception): speech_settings(language, keywords)

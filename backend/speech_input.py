@@ -44,8 +44,9 @@ def speech_settings(language, keywords):
         value = keyword.strip()
         if value.casefold() not in {item.casefold() for item in clean}:
             clean.append(value)
-    settings = {'model': MODEL, 'mode': 'PUSH_TO_TALK', 'audioEncoding': 'WAV',
-                'languageBias': ['Vietnamese' if language == 'vi' else 'English']}
+    # Muse Voice detects the spoken language when languageBias is omitted. This lets an elder
+    # switch between Vietnamese and English without first changing a Settings control.
+    settings = {'model': MODEL, 'mode': 'PUSH_TO_TALK', 'audioEncoding': 'WAV'}
     if clean:
         settings['keywords'] = clean
     return settings

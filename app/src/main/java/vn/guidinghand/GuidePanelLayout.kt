@@ -173,11 +173,13 @@ object GuidePanelLayout {
         val exclusions = listOfNotNull(target?.inflate(gap), anchor?.inflate(gap))
         fun valid(box: GuideBox) = safe.contains(box) && exclusions.none { it.intersects(box) }
         if (anchor != null) {
+            // Prefer above Help. This keeps an expanding transcript away from the bottom
+            // system bar and prevents the card from looking fixed to the screen bottom.
             val near = listOf(
-                GuideBox(anchor.left, anchor.bottom + gap, anchor.left + width, anchor.bottom + gap + desiredHeight),
                 GuideBox(anchor.left, anchor.top - gap - desiredHeight, anchor.left + width, anchor.top - gap),
-                GuideBox(anchor.right + gap - width, anchor.top, anchor.right + gap, anchor.top + desiredHeight),
-                GuideBox(anchor.left - gap - width, anchor.top, anchor.left - gap, anchor.top + desiredHeight)
+                GuideBox(anchor.left, anchor.bottom + gap, anchor.left + width, anchor.bottom + gap + desiredHeight),
+                GuideBox(anchor.left - gap - width, anchor.top, anchor.left - gap, anchor.top + desiredHeight),
+                GuideBox(anchor.right + gap, anchor.top, anchor.right + gap + width, anchor.top + desiredHeight)
             ).map { box ->
                 val dx = when {
                     box.right > safe.right -> safe.right - box.right
@@ -196,13 +198,13 @@ object GuidePanelLayout {
             // When the full card cannot fit, keep it attached to Help and let its content
             // scroll. This is preferable to dropping the card to the bottom of the screen.
             val attached = listOf(
-                GuideBox(anchor.left, anchor.bottom + gap, anchor.left + width,
-                    minOf(safe.bottom, anchor.bottom + gap + desiredHeight)),
                 GuideBox(anchor.left, maxOf(safe.top, anchor.top - gap - desiredHeight), anchor.left + width,
                     anchor.top - gap),
-                GuideBox(anchor.right + gap - width, anchor.top, anchor.right + gap,
-                    minOf(safe.bottom, anchor.top + desiredHeight)),
+                GuideBox(anchor.left, anchor.bottom + gap, anchor.left + width,
+                    minOf(safe.bottom, anchor.bottom + gap + desiredHeight)),
                 GuideBox(anchor.left - gap - width, anchor.top, anchor.left - gap,
+                    minOf(safe.bottom, anchor.top + desiredHeight)),
+                GuideBox(anchor.right + gap, anchor.top, anchor.right + gap + width,
                     minOf(safe.bottom, anchor.top + desiredHeight))
             ).map { box ->
                 val dx = when {

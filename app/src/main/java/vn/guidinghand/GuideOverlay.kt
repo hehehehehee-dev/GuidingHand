@@ -278,7 +278,6 @@ class GuideOverlay(
     private val uiHandler = Handler(Looper.getMainLooper())
     private var lastRejectedFrame: String? = null
     private var pointingClipped = false
-    private var busyLabel: String? = null
     private var bubbleIconKey: String? = null
 
     private fun bubbleBounds(): GuideBox? {
@@ -415,15 +414,6 @@ class GuideOverlay(
     fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING, text), false) }
     /** In-flight work is informative, not a recoverable error. Only Stop remains available. */
     fun showWorking(text: String) { render(GuideViewState(GuideStatus.PLANNING, text), false) }
-    fun showVoiceBusy(text: String) {
-        if (busyLabel == text && !VoiceActivity.visible && bubbleAttached && !cardAttached && !ringAttached) return
-        busyLabel = text
-        clearRing(); clearCard()
-        // VoiceActivity is the focusable input surface. Do not leave a second,
-        // translucent "Listening…" bubble underneath it; it covers the keyboard
-        // and makes the editor look like it is stuck to the bottom of the screen.
-        if (VoiceActivity.visible) removeBubble() else showBubble()
-    }
     fun showDraftReview(text: String, purpose: SpeechPurpose) = render(GuideViewState(GuideStatus.CONFIRMING_INPUT,
         if (purpose == SpeechPurpose.MESSAGE_CONTENT) tr("Bác muốn viết:", "You would like to write:")
         else tr("Bác nói:", "You said:"), speechPurpose = purpose, draftText = text), false)
@@ -434,7 +424,6 @@ class GuideOverlay(
     fun showBubble() {
         if (!DeviceVisibility.allowed(context)) return
         val label = when {
-            busyLabel != null -> busyLabel!!
             autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Gọi người thân", "Call family")
             userCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Tạm dừng", "Paused")
             autoCollapsed -> tr("Nói", "Speak")
@@ -442,7 +431,7 @@ class GuideOverlay(
             else -> tr("Giúp tôi", "Help")
         }
         if (bubble.text.toString() != label) bubble.text = label
-        val showIcon = busyLabel == null && !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)
+        val showIcon = !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)
         val iconKey = if (!showIcon) "none" else prefs.mascot.key
         if (bubbleIconKey != iconKey) {
             val icon = if (showIcon) context.getDrawable(if (prefs.mascot == GuideMascot.YOUNG_HELPER)
@@ -452,12 +441,11 @@ class GuideOverlay(
             bubble.setCompoundDrawablesRelative(icon, null, null, null)
             bubbleIconKey = iconKey
         }
-        val enabled = busyLabel == null
+        val enabled = true
         if (bubble.isEnabled != enabled) bubble.isEnabled = enabled
         val alpha = if (enabled) 1f else .88f
         if (bubble.alpha != alpha) bubble.alpha = alpha
         val description = when {
-            busyLabel != null -> label
             autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Đã tạm dừng. Bấm để mở trình quay số cho người thân.", "Paused. Tap to open the family contact in the dialer.")
             autoCollapsed -> tr("Không đủ chỗ hiện thẻ mà không che nút. Bấm để nói hoặc yêu cầu nhắc lại.", "The guide is compact to keep the target clear. Tap to speak or ask to repeat.")
             userCollapsed -> tr("Mở lại hướng dẫn", "Show the guide")
@@ -467,7 +455,8 @@ class GuideOverlay(
         bubble.measure(View.MeasureSpec.makeMeasureSpec(safeArea().width, View.MeasureSpec.AT_MOST),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         val placement = GuidePanelLayout.place(safeArea(), bubble.measuredWidth.coerceAtLeast(dp(72)),
-            bubble.measuredHeight.coerceAtLeast(dp(72)), dp(72), pointedBox(), dp(8), draggedBubble)
+            bubble.measuredHeight.coerceAtLeast(dp(72)), dp(72), pointedBox(), dp(8),
+            draggedBubble ?: bubbleBounds())
         if (placement == null) {
             // Never leave the old Help position covering a newly selected target.
             removeBubble()
@@ -483,7 +472,6 @@ class GuideOverlay(
     }
 
     fun render(state: GuideViewState, canOpenLauncher: Boolean) {
-        busyLabel = null
         // IDLE is a privacy boundary. Clear before computing identity so repeated IDLE events
         // stay idempotent after the one intentional transcript-removal reflow.
         if (state.status == GuideStatus.IDLE) clearHeardSpeech()
@@ -668,7 +656,7 @@ class GuideOverlay(
             clearCard(); autoCollapsed = true; recordMeasurement(null, false, state); return
         }
         val placement = GuidePanelLayout.placeAttachedToHelp(
-            safe, width, desiredHeight, minimumHeight, pointedBox(), dp(8), anchor
+            safe, width, desiredHeight, minimumHeight, pointedBox(), 0, anchor
         )
         if (placement == null) {
             clearCard(); autoCollapsed = true; showBubble(); recordMeasurement(null, false, state); return
@@ -756,5 +744,5 @@ class GuideOverlay(
         collapse.setTextColor(feedbackText(false)); collapse.background = feedbackBackground(false)
         savedState?.let { render(it, savedCanOpen) } ?: showBubble()
     }
-    fun hide() { busyLabel = null; lastRenderKey = null; uiHandler.removeCallbacksAndMessages(null); suspendForCapture() }
+    fun hide() { lastRenderKey = null; uiHandler.removeCallbacksAndMessages(null); suspendForCapture() }
 }

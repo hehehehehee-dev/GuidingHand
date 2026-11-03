@@ -428,7 +428,10 @@ class SettingsActivity : SetupActivity() {
                     Text(if (saved) tr("✓ Thay đổi được tự động lưu", "✓ Changes save automatically")
                         else tr("Đang lưu thay đổi…", "Saving changes…"), fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold)
-                    SettingsSection(tr("Ngôn ngữ", "Language"), tr("Toàn bộ lời hướng dẫn chỉ dùng ngôn ngữ đã chọn.", "All guidance uses only the selected language.")) {
+                    SettingsSection(tr("Ngôn ngữ", "Language"), tr(
+                        "Đây là ngôn ngữ ban đầu. Sau khi bác nói, trợ lý theo ngôn ngữ của câu vừa nói.",
+                        "This is the starting language. After you speak, guidance follows the language you used."
+                    )) {
                         for ((key, label) in listOf("en" to "English", "vi" to "Tiếng Việt")) {
                             ChoiceButton(language == key, label, onClick = { language = key; saved = false })
                         }

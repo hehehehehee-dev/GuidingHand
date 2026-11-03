@@ -102,7 +102,7 @@ class GuidingHandService : AccessibilityService() {
         viewState = if (model.developmentStandIn && state.status != GuideStatus.IDLE) state.copy(instructionVi = "Phase 1 dev · ${state.instructionVi}") else state
         GuideTrace.event(this, "state", code = state.status.name)
         state.reasonCode?.let { GuideTrace.event(this, "guide_stop", code = it) }
-        if (VoiceActivity.visible) overlay.showVoiceBusy(tr("Đang nghe…", "Listening…"))
+        if (VoiceActivity.activeSession) overlay.hide()
         else if (ownSetupForeground()) overlay.hide()
         else overlay.render(viewState, engine.launcherStep != null)
     }, FamilyContext(prefs.contact, prefs.photo), allowDevStandIn = model.developmentStandIn, language = prefs.respectfulLanguage,
@@ -183,7 +183,9 @@ class GuidingHandService : AccessibilityService() {
             recordingPurpose = speechPurpose
             voiceDraft.begin(speechPurpose)
             voicePermitUntil = android.os.SystemClock.elapsedRealtime() + 180_000
-            model.cancel(); overlay.showVoiceBusy(tr("Micro đã sẵn sàng", "Microphone ready"))
+            // VoiceActivity is the only visible input surface. Hide every accessibility
+            // overlay before opening it so no second "Listening" pill can flash below.
+            model.cancel(); overlay.hide()
             try {
                 startActivity(Intent(this@GuidingHandService, VoiceActivity::class.java)
                     .putExtra(VoiceActivity.EXTRA_SPEECH_PURPOSE, speechPurpose.name)
@@ -201,7 +203,7 @@ class GuidingHandService : AccessibilityService() {
     /** A pre-window permit enables local recording only, never an upload based on an old screen. */
     fun localRecordingAllowed() = android.os.SystemClock.elapsedRealtime() < voicePermitUntil &&
         DeviceVisibility.allowed(this) && engine.status != GuideStatus.SAFETY_PAUSED
-    fun voiceRecordingStarted() { overlay.showVoiceBusy(tr("Đang nghe…", "Listening…")) }
+    fun voiceRecordingStarted() { overlay.hide() }
     fun submitVoiceRecording(wave: ByteArray) {
         voicePermitUntil = 0L
         voiceSubmission?.cancel()
@@ -277,6 +279,7 @@ class GuidingHandService : AccessibilityService() {
     fun receiveSpeech(text: String, session: Long = voiceGeneration) {
         scope.launch {
             if (session != voiceGeneration || !DeviceVisibility.allowed(this@GuidingHandService) || engine.status == GuideStatus.SAFETY_PAUSED) return@launch
+            followSpokenLanguage(text)
             if (!voiceDraft.capture(text)) {
                 if (SafetyPolicy.sensitiveGoal(text)) engine.pauseForSensitive()
                 else overlay.showVoiceNotice(tr("Tôi chưa nghe rõ. Bác bấm Nói lại nhé.", "I could not understand that. Tap Record again."))
@@ -284,6 +287,14 @@ class GuidingHandService : AccessibilityService() {
             }
             voiceDraft.textForReview()?.let { overlay.showDraftReview(it, recordingPurpose) }
         }
+    }
+    private fun followSpokenLanguage(text: String) {
+        val detected = SpokenLanguagePolicy.detect(text, prefs.language)
+        if (detected == prefs.language) return
+        prefs.language = detected
+        AppLanguage.apply(this, detected)
+        engine.updateLanguage(prefs.respectfulLanguage, detected)
+        GuideTrace.event(this, "spoken_language", code = detected)
     }
     private fun applyConfirmedSpeech(text: String) {
       scope.launch {
@@ -428,7 +439,7 @@ class GuidingHandService : AccessibilityService() {
                     (window.id == event.windowId || window.isActive || window.isFocused)
             }
             if (!ownActivityForeground) return
-            if (VoiceActivity.visible) overlay.showVoiceBusy(tr("Đang nghe…", "Listening…"))
+            if (VoiceActivity.activeSession) overlay.hide()
             else overlay.hide() // The in-app setup has its own large controls; do not cover them with the floating guide.
             return
         }

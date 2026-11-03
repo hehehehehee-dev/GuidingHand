@@ -198,6 +198,22 @@ class GuidePanelLayoutTest {
         assertTrue(placement.bounds.bottom == anchor.top - 16 || placement.bounds.top == anchor.bottom + 16 ||
             placement.bounds.right == anchor.left - 16 || placement.bounds.left == anchor.right + 16)
     }
+    @Test fun openCoachPrefersASeamlessEdgeAboveHelpInsteadOfTheScreenBottom() {
+        val safe = GuideBox(0, 0, 1080, 1920)
+        val help = GuideBox(760, 900, 960, 980)
+        val placement = GuidePanelLayout.placeAttachedToHelp(
+            safe, 344, 520, 240, null, 0, help
+        )!!
+        assertEquals(help.top, placement.bounds.bottom)
+        assertFalse(placement.bounds.intersects(help))
+    }
+    @Test fun validCurrentHelpPositionIsStableAcrossRepeatedRenders() {
+        val safe = GuideBox(0, 0, 360, 800)
+        val current = GuideBox(260, 320, 348, 392)
+        assertEquals(current, GuidePanelLayout.place(
+            safe, current.width, current.height, 72, null, 8, preferred = current
+        )?.bounds)
+    }
     @Test fun oversizedPanelScrollsAboveHelpInsteadOfDroppingToBottom() {
         val safe = GuideBox(12, 30, 348, 760)
         val anchor = GuideBox(250, 560, 336, 632)
