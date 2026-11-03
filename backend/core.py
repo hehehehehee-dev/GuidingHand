@@ -28,6 +28,9 @@ STEPS = ('launcher', 'recipient', 'attach', 'photo', 'send', 'recover', 'deliver
 STATUSES = ('clarify', 'unsupported', 'await', 'blocked', 'step')
 SENSITIVE = re.compile(r'(^|[^a-z0-9])(password|mat khau|payment|thanh toan|otp|ma xac thuc|ma xac nhan|pin|cvv)([^a-z0-9]|$)')
 EXPLICIT_SENSITIVE = re.compile(r'(^|[^a-z0-9])(enter password|nhap mat khau|enter your otp|nhap ma xac thuc|nhap ma xac nhan|verification code|payment details|card details|enter pin)([^a-z0-9]|$)')
+PAYMENT_ACTION = re.compile(r'(^|[^a-z0-9])(pay now|confirm payment|checkout|thanh toan ngay|xac nhan thanh toan)([^a-z0-9]|$)')
+BROWSER_PACKAGES = {'com.android.chrome', 'org.mozilla.firefox', 'com.microsoft.emmx',
+                    'com.sec.android.app.sbrowser', 'com.brave.browser', 'com.opera.browser'}
 VIETNAMESE_MARKS = re.compile(r'[ăâđêôơưàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]', re.I)
 VI_WORDS = re.compile(r'(^|\s)(bac|hay|bam|chon|man hinh|nut|dang|tiep theo|vui long|toi|giup|kiem tra|dung lai)(\s|$)', re.I)
 EN_WORDS = re.compile(r'(^|\s)(tap|choose|open|screen|button|please|wait|next step|go back)(\s|$)', re.I)
@@ -96,12 +99,17 @@ def validate_output_language(value, language):
     return value
 
 
-def sensitive_nodes(nodes):
+def sensitive_nodes(nodes, package_name=''):
     def labels(node):
         return [plain_text(node.get('text', ''), 300, True), *[plain_text(v, 300, True) for v in node.get('aliases', [])]]
     def editable(node):
         name = node.get('class_name', '').lower()
         return node.get('focused') is True or 'edittext' in name or 'autocompletetextview' in name
+    def browser_page_editable(node):
+        if not editable(node) or any(value in folded(node.get('id', '')) for value in ('url_bar', 'location_bar', 'omnibox')):
+            return False
+        box = node.get('region')
+        return isinstance(box, list) and len(box) == 4 and box[1] >= .12
     if any(node.get('password') is True for node in nodes):
         return True
     flattened = [(node, folded(label)) for node in nodes for label in labels(node) if label.strip()]
@@ -109,6 +117,11 @@ def sensitive_nodes(nodes):
     explicit = any(EXPLICIT_SENSITIVE.search(label) for _, label in flattened)
     context = any(SENSITIVE.search(label) for _, label in flattened)
     sensitive_control = any((node.get('clickable') is True or editable(node)) and SENSITIVE.search(label) for node, label in flattened)
+    if package_name in BROWSER_PACKAGES:
+        direct_sensitive_field = any(browser_page_editable(node) and SENSITIVE.search(label) for node, label in flattened)
+        page_input = any(browser_page_editable(node) for node in nodes)
+        transaction_action = any(node.get('clickable') is True and PAYMENT_ACTION.search(label) for node, label in flattened)
+        return direct_sensitive_field or (page_input and explicit) or transaction_action
     return exact or explicit or sensitive_control or (any(editable(node) for node in nodes) and context)
 
 
@@ -207,7 +220,7 @@ def validate(data):
             region(node['region'])
     if not any(label.strip() for node in nodes for label in [node['text'], *node.get('aliases', [])]):
         raise CoreError('unlabeled_screen')
-    if sensitive_nodes(nodes):
+    if sensitive_nodes(nodes, screen.get('package_name', '')):
         raise CoreError('sensitive_screen')
     if data.get('task') is not None:
         slots(data['task'])

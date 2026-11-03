@@ -26,6 +26,17 @@ data class GuideRenderPreferences(val language: String, val reduceMotion: Boolea
                                   val cardSize: GuideCardSize, val visionProfile: VisionProfile,
                                   val showPointer: Boolean, val mascot: GuideMascot, val fontScale: Float)
 
+/**
+ * Keeps the last geometry chosen by the layout engine while an overlay is temporarily removed.
+ * Android animates the safe area when the microphone/keyboard closes; using the transient view
+ * size as the next preference made Help, and therefore its attached card, walk down every frame.
+ */
+class GuideAnchorState {
+    private var remembered: GuideBox? = null
+    fun preferred(attachedBounds: GuideBox?): GuideBox? = remembered ?: attachedBounds
+    fun remember(bounds: GuideBox) { remembered = bounds }
+}
+
 /** Ordinary coaching stays compact. Questions, editable text, errors and safety remain expanded. */
 object GuideCardMode {
     fun compact(status: GuideStatus) = status in setOf(

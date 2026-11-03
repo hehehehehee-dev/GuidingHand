@@ -74,6 +74,36 @@ class CoreTests(unittest.TestCase):
                 'heading': False, 'class_name': class_name, 'region': [.1, .1, .9, .2]}]
             self.assertIs(value, validate(value))
 
+    def test_browser_article_does_not_pair_sensitive_words_with_address_bar(self):
+        value = frame(); value['screen']['package_name'] = 'com.android.chrome'
+        value['screen']['nodes'] = [
+            {'id': 'com.android.chrome:id/url_bar', 'text': 'How to create a password', 'aliases': [],
+             'clickable': True, 'selected': False, 'password': False, 'focused': True, 'heading': False,
+             'class_name': 'android.widget.EditText', 'region': [.02, .02, .98, .09]},
+            {'id': 'article', 'text': 'Payment details explained', 'aliases': [], 'clickable': False,
+             'selected': False, 'password': False, 'focused': False, 'heading': True,
+             'class_name': 'android.widget.TextView', 'region': [.05, .25, .95, .55]}]
+        self.assertIs(value, validate(value))
+
+    def test_browser_real_otp_form_and_payment_action_remain_blocked(self):
+        variants = []
+        otp = frame(); otp['screen']['package_name'] = 'com.android.chrome'; otp['screen']['nodes'] = [
+            {'id': 'prompt', 'text': 'Enter your OTP', 'aliases': [], 'clickable': False,
+             'selected': False, 'password': False, 'focused': False, 'heading': False,
+             'class_name': 'android.widget.TextView', 'region': [.1, .3, .9, .4]},
+            {'id': 'otp_field', 'text': '', 'aliases': [], 'clickable': True, 'selected': False,
+             'password': False, 'focused': True, 'heading': False, 'class_name': 'android.widget.EditText',
+             'region': [.1, .42, .9, .52]}]
+        variants.append(otp)
+        payment = frame(); payment['screen']['package_name'] = 'com.android.chrome'; payment['screen']['nodes'] = [
+            {'id': 'pay', 'text': 'Pay now', 'aliases': [], 'clickable': True, 'selected': False,
+             'password': False, 'focused': False, 'heading': False, 'class_name': 'android.widget.Button',
+             'region': [.1, .7, .9, .82]}]
+        variants.append(payment)
+        for value in variants:
+            with self.assertRaisesRegex(CoreError, 'sensitive_screen'):
+                validate(value)
+
     def test_structured_safety_blocks_password_otp_and_payment_before_models(self):
         for label, password in [('Password', True), ('Enter your OTP', False), ('Payment details', False)]:
             value = frame(); value['screen']['nodes'][0].update(

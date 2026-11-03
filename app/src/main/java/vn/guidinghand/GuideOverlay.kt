@@ -274,6 +274,7 @@ class GuideOverlay(
     private var lastRenderKey: String? = null
     private var draggedCard: GuideBox? = null
     private var draggedBubble: GuideBox? = null
+    private val bubbleAnchor = GuideAnchorState()
     private var lastLog = ""
     private val uiHandler = Handler(Looper.getMainLooper())
     private var lastRejectedFrame: String? = null
@@ -456,13 +457,14 @@ class GuideOverlay(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         val placement = GuidePanelLayout.place(safeArea(), bubble.measuredWidth.coerceAtLeast(dp(72)),
             bubble.measuredHeight.coerceAtLeast(dp(72)), dp(72), pointedBox(), dp(8),
-            draggedBubble ?: bubbleBounds())
+            draggedBubble ?: bubbleAnchor.preferred(bubbleBounds()))
         if (placement == null) {
             // Never leave the old Help position covering a newly selected target.
             removeBubble()
             return
         }
         val box = placement.bounds
+        bubbleAnchor.remember(box)
         val p = params(box.width, box.height, false).apply { x = box.left; y = box.top }
         if (!bubbleAttached) { wm.addView(bubble, p); bubbleAttached = true; GuideTrace.event(context, "bubble_attached") }
         else {
@@ -720,6 +722,7 @@ class GuideOverlay(
                                 savedState?.let { recordMeasurement(candidate, scroll.height < content.height, it) }
                             } else if (window === bubble) {
                                 draggedBubble = candidate
+                                bubbleAnchor.remember(candidate)
                                 // Help is the anchor. Move the card in the same frame so it never
                                 // lags behind or becomes detached from the control being dragged.
                                 if (cardAttached) savedState?.let { layoutCard(it) }

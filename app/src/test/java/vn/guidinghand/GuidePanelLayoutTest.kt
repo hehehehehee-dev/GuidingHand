@@ -4,6 +4,15 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GuidePanelLayoutTest {
+    @Test fun rememberedHelpAnchorSurvivesTransientViewMeasurementChanges() {
+        val anchor = GuideAnchorState()
+        val chosenByLayout = GuideBox(760, 520, 960, 600)
+        anchor.remember(chosenByLayout)
+
+        // The Android view can report a slightly different size while IME insets animate.
+        // The exact layout-engine box must remain the preferred anchor for the next frame.
+        assertEquals(chosenByLayout, anchor.preferred(GuideBox(760, 540, 958, 618)))
+    }
     @Test fun longTranscriptGetsScrollAffordanceButShortDraftDoesNot() {
         assertFalse(TranscriptPresentation.needsScrollHint("Gửi lời chào cho Minh"))
         assertTrue(TranscriptPresentation.needsScrollHint("a".repeat(121)))

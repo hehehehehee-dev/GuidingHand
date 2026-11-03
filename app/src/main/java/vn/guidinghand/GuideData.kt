@@ -48,6 +48,10 @@ object ScreenReadPolicy {
     }
 }
 object SafetyPolicy {
+    private val browserPackages = setOf(
+        "com.android.chrome", "org.mozilla.firefox", "com.microsoft.emmx",
+        "com.sec.android.app.sbrowser", "com.brave.browser", "com.opera.browser"
+    )
     private val credentialTerms = listOf("mat khau", "password", "passcode", "otp", "ma xac thuc", "ma xac nhan", "verification code", "pin", "cvv")
     private val paymentTerms = listOf("thanh toan", "payment", "pay now", "checkout", "card number", "so the")
     private fun patterns(values: List<String>) = values.map { Regex("(^|[^a-z0-9])${Regex.escape(it)}([^a-z0-9]|$)") }
@@ -57,9 +61,18 @@ object SafetyPolicy {
         "enter your otp", "nhap ma xac thuc", "nhap ma xac nhan", "enter password", "nhap mat khau",
         "verification code", "payment details", "card details", "enter pin"
     ))
+    private val paymentActionPatterns = patterns(listOf(
+        "pay now", "confirm payment", "checkout", "thanh toan ngay", "xac nhan thanh toan"
+    ))
     private fun matches(label: String, patterns: List<Regex>) = patterns.any { it.containsMatchIn(folded(label)) }
     private fun editable(node: ScreenNode) = node.focused || node.className.contains("EditText", true) ||
         node.className.contains("AutoCompleteTextView", true)
+    private fun browserPageEditable(node: ScreenNode): Boolean {
+        if (!editable(node)) return false
+        val id = folded(node.id)
+        if (listOf("url_bar", "location_bar", "omnibox").any(id::contains)) return false
+        return node.region?.top?.let { it >= .12f } == true
+    }
 
     fun sensitive(screen: ScreenState): Boolean {
         if (screen.nodes.any { it.password }) return true
@@ -73,6 +86,18 @@ object SafetyPolicy {
         val sensitiveControl = screen.nodes.any { node -> (editable(node) || node.clickable) && node.labels.any { label ->
             matches(label, credentialPatterns) || matches(label, paymentPatterns)
         } }
+        if (screen.packageName in browserPackages) {
+            // Browser chrome often contributes an always-present editable address bar. Do not
+            // combine that field with words such as “password” in an article and call the whole
+            // page sensitive. Real password fields still expose isPassword; other web forms must
+            // have a page input or an explicit transaction action before the hard stop fires.
+            val directSensitiveField = screen.nodes.any { node -> browserPageEditable(node) &&
+                node.labels.any { label -> matches(label, credentialPatterns) || matches(label, paymentPatterns) } }
+            val pageInput = screen.nodes.any(::browserPageEditable)
+            val transactionAction = screen.nodes.any { node -> node.clickable &&
+                node.labels.any { matches(it, paymentActionPatterns) } }
+            return directSensitiveField || (pageInput && explicitScreenPrompt) || transactionAction
+        }
         // A plain article mentioning passwords or payments is not a credential screen. A
         // matching label plus an input control is; so is an explicit sensitive action.
         return exactSensitiveLabel || explicitScreenPrompt || sensitiveControl || (hasEditable && (credentialContext || paymentContext))
