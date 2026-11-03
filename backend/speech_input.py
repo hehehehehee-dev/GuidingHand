@@ -63,11 +63,29 @@ def upload(key, audio, language, keywords):
     request = urllib.request.Request('https://api.meta.ai/v1/asr/transcribe', data=body,
         headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'multipart/form-data; boundary=' + boundary,
                  'Accept': 'application/json'}, method='POST')
-    with urllib.request.build_opener(NoRedirect()).open(request, timeout=35) as response:
-        data = response.read(32_001)
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(request, timeout=35) as response:
+            data = response.read(32_001)
+    except urllib.error.HTTPError:
+        raise
+    except urllib.error.URLError:
+        raise
     if len(data) > 32_000:
         raise CoreError('speech_response_too_large')
-    return json.loads(data)
+    try:
+        result = json.loads(data)
+    except (TypeError, ValueError):
+        # Never log or return the provider body: it may contain transcript/audio details.
+        raise CoreError('provider_invalid_response') from None
+    if isinstance(result, dict) and not result.get('transcript'):
+        turns = result.get('turns')
+        if isinstance(turns, list):
+            parts = [item.get('transcript', '').strip() for item in turns
+                     if isinstance(item, dict) and isinstance(item.get('transcript'), str)]
+            joined = ' '.join(part for part in parts if part)
+            if joined:
+                result['transcript'] = joined
+    return result
 
 
 class SpeechInput:
@@ -124,7 +142,7 @@ class SpeechInput:
                 'provider_network' if code == 'provider_network' else
                 'unavailable')
             elapsed = max(0, round((time.monotonic()-started)*1000))
-            LOG.info('voice_input status=blocked category=%s total_ms=%d', category, elapsed)
+            LOG.info('voice_input status=blocked category=%s code=%s total_ms=%d', category, code, elapsed)
             description = message(frame, 'Chưa đọc rõ màn hình. Chưa gửi âm thanh.', 'I cannot read the screen clearly. No audio was uploaded.') if category=='cannot_read' else message(frame, 'Màn hình có thông tin riêng tư. Đã dừng nhận giọng nói.', 'This screen contains private information. Speech input is paused.') if category=='sensitive' else message(frame, 'Chưa nghe rõ lời nói. Bấm mic để nói lại nhé.', 'I could not hear that clearly. Tap the microphone to try again.')
             return {**echo, 'status': 'blocked', 'reason': code, 'reason_category': category,
                     'message_vi': description,
