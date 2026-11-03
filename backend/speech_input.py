@@ -91,6 +91,8 @@ def upload(key, audio, language, keywords):
             result = {'transcript': events[-1]}
         else:
             raise CoreError('provider_invalid_response') from None
+    if not isinstance(result, dict):
+        raise CoreError('provider_invalid_response')
     if isinstance(result, dict) and not result.get('transcript'):
         turns = result.get('turns')
         if isinstance(turns, list):
