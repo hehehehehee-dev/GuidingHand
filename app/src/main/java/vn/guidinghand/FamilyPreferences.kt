@@ -25,7 +25,7 @@ enum class GuideMascot(val key: String) {
 class FamilyPreferences(context: Context) {
     private companion object {
         // Public Cloud Run service URL; the session token remains user/backend secret.
-        const val DEFAULT_BACKEND_URL = "https://guidinghand-backend-1132305541.us-central1.run.app"
+        const val DEFAULT_BACKEND_URL = "https://guidinghand-backend-gquf6kjoea-uc.a.run.app"
     }
     private val prefs = context.getSharedPreferences("GuidingHand", Context.MODE_PRIVATE)
     var voiceConsent: Boolean
