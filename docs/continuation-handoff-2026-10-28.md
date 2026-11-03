@@ -887,3 +887,12 @@ package remains untouched.
 - Retained transcript review, explicit copy consent, Repeat, Stop, Call family, family contact, accessibility choices, and the collapsed technical section. Each provides safety, error recovery, or a user choice requested for older adults.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.36-candidate`, code `45`.
 - Verification: 85 backend tests; 104 Android unit tests; Android lint and Candidate assemble passed. Candidate 1.5.36/code 45 was installed side-by-side, the temporary backend connection was paired again, and the read-only Xiaomi smoke check passed without a new fatal exception or idle overlay churn. A safe Settings capture confirms the first real choice appears earlier. Person-driven card-height and perceived-latency review remains `TBD` until a real interaction.
+
+# 2026-11-02 — Candidate 1.5.37 lifecycle-driven microphone opening
+
+- Removed both fixed 350 ms waits used when starting voice help from a GuidingHand setup screen.
+- The main action now delegates directly to the service. The service moves its own setup task to the background and continues as soon as Android reports the real `onPause` lifecycle state.
+- A one-second timeout is a failure bound, not an unconditional delay. On failure the app stops with a recovery instruction instead of reading GuidingHand's own window or opening the microphone over Settings.
+- Remaining runtime waits were audited. Event coalescing, settled-screen reads, screenshot overlay removal, the two-frame visual-motion gate, and Settings/backend debounce remain because they prevent duplicate provider work, stale frames, or repeated model reloads. VoiceActivity closure still uses bounded state polling before a fresh safety read; it exits as soon as the activity closes and is not an unconditional wait. The transcript-review delay is not retained.
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.37-candidate`, code `46`.
+- The optional Young helper mascot now has a 5-unit cream silhouette around its dark hair. The previous hair and tile colors were nearly identical; the outline preserves the established dark Help surface while separating the character at the 40dp runtime icon size without relying on color alone.

@@ -14,6 +14,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.first
 import kotlin.coroutines.resume
 
 /** Observe, gate, plan, wait, verify. This service has no gesture, typing or click-execution API. */
@@ -153,7 +154,20 @@ class GuidingHandService : AccessibilityService() {
         scope.launch {
           try {
             if (engine.status == GuideStatus.SAFETY_PAUSED) { overlay.render(viewState, false); return@launch }
-            SetupActivity.foreground?.get()?.let { own -> own.moveTaskToBack(true); delay(350) }
+            SetupActivity.foreground?.get()?.let { own ->
+                val moved = own.moveTaskToBack(true)
+                val backgrounded = moved && withTimeoutOrNull(1_000) {
+                    SetupActivity.foregroundVisible.first { visible -> !visible }
+                    true
+                } == true
+                if (!backgrounded) {
+                    overlay.showVoiceNotice(tr(
+                        "Chưa thể đóng màn hình thiết lập. Bác quay lại ứng dụng đang dùng rồi bấm Giúp nhé.",
+                        "I could not close Settings. Return to the app you were using, then tap Help."
+                    ))
+                    return@launch
+                }
+            }
             val current = withContext(Dispatchers.IO) { readTree(allowOwn = true) }
             val verdict = ScreenReadPolicy.verdict(current)
             if (verdict != ScreenReadVerdict.SAFE) {

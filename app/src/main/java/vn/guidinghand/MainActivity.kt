@@ -43,9 +43,18 @@ import kotlinx.coroutines.delay
 
 /** An explicit Help tap can dismiss our own setup task; it never navigates another app. */
 open class SetupActivity : ComponentActivity() {
-    companion object { var foreground: java.lang.ref.WeakReference<SetupActivity>? = null }
-    override fun onResume() { super.onResume(); foreground = java.lang.ref.WeakReference(this) }
-    override fun onPause() { if (foreground?.get() === this) foreground = null; super.onPause() }
+    companion object {
+        var foreground: java.lang.ref.WeakReference<SetupActivity>? = null
+        internal val foregroundVisible = kotlinx.coroutines.flow.MutableStateFlow(false)
+    }
+    override fun onResume() {
+        super.onResume(); foreground = java.lang.ref.WeakReference(this); foregroundVisible.value = true
+    }
+    override fun onPause() {
+        if (foreground?.get() === this) foreground = null
+        foregroundVisible.value = foreground?.get() != null
+        super.onPause()
+    }
 }
 
 class MainActivity : SetupActivity() {
@@ -162,7 +171,7 @@ class MainActivity : SetupActivity() {
                         else if (!micGranted) requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1001)
                         else if (service == null) Unit
                         else if (backendHealth != BackendHealthStatus.READY) startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-                        else if (guideReady) { moveTaskToBack(true); window.decorView.postDelayed({ service.openVoice() }, 350) }
+                        else if (guideReady) service.openVoice()
                     }, enabled = guideReady || !accessibilityOn || !micGranted || (serviceConnected && backendHealth != BackendHealthStatus.READY),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp), shape = RoundedCornerShape(24.dp)) {
                         Icon(painterResource(R.drawable.ic_mic), contentDescription = null, modifier = Modifier.size(30.dp))

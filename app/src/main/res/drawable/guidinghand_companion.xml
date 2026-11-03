@@ -4,7 +4,10 @@
     <path android:fillColor="#192A30" android:pathData="M0,0H108V108H0Z" />
     <!-- A warm, fictional young helper. It represents GuidingHand and never a real relative. -->
     <path android:fillColor="#F7F5EF" android:pathData="M32,42a22,22 0,1 0,44 0a22,22 0,1 0,-44 0" />
-    <path android:fillColor="#18332A" android:pathData="M31,40Q31,16 54,16Q78,16 78,41Q68,32 58,29Q48,39 31,40Z" />
+    <!-- A light silhouette keeps the dark hair distinct from the dark Help-button tile at 40dp. -->
+    <path android:fillColor="#18332A" android:strokeColor="#F7F5EF"
+        android:strokeWidth="5" android:strokeLineJoin="round"
+        android:pathData="M31,40Q31,16 54,16Q78,16 78,41Q68,32 58,29Q48,39 31,40Z" />
     <path android:fillColor="#18332A" android:pathData="M44,42a3,3 0,1 0,6 0a3,3 0,1 0,-6 0M59,42a3,3 0,1 0,6 0a3,3 0,1 0,-6 0" />
     <path android:fillColor="@android:color/transparent" android:strokeColor="#18332A"
         android:strokeWidth="3" android:strokeLineCap="round"

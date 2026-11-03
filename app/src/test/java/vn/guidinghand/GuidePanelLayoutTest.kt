@@ -46,6 +46,9 @@ class GuidePanelLayoutTest {
         assertEquals(1.0, GuideDesign.contrastRatio("#FFFFFF", "#FFFFFF"), .0001)
         assertEquals(21.0, GuideDesign.contrastRatio("#000000", "#FFFFFF"), .0001)
     }
+    @Test fun companionHairSilhouetteExceedsSevenToOneAgainstItsTile() {
+        assertTrue(GuideDesign.contrastRatio("#F7F5EF", "#192A30") >= 7.0)
+    }
     @Test fun everyVisionProfileAccentExceedsSevenToOneAgainstGuideInk() {
         for (profile in VisionProfile.entries) {
             val ratio = GuideDesign.contrastRatio(GuideDesign.INK_HEX, profile.accentHex)
