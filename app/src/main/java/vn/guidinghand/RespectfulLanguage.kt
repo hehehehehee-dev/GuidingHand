@@ -56,11 +56,11 @@ data class RespectfulLanguage(
         text = Regex("^(?:Xin vui lòng|Vui lòng|Xin|Hãy) (?=(?:$actionWords)\\s)", RegexOption.IGNORE_CASE).replaceFirst(text, "")
         val leadingAddress = Regex("^(Ông bà|Bác|Ông|Bà|Cô|Chú|Anh|Chị) (?=(?:vui lòng|muốn|có thể|cứ|hãy|bấm|kiểm tra|chọn|nhập|tự)\\b)")
         text = leadingAddress.replaceFirst(text, if (address.isEmpty()) "" else "$address ")
-        text = Regex("(?U)\\b(Tôi|Mình|Cháu|Con|Trợ lý)(?=\\s+(?:sẽ|đã|đang|chưa|không|có thể|cần|hiểu|nghe|thấy|xin|muốn|dừng)\\b)", RegexOption.IGNORE_CASE)
+        text = Regex("(?<![\\p{L}\\p{N}_])(Tôi|Mình|Cháu|Con|Trợ lý)(?=\\s+(?:sẽ|đã|đang|chưa|không|có thể|cần|hiểu|nghe|thấy|xin|muốn|dừng)(?![\\p{L}\\p{N}_]))", RegexOption.IGNORE_CASE)
             .replace(text) { match -> if (match.range.first == 0 || text.substring(0, match.range.first).trimEnd().lastOrNull() in listOf('.', '!', '?')) self else self.lowercase() }
         text = Regex("(?i)(giúp) (tôi|mình)(?=[\\s.!?,]|$)")
             .replace(text) { "${it.groupValues[1]} ${self.lowercase()}" }
-        text = Regex("(?U)\\b(Ông bà|Bác|Ông|Bà|Cô|Chú|Anh|Chị)(?=\\s+(?:giữ|đóng|mở|nói|thử|chờ|kéo|vuốt|vẫn|đừng|muốn|cần|có thể|cứ|hãy|vui lòng)\\b)", RegexOption.IGNORE_CASE)
+        text = Regex("(?<![\\p{L}\\p{N}_])(Ông bà|Bác|Ông|Bà|Cô|Chú|Anh|Chị)(?=\\s+(?:giữ|đóng|mở|nói|thử|chờ|kéo|vuốt|vẫn|đừng|muốn|cần|có thể|cứ|hãy|vui lòng)(?![\\p{L}\\p{N}_]))", RegexOption.IGNORE_CASE)
             .replace(text) { match ->
                 if (address.isEmpty()) "" else if (match.range.first == 0 || text.substring(0, match.range.first).trimEnd().lastOrNull() in listOf('.', '!', '?')) address else address.lowercase()
             }

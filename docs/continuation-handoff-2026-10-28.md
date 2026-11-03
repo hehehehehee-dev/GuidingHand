@@ -957,3 +957,9 @@ package remains untouched.
 - No blur/capture, new timer or change to ring geometry, Help/card anchoring, target sizes or typography. Native drawable backgrounds explicitly decline padding changes to preserve existing layout.
 - Measured contrast: instruction/card 13.26:1; Help text against its brightest gradient endpoint 8.36:1.
 - Xiaomi is disconnected, so Candidate 1.5.44 has not been installed on the phone. Native visual review attempted in a read-only emulator failed because Android System UI entered ANR before showing the app; emulator was stopped without snapshot save. Do not claim visual or phone pass. See docs/warm-surface-design-2026-11-03.md.
+
+## 2026-11-03 — Candidate 1.5.45/code 54 Android regex compatibility fix
+
+- Xiaomi reconnected. Installing 1.5.44 exposed an actual service crash: Android ICU rejects Java's embedded `(?U)` regex flag with PatternSyntaxException during respectful-wording initialization. JVM unit tests had accepted it.
+- Replaced the flag and word boundaries with explicit Unicode letter/number boundaries supported by Android. Existing respectful-language tests pass, including Vietnamese accents, idempotence and literal-label preservation. No backend change is required.
+- Installed Candidate 1.5.45/code 54 side-by-side on Xiaomi. Read-only phone smoke check passed: Accessibility enabled and not crashed, no new fatal exception, idle overlay stable. Evidence: build/outputs/phone-smoke/phone-smoke-20261103-231408Z.json and safe-screen-20261103-231408Z.png. This verifies installation/service health, not a user-driven speech or target-app task pass. Android unit tests/lint/assemble and 93 backend tests passed.
