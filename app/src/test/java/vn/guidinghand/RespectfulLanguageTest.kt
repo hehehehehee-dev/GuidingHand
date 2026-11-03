@@ -14,9 +14,22 @@ class RespectfulLanguageTest {
         val text = language.message("Tôi sẽ chờ. Bác muốn gửi ảnh nào?")
         assertEquals(text, language.message(text))
         for (assistant in AssistantAddress.entries) {
-            assertTrue(RespectfulLanguage(assistant = assistant).message("Tôi đang đọc màn hình.")
-                .startsWith(assistant.label))
+            val wording = RespectfulLanguage(assistant = assistant)
+            assertTrue(wording.message("Tôi đang đọc màn hình.").startsWith(wording.assistantLabel))
         }
+    }
+    @Test fun customAddressesAreLiteralBoundedAndHaveSafeDefaults() {
+        val language = RespectfulLanguage(UserAddress.CUSTOM, AssistantAddress.CUSTOM,
+            customUser = "Ông Sáu", customAssistant = "Em")
+        assertEquals("Ông Sáu muốn được hỗ trợ việc gì ạ?", language.goalQuestion)
+        assertEquals("Em chưa nghe rõ. Ông Sáu nói lại giúp em nhé.",
+            language.message("Tôi chưa nghe rõ. Bác nói lại giúp tôi nhé."))
+        val message = language.message("Tôi sẽ chờ.")
+        assertEquals(message, language.message(message))
+        assertEquals("Bác", language.copy(customUser = "").userLabel)
+        assertEquals("Tôi", language.copy(customAssistant = "").assistantLabel)
+        assertEquals("Ông Sáu", RespectfulLanguage.cleanAddress("  Ông  Sáu\n!"))
+        assertEquals(32, RespectfulLanguage.cleanAddress("a".repeat(100)).length)
     }
     @Test fun quotedContentAndRecipientAreNeverRewritten() {
         val language = RespectfulLanguage(UserAddress.ONG, AssistantAddress.CHAU)

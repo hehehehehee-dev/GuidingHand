@@ -34,7 +34,7 @@ These features are **designed to support** the following needs. Their presence a
 | Difficulty typing or unfamiliarity with keyboards | Spoken requests, editable transcription, and spoken guidance. A typing option is also available. |
 | Difficulty distinguishing colors | High-contrast, protanopia, deuteranopia, tritanopia, and monochrome profiles. Words, shapes, checkmarks, and borders supplement color. Wrong taps do not use a red error cue. |
 | Sensitivity to motion or distraction | A reduced-motion setting and short companion gestures tied to state changes. No repeating decorative animation is needed to follow a step. |
-| Different language and communication preferences | English and Vietnamese guidance; Vietnamese choices for how the assistant addresses the person and refers to itself, including “cháu” or “con.” |
+| Different language and communication preferences | English and Vietnamese guidance; Vietnamese preset or custom forms of address for both the user and assistant. The Home illustration follows the preset user address; custom names use a neutral portrait. |
 | A guide covering the control being explained | A movable Help anchor, attached collapsible card, selectable card size, and target-aware placement. Instruction surfaces stay opaque over changing app backgrounds. |
 
 The default ring has a **black outer border and bright-yellow inner border**, each at least **6dp**, with **12dp** target padding. Its accent follows the selected vision profile. An optional hand or young-helper cue accompanies the ring. The young helper has poses for listening, thinking, questions, guidance, completion, and pauses.
@@ -112,11 +112,11 @@ Requirements: **Android 11 or newer**, microphone and Accessibility permissions,
 3. In Settings, confirm the HTTPS server, enter its app-session token, choose language and communication preferences, and enable the required permissions and consent.
 4. Open an app, tap Help, and speak. A Ready status checks backend protocol access; it does not prove a particular task will succeed.
 
-The current source build is **1.5.45** (Android version code **54**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
+The current source build is **1.5.46** (Android version code **55**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
 
 ## Validation and demo
 
-Current local checks: **120 Android unit tests** and **93 backend tests** pass; Candidate lint and assembly pass. These are deterministic checks, including real Firestore SDK behavior with mocked network calls, not live model quality measurements.
+Current local checks: **121 Android unit tests** and **93 backend tests** pass; Candidate lint and assembly pass. These are deterministic checks, including real Firestore SDK behavior with mocked network calls, not live model quality measurements.
 
 The project backend is deployed on Cloud Run. Cloud-connected speech transcription was confirmed by the developer on the real Xiaomi after the Firestore fix. That confirmation does not establish complete multi-app reliability or an end-to-end send-photo pass for the latest build.
 

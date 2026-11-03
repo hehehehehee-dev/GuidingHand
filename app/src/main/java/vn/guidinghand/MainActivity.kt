@@ -173,10 +173,11 @@ class MainActivity : SetupActivity() {
                         shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
-                            Image(painterResource(R.drawable.family_together),
-                                contentDescription = tr("Người lớn tuổi và người thân đồng hành", "An elder and family member together"),
-                                modifier = Modifier.fillMaxWidth().heightIn(max = 176.dp))
-                            Text(tr("Bác nói. Tôi chỉ. Bác tự bấm.", "You speak. I point. You tap."),
+                            FamilyPortrait(prefs.respectfulLanguage.user,
+                                tr("Người dùng và người đồng hành", "The user and a companion"))
+                            val wording = prefs.respectfulLanguage
+                            val userLabel = wording.userLabel.ifBlank { "Bạn" }
+                            Text(tr("$userLabel nói. ${wording.assistantLabel} chỉ. $userLabel tự bấm.", "You speak. I point. You tap."),
                                 fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
@@ -402,6 +403,8 @@ class SettingsActivity : SetupActivity() {
             var user by remember { mutableStateOf(prefs.respectfulLanguage.user) }
             var assistant by remember { mutableStateOf(prefs.respectfulLanguage.assistant) }
             var tone by remember { mutableStateOf(prefs.respectfulLanguage.tone) }
+            var customUser by remember { mutableStateOf(prefs.respectfulLanguage.customUser) }
+            var customAssistant by remember { mutableStateOf(prefs.respectfulLanguage.customAssistant) }
             var visionProfile by remember { mutableStateOf(prefs.visionProfile) }
             var showPointer by remember { mutableStateOf(prefs.showPointer) }
             var reduceMotion by remember { mutableStateOf(prefs.reduceMotion) }
@@ -416,10 +419,10 @@ class SettingsActivity : SetupActivity() {
             var saved by remember { mutableStateOf(true) }
             var connectionEffectStarted by remember { mutableStateOf(false) }
             fun tr(v: String, e: String) = if (language == "vi") v else e
-            val preview = RespectfulLanguage(user, assistant, tone)
+            val preview = RespectfulLanguage(user, assistant, tone, customUser, customAssistant)
             // Ordinary preferences persist as soon as they change. This removes the easy-to-miss
             // Save step while keeping the user's current task and explicit safety choices intact.
-            LaunchedEffect(language, phone, contact, user, assistant, tone, visionProfile,
+            LaunchedEffect(language, phone, contact, user, assistant, tone, customUser, customAssistant, visionProfile,
                 showPointer, reduceMotion, cardSize, mascot, backend, session, screenConsent,
                 voiceConsent, devStandIn) {
                 prefs.language = language; prefs.phone = phone; prefs.contact = contact
@@ -460,8 +463,22 @@ class SettingsActivity : SetupActivity() {
                         SettingsSection("Cách trò chuyện", "Chọn cách xưng hô khiến bác cảm thấy tự nhiên và được tôn trọng.") {
                             Text("Trợ lý gọi bác là", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                             for (value in UserAddress.entries) ChoiceButton(user == value, value.label, onClick = { user = value; saved = false })
+                            if (user == UserAddress.CUSTOM) OutlinedTextField(
+                                value = customUser, onValueChange = { customUser = it.take(32); saved = false },
+                                label = { Text("Muốn được gọi là", fontSize = 20.sp) },
+                                placeholder = { Text("Ví dụ: Ông Sáu", fontSize = 20.sp) },
+                                supportingText = { Text("Tối đa 32 ký tự. Để trống sẽ dùng Bác.", fontSize = 20.sp) },
+                                singleLine = true, textStyle = TextStyle(fontSize = 24.sp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp))
                             Text("Trợ lý tự xưng là", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                             for (value in AssistantAddress.entries) ChoiceButton(assistant == value, value.label, onClick = { assistant = value; saved = false })
+                            if (assistant == AssistantAddress.CUSTOM) OutlinedTextField(
+                                value = customAssistant, onValueChange = { customAssistant = it.take(32); saved = false },
+                                label = { Text("Trợ lý tự xưng là", fontSize = 20.sp) },
+                                placeholder = { Text("Ví dụ: Em", fontSize = 20.sp) },
+                                supportingText = { Text("Tối đa 32 ký tự. Để trống sẽ dùng Tôi.", fontSize = 20.sp) },
+                                singleLine = true, textStyle = TextStyle(fontSize = 24.sp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp))
                             Text("Cách hướng dẫn", fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                             for (value in GuidanceTone.entries) ChoiceButton(tone == value, value.label, onClick = { tone = value; saved = false })
                             Surface(color = Color.White, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {

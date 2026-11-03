@@ -2,11 +2,11 @@ package vn.guidinghand
 
 enum class UserAddress(val key: String, val label: String) {
     BAC("bac", "Bác"), ONG("ong", "Ông"), BA("ba", "Bà"), CO("co", "Cô"), CHU("chu", "Chú"),
-    ANH("anh", "Anh"), CHI("chi", "Chị"), NONE("none", "Không xưng hô");
+    ANH("anh", "Anh"), CHI("chi", "Chị"), NONE("none", "Không xưng hô"), CUSTOM("custom", "Tự nhập");
     companion object { fun from(key: String) = entries.firstOrNull { it.key == key } ?: BAC }
 }
 enum class AssistantAddress(val key: String, val label: String) {
-    TOI("toi", "Tôi"), CHAU("chau", "Cháu"), CON("con", "Con"), ASSISTANT("assistant", "Trợ lý");
+    TOI("toi", "Tôi"), CHAU("chau", "Cháu"), CON("con", "Con"), ASSISTANT("assistant", "Trợ lý"), CUSTOM("custom", "Tự nhập");
     companion object { fun from(key: String) = entries.firstOrNull { it.key == key } ?: TOI }
 }
 enum class GuidanceTone(val key: String, val label: String) {
@@ -18,10 +18,24 @@ enum class GuidanceTone(val key: String, val label: String) {
 data class RespectfulLanguage(
     val user: UserAddress = UserAddress.BAC,
     val assistant: AssistantAddress = AssistantAddress.TOI,
-    val tone: GuidanceTone = GuidanceTone.GENTLE
+    val tone: GuidanceTone = GuidanceTone.GENTLE,
+    val customUser: String = "",
+    val customAssistant: String = ""
 ) {
-    private val address get() = if (user == UserAddress.NONE) "" else user.label
-    private val self get() = assistant.label
+    companion object {
+        fun cleanAddress(value: String) = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFC)
+            .filter { it.isLetterOrDigit() || it in " -’'" }
+            .trim().replace(Regex(" +"), " ").take(32).trim()
+    }
+    val userLabel get() = when (user) {
+        UserAddress.NONE -> ""
+        UserAddress.CUSTOM -> cleanAddress(customUser).ifBlank { UserAddress.BAC.label }
+        else -> user.label
+    }
+    val assistantLabel get() = if (assistant == AssistantAddress.CUSTOM)
+        cleanAddress(customAssistant).ifBlank { AssistantAddress.TOI.label } else assistant.label
+    private val address get() = userLabel
+    private val self get() = assistantLabel
     val goalQuestion get() = if (address.isEmpty()) "Cần hỗ trợ việc gì ạ?" else "$address muốn được hỗ trợ việc gì ạ?"
     val waitingExample get() = if (address.isEmpty()) "$self sẽ chờ, không cần vội ạ." else "$address cứ thong thả, ${self.lowercase()} sẽ chờ."
     fun message(value: String, protectedLabels: List<String> = emptyList()): String {

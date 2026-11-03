@@ -42,9 +42,12 @@ class FamilyPreferences(context: Context) {
     var respectfulLanguage: RespectfulLanguage
         get() = RespectfulLanguage(UserAddress.from(prefs.getString("userAddress", "bac").orEmpty()),
             AssistantAddress.from(prefs.getString("assistantAddress", "toi").orEmpty()),
-            GuidanceTone.from(prefs.getString("guidanceTone", "gentle").orEmpty()))
+            GuidanceTone.from(prefs.getString("guidanceTone", "gentle").orEmpty()),
+            prefs.getString("customUserAddress", "").orEmpty(), prefs.getString("customAssistantAddress", "").orEmpty())
         set(value) { prefs.edit().putString("userAddress", value.user.key).putString("assistantAddress", value.assistant.key)
-            .putString("guidanceTone", value.tone.key).apply() }
+            .putString("guidanceTone", value.tone.key)
+            .putString("customUserAddress", RespectfulLanguage.cleanAddress(value.customUser))
+            .putString("customAssistantAddress", RespectfulLanguage.cleanAddress(value.customAssistant)).apply() }
     var devStandIn: Boolean
         get() = prefs.getBoolean("phase1DevStandIn", false)
         set(value) { prefs.edit().putBoolean("phase1DevStandIn", value).apply() }
