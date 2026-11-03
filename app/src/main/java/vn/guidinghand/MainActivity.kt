@@ -23,6 +23,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +42,19 @@ import kotlinx.coroutines.delay
         onSurface = ink, background = cream, onBackground = ink, secondary = ink),
         typography = Typography(bodyLarge = TextStyle(fontSize = 20.sp), bodyMedium = TextStyle(fontSize = 20.sp),
             bodySmall = TextStyle(fontSize = 20.sp), labelLarge = TextStyle(fontSize = 22.sp)), content = content)
+}
+
+/** The sheen lives behind opaque content cards, never behind floating instructions. */
+@Composable private fun GuideBackdrop(content: @Composable () -> Unit) {
+    Surface(Modifier.fillMaxSize(), color = Color(0xFFFFFCF5)) {
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            Color(0xFFEDF2EB), Color(0xFFFFFCF5), Color(0xFFF6F0E3))))
+            .drawBehind {
+                drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = .9f), Color.Transparent),
+                    center = Offset(size.width * .85f, size.height * .13f), radius = size.width * .65f),
+                    radius = size.width * .65f, center = Offset(size.width * .85f, size.height * .13f))
+            }) { content() }
+    }
 }
 
 /** An explicit Help tap can dismiss our own setup task; it never navigates another app. */
@@ -123,7 +139,7 @@ class MainActivity : SetupActivity() {
                     moveTaskToBack(true)
                 } else if (!accessibilityOn) startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
-            Surface(Modifier.fillMaxSize()) {
+            GuideBackdrop {
                 Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
@@ -151,7 +167,9 @@ class MainActivity : SetupActivity() {
                         }
                     }
 
-                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F0E6)),
+                    Card(colors = CardDefaults.cardColors(containerColor = guideCream),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+                        border = BorderStroke(1.dp, Color.White),
                         shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
                             horizontalAlignment = Alignment.CenterHorizontally) {
@@ -296,8 +314,10 @@ private fun cardSizeLabel(size: GuideCardSize, vi: Boolean) = when (size) {
 }
 
 @Composable private fun SettingsSection(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F0E6)),
-        shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(colors = CardDefaults.cardColors(containerColor = guideCream),
+        border = BorderStroke(1.dp, Color(0xFFDFE5DB)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(24.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
             subtitle?.let { Text(it, fontSize = 20.sp) }
@@ -421,7 +441,7 @@ class SettingsActivity : SetupActivity() {
                     GuidingHandService.instance?.reloadModel()
                 }
             }
-            Surface(Modifier.fillMaxSize()) {
+            GuideBackdrop {
                 Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp).padding(bottom = 56.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     Text(tr("Thiết lập GuidingHand", "GuidingHand settings"), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)

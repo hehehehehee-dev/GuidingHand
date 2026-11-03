@@ -67,7 +67,7 @@ class GuideOverlay(
             addState(intArrayOf(-android.R.attr.state_enabled), shape(Color.parseColor("#C7CEC9"), Color.parseColor("#66766F")))
             addState(intArrayOf(android.R.attr.state_pressed), shape(accent, ink))
             addState(intArrayOf(android.R.attr.state_focused), shape(Color.parseColor("#FFF3A0"), ink))
-            addState(intArrayOf(), shape(if (primary) ink else cream, ink))
+            addState(intArrayOf(), if (primary) GuideSurfaces.help(density, radiusDp) else GuideSurfaces.card(density, radiusDp))
         }
         return if (prefs.reduceMotion) states else RippleDrawable(ColorStateList.valueOf(accent and 0x00FFFFFF or 0x66000000), states, null)
     }
@@ -187,11 +187,8 @@ class GuideOverlay(
     private val card = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(16), dp(12), dp(16), dp(12))
-        background = GradientDrawable().apply {
-            setColor(cream); cornerRadius = px(20f)
-            setStroke(dp(1), ink)
-        }
-        elevation = px(4f)
+        background = GuideSurfaces.card(density)
+        elevation = px(6f)
     }
     private val header = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
     private val compactInstruction = TextView(context).apply {

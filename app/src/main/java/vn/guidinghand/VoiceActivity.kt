@@ -92,10 +92,8 @@ class VoiceActivity : ComponentActivity() {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(10), dp(16), dp(10))
-            background = GradientDrawable().apply {
-                setColor(Color.parseColor(GuideDesign.CARD_HEX)); cornerRadius = dp(24).toFloat()
-                setStroke(dp(1), Color.rgb(226, 225, 215))
-            }
+            background = GuideSurfaces.card(resources.displayMetrics.density)
+            elevation = dp(6).toFloat()
         }
         val dragHandle = TextView(this).apply {
             text = tr("⋮⋮  Kéo để di chuyển", "⋮⋮  Drag to move")

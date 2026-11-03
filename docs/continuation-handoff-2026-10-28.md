@@ -950,3 +950,10 @@ package remains untouched.
 - Vietnamese model narration now normalizes self-reference to the saved assistant choice (Tôi/Cháu/Con/Trợ lý) and uses the saved elder address in additional system phrases. GuideEngine applies the same wording to card and TTS. Quoted text and protected task labels stay literal; editable transcript is not rewritten.
 - Regression checks cover pronoun conversion, idempotence, protected names inside quotes, and existing card/speech agreement. Design contract: docs/companion-interaction-2026-11-03.md.
 - ADB currently lists no devices. The APK has not been installed for this change. Real-phone visual/motion, large-text, and anchoring review remain pending; reconnect Xiaomi to install Candidate only. No cloud redeploy is required for this Android change.
+
+## 2026-11-03 — Warm surface finish, Candidate 1.5.44/code 53
+
+- User approved restrained glass styling: Help now has an opaque green gradient with inner/outer highlights. Floating guide and microphone card keep solid cream behind instruction text with light-catching edges. Home/Settings use a soft stationary backdrop, cream surfaces and shallow card elevation.
+- No blur/capture, new timer or change to ring geometry, Help/card anchoring, target sizes or typography. Native drawable backgrounds explicitly decline padding changes to preserve existing layout.
+- Measured contrast: instruction/card 13.26:1; Help text against its brightest gradient endpoint 8.36:1.
+- Xiaomi is disconnected, so Candidate 1.5.44 has not been installed on the phone. Native visual review attempted in a read-only emulator failed because Android System UI entered ANR before showing the app; emulator was stopped without snapshot save. Do not claim visual or phone pass. See docs/warm-surface-design-2026-11-03.md.

@@ -13,6 +13,9 @@ object GuideDesign {
     const val INK_HEX = "#18332A"
     const val YELLOW_HEX = "#FFE600"
     const val BLACK_HEX = "#000000"
+    const val HELP_HIGHLIGHT_HEX = "#315344"
+    const val SURFACE_EDGE_HEX = "#87968C"
+    const val BACKDROP_HEX = "#F1F3EC"
     const val RING_OUTER_DP = 6f
     const val RING_INNER_DP = 6f
     const val RING_PADDING_DP = 12f
