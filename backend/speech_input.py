@@ -75,8 +75,22 @@ def upload(key, audio, language, keywords):
     try:
         result = json.loads(data)
     except (TypeError, ValueError):
-        # Never log or return the provider body: it may contain transcript/audio details.
-        raise CoreError('provider_invalid_response') from None
+        # Some gateways preserve an event-stream response despite the JSON Accept header.
+        # Parse only transcript-bearing events; never log or return the provider body.
+        text = data.decode('utf-8', errors='ignore')
+        events = []
+        for line in text.splitlines():
+            if line.startswith('data:'):
+                try:
+                    item = json.loads(line[5:].strip())
+                except (TypeError, ValueError):
+                    continue
+                if isinstance(item, dict) and isinstance(item.get('transcript'), str):
+                    events.append(item['transcript'].strip())
+        if events:
+            result = {'transcript': events[-1]}
+        else:
+            raise CoreError('provider_invalid_response') from None
     if isinstance(result, dict) and not result.get('transcript'):
         turns = result.get('turns')
         if isinstance(turns, list):
