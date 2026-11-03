@@ -48,7 +48,8 @@ class GuidingHandService : AccessibilityService() {
                 model.cancel(); overlay.clearHeardSpeech(); overlay.hide()
                 scope.launch { engine.onScreen(ScreenState("locked", emptyList(), complete = false, isLocked = true)) }
             } else {
-                if (ownSetupForeground() && !VoiceActivity.visible) overlay.hide()
+                if (voiceUiActive()) overlay.hide()
+                else if (ownSetupForeground() && !VoiceActivity.visible) overlay.hide()
                 else overlay.render(viewState, engine.launcherStep != null)
                 updates.trySend(Unit)
             }
@@ -62,7 +63,8 @@ class GuidingHandService : AccessibilityService() {
         overlay = GuideOverlay(this, { stopGuide() }, { scope.launch { readFresh()?.let { engine.repeat(it) } } },
             { openForElder() }, { callFamily() }, { openIntake() }, { answer(it) }, { resumeGuide() },
             { screen?.let { engine.inspectBeforeSpeech(it.copy(readIssue = "pointing_clipped")) } },
-            { confirmVoiceDraft() }, { retryVoiceDraft() }, { copyVoiceDraft() }, { editVoiceDraft() })
+            { confirmVoiceDraft() }, { retryVoiceDraft() }, { copyVoiceDraft() }, { editVoiceDraft() },
+            { voiceUiActive() })
         engine = newEngine()
         val filter = IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_USER_PRESENT) }
         if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED) else registerReceiver(screenReceiver, filter)
@@ -186,6 +188,7 @@ class GuidingHandService : AccessibilityService() {
             recordingPurpose = speechPurpose
             voiceDraft.begin(speechPurpose)
             voicePermitUntil = android.os.SystemClock.elapsedRealtime() + 180_000
+            val help = overlay.helpAnchor()
             // VoiceActivity is the only visible input surface. Hide every accessibility
             // overlay before opening it so no second "Listening" pill can flash below.
             model.cancel(); overlay.hide()
@@ -193,6 +196,14 @@ class GuidingHandService : AccessibilityService() {
                 startActivity(Intent(this@GuidingHandService, VoiceActivity::class.java)
                     .putExtra(VoiceActivity.EXTRA_SPEECH_PURPOSE, speechPurpose.name)
                     .putExtra(VoiceActivity.EXTRA_WINDOW_ID, windowId)
+                    .apply {
+                        help?.let {
+                            putExtra(VoiceActivity.EXTRA_ANCHOR_LEFT, it.left)
+                            putExtra(VoiceActivity.EXTRA_ANCHOR_TOP, it.top)
+                            putExtra(VoiceActivity.EXTRA_ANCHOR_RIGHT, it.right)
+                            putExtra(VoiceActivity.EXTRA_ANCHOR_BOTTOM, it.bottom)
+                        }
+                    }
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 requested = true
                 android.util.Log.i("GuidingHandVoice", "voice_open_requested")
@@ -209,7 +220,10 @@ class GuidingHandService : AccessibilityService() {
                 overlay.showVoiceNotice(tr("Chưa mở được micro. Bác bấm Nói để thử lại nhé.", "I could not open the microphone. Tap Speak to try again."))
                 android.util.Log.w("GuidingHandVoice", "voice_open_failed")
             }
-          } finally { if (!requested) voiceWindow.failed(windowId) }
+          } finally {
+              if (!requested && voiceWindow.failed(windowId))
+                  overlay.render(viewState, engine.launcherStep != null)
+          }
         }
     }
     fun voiceWindowOpened(windowId: Long) {
@@ -468,6 +482,7 @@ class GuidingHandService : AccessibilityService() {
             else overlay.hide() // The in-app setup has its own large controls; do not cover them with the floating guide.
             return
         }
+        if (voiceUiActive()) { overlay.hide(); return }
         if (engine.status == GuideStatus.IDLE) overlay.showBubble()
         val source = event.source
         // Xiaomi can deliver null entries in AccessibilityEvent.text during transient
@@ -628,7 +643,7 @@ class GuidingHandService : AccessibilityService() {
             second
         } finally {
             // Restore progress after every exit path, including a stale frame or Android capture failure.
-            if (overlaySuspended && DeviceVisibility.allowed(this) && !VoiceActivity.activeSession)
+            if (overlaySuspended && DeviceVisibility.allowed(this) && !voiceUiActive())
                 overlay.render(viewState, engine.launcherStep != null)
         }
     }

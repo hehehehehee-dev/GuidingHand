@@ -38,6 +38,10 @@ class VoiceActivity : ComponentActivity() {
         const val EXTRA_SPEECH_PURPOSE = "vn.guidinghand.extra.SPEECH_PURPOSE"
         const val EXTRA_REVIEW_TEXT = "vn.guidinghand.extra.REVIEW_TEXT"
         const val EXTRA_WINDOW_ID = "vn.guidinghand.extra.WINDOW_ID"
+        const val EXTRA_ANCHOR_LEFT = "vn.guidinghand.extra.ANCHOR_LEFT"
+        const val EXTRA_ANCHOR_TOP = "vn.guidinghand.extra.ANCHOR_TOP"
+        const val EXTRA_ANCHOR_RIGHT = "vn.guidinghand.extra.ANCHOR_RIGHT"
+        const val EXTRA_ANCHOR_BOTTOM = "vn.guidinghand.extra.ANCHOR_BOTTOM"
         @Volatile var visible = false; private set
         @Volatile var activeSession = false; private set
     }
@@ -79,7 +83,7 @@ class VoiceActivity : ComponentActivity() {
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(12), dp(18), dp(12))
+            setPadding(dp(16), dp(10), dp(16), dp(10))
             background = GradientDrawable().apply {
                 setColor(Color.parseColor(GuideDesign.CARD_HEX)); cornerRadius = dp(24).toFloat()
                 setStroke(dp(1), Color.rgb(226, 225, 215))
@@ -122,30 +126,49 @@ class VoiceActivity : ComponentActivity() {
         }
         stylePrimary(primary); styleSecondary(secondary); styleSecondary(cancel)
 
+        val secondaryRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(secondary, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(4) })
+            addView(cancel, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(4) })
+        }
+
         layout.addView(dragHandle)
         layout.addView(status, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
         layout.addView(example, LinearLayout.LayoutParams(-1, -2))
         layout.addView(waveform, LinearLayout.LayoutParams(-1, -2))
         layout.addView(editor, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
-        layout.addView(primary, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
-        layout.addView(secondary, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
-        layout.addView(cancel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        layout.addView(primary, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        layout.addView(secondaryRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         setContentView(layout)
         example.visibility = View.GONE
 
-        val sheetWidth = minOf(resources.displayMetrics.widthPixels - dp(24), dp(360))
+        val sheetWidth = minOf(resources.displayMetrics.widthPixels - dp(32), dp(336))
         window.setLayout(sheetWidth, WindowManager.LayoutParams.WRAP_CONTENT)
         window.attributes = window.attributes.apply {
             gravity = Gravity.TOP or Gravity.START
-            x = resources.displayMetrics.widthPixels - sheetWidth - dp(12); y = dp(120)
+            x = resources.displayMetrics.widthPixels - sheetWidth - dp(16); y = dp(80)
         }
+        // Keep the first frame invisible until the measured sheet can be placed beside Help.
+        // The old post-draw move made the whole panel visibly fall to the bottom on every open.
+        window.decorView.alpha = 0f
         makeDraggable(dragHandle, dp(12))
         window.decorView.post {
             val metrics = getSystemService(WindowManager::class.java).currentWindowMetrics
             val bars = metrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
+            val safe = GuideBox(bars.left + dp(12), bars.top + dp(12),
+                metrics.bounds.width() - bars.right - dp(12), metrics.bounds.height() - bars.bottom - dp(12))
+            val anchor = intent.takeIf { it.hasExtra(EXTRA_ANCHOR_LEFT) }?.let {
+                GuideBox(it.getIntExtra(EXTRA_ANCHOR_LEFT, 0), it.getIntExtra(EXTRA_ANCHOR_TOP, 0),
+                    it.getIntExtra(EXTRA_ANCHOR_RIGHT, 0), it.getIntExtra(EXTRA_ANCHOR_BOTTOM, 0))
+            }?.takeIf { safe.contains(it) }
+            val placed = VoiceWindowPlacement.place(safe, sheetWidth, window.decorView.height.coerceAtLeast(dp(240)), anchor)
             window.attributes = window.attributes.apply {
-                y = (metrics.bounds.height() - bars.bottom - window.decorView.height - dp(88)).coerceAtLeast(bars.top + dp(12))
+                x = placed.left; y = placed.top
             }
+            // Let WindowManager apply x/y before revealing the sheet. This removes the
+            // one-frame flash at the provisional position without adding a timed delay.
+            window.decorView.postOnAnimation { window.decorView.alpha = 1f }
         }
 
         if (reviewText != null) showTranscriptEditor(reviewText!!)

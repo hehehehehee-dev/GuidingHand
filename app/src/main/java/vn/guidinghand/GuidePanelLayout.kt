@@ -35,6 +35,22 @@ class GuideAnchorState {
     private var remembered: GuideBox? = null
     fun preferred(attachedBounds: GuideBox?): GuideBox? = remembered ?: attachedBounds
     fun remember(bounds: GuideBox) { remembered = bounds }
+    fun current(): GuideBox? = remembered
+}
+
+/** Places the focusable microphone sheet beside the Help anchor before its first visible frame. */
+object VoiceWindowPlacement {
+    fun place(safe: GuideBox, desiredWidth: Int, desiredHeight: Int, help: GuideBox?): GuideBox {
+        require(safe.area > 0 && desiredWidth > 0 && desiredHeight > 0)
+        val width = minOf(desiredWidth, safe.width)
+        val height = minOf(desiredHeight, safe.height)
+        if (help != null) GuidePanelLayout.placeAttachedToHelp(
+            safe, width, height, height, null, 0, help
+        )?.let { return it.bounds }
+        // Do not imitate a bottom sheet. The Help control can be near any edge, and a missing
+        // anchor must not make the microphone window jump to the bottom after its first draw.
+        return GuideBox(safe.right - width, safe.top, safe.right, safe.top + height)
+    }
 }
 
 /** Ordinary coaching stays compact. Questions, editable text, errors and safety remain expanded. */

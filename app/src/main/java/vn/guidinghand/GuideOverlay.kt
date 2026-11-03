@@ -45,7 +45,8 @@ class GuideOverlay(
     private val confirmDraft: () -> Unit = {},
     private val retryDraft: () -> Unit = {},
     private val copyDraft: () -> Unit = {},
-    private val editDraft: () -> Unit = {}
+    private val editDraft: () -> Unit = {},
+    private val suppressOverlay: () -> Boolean = { false }
 ) {
     private val wm = context.getSystemService(WindowManager::class.java)
     private val density = context.resources.displayMetrics.density
@@ -287,6 +288,9 @@ class GuideOverlay(
         return GuideBox(p.x, p.y, p.x + bubble.width.coerceAtLeast(p.width), p.y + bubble.height.coerceAtLeast(p.height))
     }
 
+    /** Snapshot before the focusable microphone window removes every accessibility overlay. */
+    fun helpAnchor(): GuideBox? = bubbleBounds() ?: draggedBubble ?: bubbleAnchor.current()
+
     data class Measurement(val panel: GuideBox?, val pointedArea: GuideBox?, val coverage: Double,
                            val collapsed: Boolean, val scrollContent: Boolean, val pointingClipped: Boolean = false)
     var lastMeasurement: Measurement? = null; private set
@@ -423,6 +427,7 @@ class GuideOverlay(
             "Copy this message temporarily? You will still tap Paste and Send in the app."), draftText = text), false)
 
     fun showBubble() {
+        if (suppressOverlay()) { suspendForCapture(); return }
         if (!DeviceVisibility.allowed(context)) return
         val label = when {
             autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Gọi người thân", "Call family")
@@ -477,6 +482,11 @@ class GuideOverlay(
         // IDLE is a privacy boundary. Clear before computing identity so repeated IDLE events
         // stay idempotent after the one intentional transcript-removal reflow.
         if (state.status == GuideStatus.IDLE) clearHeardSpeech()
+        if (suppressOverlay()) {
+            savedState = state; savedCanOpen = canOpenLauncher
+            hide()
+            return
+        }
         val safeNow = safeArea()
         val renderKey = GuideRenderIdentity.key(state, canOpenLauncher, userCollapsed, safeNow,
             GuideRenderPreferences(prefs.language, prefs.reduceMotion, prefs.cardSize, prefs.visionProfile,

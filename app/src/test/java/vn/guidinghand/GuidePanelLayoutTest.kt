@@ -4,6 +4,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GuidePanelLayoutTest {
+    @Test fun microphoneWindowStartsBesideHelpWithoutAVisibleBottomJump() {
+        val safe = GuideBox(24, 80, 1056, 2200)
+        val help = GuideBox(820, 1420, 1030, 1630)
+        val placed = VoiceWindowPlacement.place(safe, 900, 720, help)
+
+        assertEquals(help.top, placed.bottom)
+        assertTrue(safe.contains(placed))
+        assertFalse(placed.intersects(help))
+    }
+
+    @Test fun microphoneWindowWithoutAnchorUsesStableTopFallback() {
+        val safe = GuideBox(24, 80, 1056, 2200)
+        val placed = VoiceWindowPlacement.place(safe, 900, 720, null)
+
+        assertEquals(safe.top, placed.top)
+        assertEquals(safe.right, placed.right)
+    }
+
     @Test fun rememberedHelpAnchorSurvivesTransientViewMeasurementChanges() {
         val anchor = GuideAnchorState()
         val chosenByLayout = GuideBox(760, 520, 960, 600)
