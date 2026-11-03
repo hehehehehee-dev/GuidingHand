@@ -1,6 +1,10 @@
 # GuidingHand
 
-Implementation branch: `feat/submission-reliability`. The installed phone build is not proof that this candidate has passed the send-photo task. Main and the original `vn.guidinghand` installation remain separate from the Candidate package.
+Coding-agent handoff: [`META_DEVELOPMENT.md`](META_DEVELOPMENT.md) contains the current component map,
+non-negotiable safety rules, build/test commands, backend contract, and evidence boundaries for a new
+Meta or other coding agent.
+
+Active integration branch: `main`. An installed phone build is not proof that the Candidate has passed a task; the original `vn.guidinghand` installation remains separate from the Candidate package.
 
 GuidingHand helps an older person use their own Android phone, one step at a time. **The elder performs every tap, every keystroke and every final action.**
 
