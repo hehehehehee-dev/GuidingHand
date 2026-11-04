@@ -1157,3 +1157,17 @@ package remains untouched.
   read-only smoke: `build/outputs/phone-smoke/phone-smoke-20261104-104441Z.json`; APK SHA256
   `558F4B7DFA08A46AA29A524BBED7190A4FFBFDD7AAF55CE69AE3D84F5D15F033`.
   No person-driven screen, speech, or ring pass is claimed.
+
+## 2026-11-04 — Candidate 1.5.62/code 71 protected Instagram window
+
+- Real Xiaomi trace on Instagram: `capture_failed_window android_6` while Accessibility tree was
+  `SAFE`; display capture then returned a tiny JPEG payload (12,055 bytes at 736x1600) and the
+  backend later blocked as `cannot_read`. Android API identifies code 6 as a secure window. The
+  user also reported that the system screenshot shortcut could not capture this screen.
+- The service now treats code 6 as a protected window and stops before display fallback or Meta
+  upload. The card explains that the screen blocks screenshots and keeps the goal. A verified photo
+  picker context can still show a general image-selection instruction with no ring or sent claim.
+- Backend 97 tests and Candidate Android unit/lint/assemble passed. Installed read-only smoke:
+  `build/outputs/phone-smoke/phone-smoke-20261104-105147Z.json`; APK SHA256
+  `C0F487D911C9C2572DC6457939A78BE81ABE4EE0BACE7FF9714E4E4E6BD1BED7`.
+  User-driven secure-window wording and recovery remain unverified.

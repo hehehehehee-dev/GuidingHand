@@ -2,13 +2,13 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.61/code 70)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.62/code 71)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.61, version code 70; saved address applies to recovery copy and a previously verified photo flow can show a general gallery instruction when the current frame cannot be read, with no ring or sent claim |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.61/code 70; read-only smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-104441Z.json` |
+| Source | 1.5.62, version code 71; protected Android screenshot window is identified explicitly and never replaced with a likely blank display capture; task stays available for a general non-ring recovery instruction |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.62/code 71; read-only smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-105147Z.json` |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
 | Latest deterministic verification | 136 Android unit tests (0 failures/errors), Candidate lint and assemble; 97 backend tests passed for 1.5.56 |

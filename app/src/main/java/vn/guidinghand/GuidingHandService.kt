@@ -663,6 +663,7 @@ class GuidingHandService : AccessibilityService() {
             val targetBounds = Rect().also { targetWindow.getBoundsInScreen(it) }
             val displayBounds = wmBounds()
             val preferWindow = android.os.Build.VERSION.SDK_INT >= 34
+            var secureWindow = false
             suspend fun attempt(useWindow: Boolean): Bitmap? = suspendCancellableCoroutine { continuation ->
                 val callback = object : TakeScreenshotCallback {
                     override fun onSuccess(result: ScreenshotResult) {
@@ -691,6 +692,8 @@ class GuidingHandService : AccessibilityService() {
                     }
                     override fun onFailure(errorCode: Int) {
                         GuideTrace.event(this@GuidingHandService, if (useWindow) "capture_failed_window" else "capture_failed_display", code = "android_$errorCode")
+                        if (useWindow && android.os.Build.VERSION.SDK_INT >= 34 &&
+                            errorCode == ERROR_TAKE_SCREENSHOT_SECURE_WINDOW) secureWindow = true
                         if (continuation.isActive) continuation.resume(null)
                     }
                 }
@@ -702,6 +705,7 @@ class GuidingHandService : AccessibilityService() {
             // fall back once to a display capture with only our overlay briefly suspended.
             var usedWindow = preferWindow
             var captured = if (preferWindow) attempt(true) else null
+            if (secureWindow) throw SecureWindowCaptureUnavailable()
             if (captured == null) {
                 usedWindow = false
                 overlay.suspendForCapture(); overlaySuspended = true

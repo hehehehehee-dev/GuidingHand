@@ -108,9 +108,21 @@ class CoreBackendModel(
             // One silent retry: a transient capture failure should not cost a full
             // settle cycle before the elder can tap Check again.
             val bitmap = try { captureForSam(input.screen) }
+            catch (_: SecureWindowCaptureUnavailable) {
+                return GuideDecision.Await(tr(
+                    "Màn hình này chặn ảnh chụp. Cháu chưa thể khoanh nút; bà có thể mở màn hình khác rồi chọn Kiểm tra lại nhé.",
+                    "This screen blocks screenshots. I cannot mark a button; open another screen and choose Check again."
+                ), "secure_window")
+            }
             catch (_: SnapshotCaptureUnavailable) {
                 delay(300)
                 try { captureForSam(input.screen) }
+                catch (_: SecureWindowCaptureUnavailable) {
+                    return GuideDecision.Await(tr(
+                        "Màn hình này chặn ảnh chụp. Cháu chưa thể khoanh nút; bà có thể mở màn hình khác rồi chọn Kiểm tra lại nhé.",
+                        "This screen blocks screenshots. I cannot mark a button; open another screen and choose Check again."
+                    ), "secure_window")
+                }
                 catch (_: SnapshotCaptureUnavailable) {
                 return GuideDecision.Await(tr(
                     "Cháu chưa chụp được màn hình này. Bà giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
