@@ -334,6 +334,52 @@ class CoreTests(unittest.TestCase):
         self.assertEqual('An', result['task']['recipient']); self.assertNotIn('region', result)
         self.assertEqual(0, self.sam.calls)
 
+    def test_sparse_visual_screen_gets_manual_navigation_without_invented_ring(self):
+        class AmbiguousSam:
+            def __init__(self): self.calls = 0
+            def segment(self, _value, _node):
+                self.calls += 1
+                raise CoreError('sam_no_unique_region')
+        self.core.sam = AmbiguousSam()
+        self.planner.result = {**decision(), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.instagram.android', 'step_id': 'action',
+            'target_node_id': 'composer', 'instruction_vi': 'Bà bấm ô Tin nhắn ở cuối màn hình nhé.'}
+        value = frame(); value['screen']['package_name'] = 'com.instagram.android'
+        value['screen']['nodes'][0].update(id='composer', text='Tin nhắn')
+        result = self.core.step(value)
+        self.assertEqual('await', result['status'])
+        self.assertEqual('sam_text_handoff', result['reason'])
+        self.assertNotIn('region', result)
+        self.assertEqual(value['image_sha256'], result['image_sha256'])
+        self.assertEqual(1, self.core.sam.calls)
+
+    def test_manual_handoff_never_instructs_unverified_send(self):
+        self.planner.result = {**decision('await'), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.instagram.android', 'target_node_id': None, 'step_id': 'recover',
+            'instruction_vi': 'Bà bấm Gửi nhé.'}
+        value = frame(); value['screen']['package_name'] = 'com.instagram.android'
+        self.assertEqual('invalid_handoff', self.core.step(value)['reason'])
+
+    def test_sam_failure_does_not_turn_send_control_into_text_handoff(self):
+        class AmbiguousSam:
+            def segment(self, _value, _node): raise CoreError('sam_no_unique_region')
+        self.core.sam = AmbiguousSam()
+        self.planner.result = {**decision(), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.instagram.android', 'step_id': 'action',
+            'target_node_id': 'send', 'instruction_vi': 'Bà bấm Gửi nhé.'}
+        value = frame(); value['screen']['package_name'] = 'com.instagram.android'
+        value['screen']['nodes'][0].update(id='send', text='Send')
+        result = self.core.step(value)
+        self.assertEqual(('blocked', 'sam_no_unique_region'), (result['status'], result['reason']))
+        self.assertNotIn('region', result)
+
+    def test_spark_cannot_read_is_distinct_from_capture_and_sam_failure(self):
+        self.planner.result = {**decision('blocked'), 'block_reason': 'cannot_read'}
+        result = self.core.step(frame())
+        self.assertEqual(('blocked', 'spark_cannot_read'), (result['status'], result['reason']))
+        self.assertEqual('cannot_read', result['reason_category'])
+        self.assertEqual(0, self.sam.calls)
+
     def test_task_change_is_not_silently_accepted(self):
         value = frame(); value['task'] = {'kind':'send_photo_zalo','recipient':'Bình','photo':'Bông hoa','verified_steps':['launcher']}
         self.assertEqual('task_changed', self.core.step(value)['reason'])

@@ -1,5 +1,12 @@
 # GuidingHand continuation checkpoint — October 28, 2026
 
+## 2026-11-04 — Instagram conversation diagnosis and Candidate 1.5.63 source
+
+- On the user's Instagram conversation screenshot, Candidate 1.5.62 captured a 736×1600 frame (114,406 JPEG bytes) and got a backend response; the first request spent 7,136 ms in Spark and never invoked SAM. The native `cannot_read` card was therefore a misleading fallback for Spark uncertainty, not evidence that Android blocked this particular screenshot. These timings come from the content-free debug trace on the real Xiaomi; they do not measure task success.
+- Backend source now tells Spark to distinguish a visually readable screen from sparse accessibility labels. A visible navigation control without a matching clickable node may produce a single manual spoken step without a ring; the app still waits for the elder's action and rereads the new screen. SAM remains the only ring region source. If a grounded clickable node exists but SAM cannot make a unique region, the backend can hand off that same safe instruction without a fabricated ring. Consequential actions are excluded from this fallback.
+- Spark's own `cannot_read` response now has a distinct `spark_cannot_read` reason. Candidate maps it to one spoken clarification about the visible control rather than a repeated screenshot retry. Native reason codes remain content-free in the trace. Android no longer overwrites a safe-screen backend `cannot_read` response with “I cannot read this screen.”
+- Candidate 1.5.63/code 72 installed side by side on Xiaomi. Read-only smoke `build/outputs/phone-smoke/phone-smoke-20261104-115558Z.json` found Accessibility enabled and no new fatal exception in 8 seconds while Xiaomi Home was foreground. This is not a user-driven guidance pass. Cloud Run still must be redeployed for the prompt and SAM fallback. No message or photo was sent during diagnosis. Preserve the original `vn.guidinghand` install.
+
 The user authorized autonomous continued improvement and real-phone inspection while away.
 Work remains on `feat/elder-coach-core`; main and the original phone installation are retained.
 Do not push GitHub. Do not send real messages/photos, call, post, purchase, delete user data,

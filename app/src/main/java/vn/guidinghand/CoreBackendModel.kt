@@ -190,18 +190,20 @@ class CoreBackendModel(
                     result.optJSONArray("options")?.let { array -> (0 until minOf(array.length(), 4)).map { array.getString(it).take(100) } }.orEmpty())
                 "blocked" -> if (result.optString("reason_category") == "sensitive") GuideDecision.Sensitive(result.optString("message_vi"))
                     else {
-                        if (result.optString("reason_category") == "cannot_read") return GuideDecision.Await(tr(
-                            "Chưa xác định rõ nút cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.",
-                            "I cannot identify the button clearly. Please wait a moment, then choose Check again."
-                        ), "cannot_read")
                         val code = result.optString("reason").takeIf { it in setOf(
                             "task_changed", "missing_task_details", "ungrounded_target", "invalid_general_stage",
                             "invalid_navigation_cue",
                             "unknown_app_package", "snapshot_changed", "invalid_spark_response", "invalid_region",
                             "message_content", "provider_unavailable", "core_unavailable", "sam_parser_unavailable",
                             "budget_limit", "sam_no_unique_region", "sam_target_mismatch", "invalid_sam_mask",
-                            "empty_sam_mask", "sam_mask_bounds_mismatch", "incomplete_sam", "sam_dimensions_mismatch"
-                        ) } ?: "model_blocked"
+                            "empty_sam_mask", "sam_mask_bounds_mismatch", "incomplete_sam", "sam_dimensions_mismatch",
+                            "spark_cannot_read"
+                        ) } ?: if (result.optString("reason_category") == "cannot_read") "spark_cannot_read" else "model_blocked"
+                        GuideTrace.event(context, "core_blocked", code = code, requestId = requestId)
+                        if (code == "spark_cannot_read") return GuideDecision.Clarify(tr(
+                            "Cháu chưa xác định được nút cần chỉ. Bà nói giúp cháu nút bà muốn bấm nhé.",
+                            "I cannot identify the next control. Please tell me which control you want to use."
+                        ), emptyList(), SpeechPurpose.GENERAL)
                         GuideDecision.Await(result.optString("message_vi", tr("Chưa chắc chắn bước tiếp theo. Cần hỏi lại.", "I am not sure about the next step. Please clarify.")), code)
                     }
                 "required_core_unavailable" -> GuideDecision.Unavailable(result.optString("component"), result.optString("message_vi"))

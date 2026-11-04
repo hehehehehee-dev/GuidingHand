@@ -2,19 +2,21 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.62/code 71)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.63/code 72)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.62, version code 71; protected Android screenshot window is identified explicitly and never replaced with a likely blank display capture; task stays available for a general non-ring recovery instruction |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.62/code 71; read-only smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-105147Z.json` |
+| Source | 1.5.63, version code 72; a safe, successfully captured screen is no longer mislabeled as unreadable when Spark is uncertain. Sparse accessibility targets can receive one grounded spoken navigation step without an invented SAM ring; consequential actions remain gated. |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.63/code 72; read-only installation smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-115558Z.json`; no user-driven guidance pass yet |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 136 Android unit tests (0 failures/errors), Candidate lint and assemble; 97 backend tests passed for 1.5.56 |
-| Latest phone observation | Candidate 1.5.58 installed; read-only smoke passed while Messages was foreground, with Accessibility enabled, no new fatal exception and stable idle overlay. Screen-block wording has not yet been operated by the user, so no interaction or readability pass is claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-095745Z.json (local generated output, may not exist in a fresh clone) |
+| Latest deterministic verification | 138 Android unit tests (0 failures/errors), Candidate lint and assemble passed for 1.5.63; 101 backend tests passed. These are deterministic checks, not a phone interaction pass. |
+| Latest phone observation | Candidate 1.5.63 installed while Xiaomi Home was foreground; read-only smoke found Accessibility enabled and no new fatal exception during 8 seconds. No interaction pass is claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-115558Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
+
+The 2026-11-04 Instagram conversation trace shows a successful 736×1600 snapshot followed by about 7.1 s in Spark and no SAM invocation for the first `cannot_read` result. This identifies Spark uncertainty, not an Android screenshot failure, for that specific screen. The new source distinguishes it from SAM ambiguity and asks one spoken clarification instead of looping on Check again. This behavior still needs a real-phone interaction check after installation and Cloud Run redeployment.
 
 ## Latest behavior
 

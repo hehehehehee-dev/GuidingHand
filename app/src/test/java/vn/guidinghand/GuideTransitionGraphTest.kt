@@ -9,6 +9,23 @@ class GuideTransitionGraphTest {
     private val wrong = ScreenNode("menu", "Menu", Region(.8f, .1f, .95f, .2f), true, className = "Button")
     private val task = PhotoTask("", "", "guide_app", "test.app")
 
+    @Test fun modelUncertaintyOnReadableScreenKeepsItsActualGuidance() = runBlocking {
+        val screen = ScreenState("test.app", listOf(target, wrong), windowId = 1)
+        val message = "Bà nói giúp cháu nút bà muốn bấm nhé."
+        val model = object : GuideModel {
+            override suspend fun next(input: GuideInput) = GuideDecision.Await(message, "cannot_read")
+            override suspend fun repeat(step: GuidanceStep) = Unit
+            override fun cancel() = Unit
+        }
+        var shown: GuideViewState? = null
+        val engine = GuideEngine(model, { shown = it })
+        engine.startGoal("Mở tin nhắn")
+        engine.onScreen(screen)
+        assertEquals(GuideStatus.ASKING, engine.status)
+        assertTrue(shown?.instructionVi.orEmpty().contains("nút bác muốn bấm"))
+        assertFalse(shown?.instructionVi.orEmpty().contains("chưa đọc rõ màn hình"))
+    }
+
     @Test fun wrongTapKeepsGoalAndCreatesAReasonedRecoveryTransition() = runBlocking {
         val first = ScreenState("test.app", listOf(target, wrong), windowId = 1)
         val changed = ScreenState("test.app", listOf(target.copy(text = "Find"), wrong), windowId = 2)

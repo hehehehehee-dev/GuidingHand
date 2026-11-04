@@ -410,7 +410,7 @@ class GuideEngine(
                 // No model or TTS request after a provider-side sensitive verdict.
             }
             is GuideDecision.Await -> {
-                val guidance = if (decision.reasonCode in setOf("snapshot_unavailable", "cannot_read", "secure_window") &&
+                val guidance = if (decision.reasonCode in setOf("snapshot_unavailable", "secure_window") &&
                     ScreenReadPolicy.verdict(screen) !in setOf(ScreenReadVerdict.SENSITIVE, ScreenReadVerdict.LOCKED))
                     if (decision.reasonCode == "secure_window" &&
                         !(task?.isPhotoTask == true && recipientContext && attachmentInProgress)) decision.messageVi
