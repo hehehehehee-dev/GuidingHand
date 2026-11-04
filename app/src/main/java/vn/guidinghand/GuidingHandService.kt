@@ -707,6 +707,7 @@ class GuidingHandService : AccessibilityService() {
                 if (windows.any { window ->
                         window.id != expected.windowId && window.type != android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY &&
                             (window.isActive || window.isFocused) &&
+                            window.root?.packageName?.toString() != expected.packageName &&
                             Rect.intersects(Rect().also { window.getBoundsInScreen(it) }, targetBounds)
                     }) return null
                 captured = attempt(false)

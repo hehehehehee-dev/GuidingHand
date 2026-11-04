@@ -1092,3 +1092,16 @@ package remains untouched.
 - README now explains GuidingHand's two horizons: immediate one-step help and longer-term confidence
   and phone-use intuition, while preserving the rule that the person performs every action.
 - No app code, version, model behavior, or evidence claim changed. README reviewed and updated.
+
+## 2026-11-04 — Candidate 1.5.57/code 66 same-package motion capture
+
+- The phone screenshot showed a harmless animated Meta screen being reported as an unsafe capture.
+  During display-capture fallback, an active overlapping window from the same target package is now
+  allowed; a different package still blocks capture. This preserves the safety gate while avoiding
+  false stops from an app's own popup/WebView window.
+- Snapshot-unavailable copy now explains that motion is the reason and that the elder does not need
+  to tap. Sensitive screens and unreadable trees remain hard-stopped.
+- Candidate 1.5.57/code 66 was installed side-by-side and read-only smoke passed while Instagram was
+  foreground: `build/outputs/phone-smoke/phone-smoke-20261104-094659Z.json`. APK SHA256:
+  `5693421547197DC57E93CDA09020B58C965F0CD2F8E9DB9B8C33883A4336D207`.
+  Person-driven motion capture verification remains pending; no safety or interaction pass is claimed.
