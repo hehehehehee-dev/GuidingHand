@@ -265,6 +265,7 @@ class GuideOverlay(
     private var cardAttached = false
     private var bubbleAttached = false
     private var userCollapsed = false
+    private var intakeDismissed = false
     private var autoCollapsed = false
     private var savedState: GuideViewState? = null
     private var savedCanOpen = false
@@ -313,6 +314,7 @@ class GuideOverlay(
         }
         draggable(bubble, bubble) { bubble.layoutParams as? WindowManager.LayoutParams }
         bubble.setOnClickListener {
+            if (intakeDismissed) { intakeDismissed = false; openIntake(); return@setOnClickListener }
             if (autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED) callFamily()
             else if (autoCollapsed) openIntake()
             else if (userCollapsed) { userCollapsed = false; savedState?.let { render(it, savedCanOpen) } }
@@ -417,6 +419,14 @@ class GuideOverlay(
 
     fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING,
         if (prefs.language == "vi") prefs.respectfulLanguage.message(text) else text), false) }
+    fun beginIntake() { intakeDismissed = false }
+    fun dismissIntakeToHelp() {
+        intakeDismissed = true; userCollapsed = false; autoCollapsed = false
+        clearCard(); clearRing(); lastRenderKey = null
+        if (savedState?.status == GuideStatus.SAFETY_PAUSED) {
+            intakeDismissed = false; savedState?.let { render(it, savedCanOpen) }
+        } else showBubble()
+    }
     /** In-flight work is informative, not a recoverable error. Only Stop remains available. */
     fun showWorking(text: String) { render(GuideViewState(GuideStatus.PLANNING, text), false) }
     fun showDraftReview(text: String, purpose: SpeechPurpose) = render(GuideViewState(GuideStatus.CONFIRMING_INPUT,
@@ -432,6 +442,7 @@ class GuideOverlay(
         val label = when {
             autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Gọi người thân", "Call family")
             userCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Tạm dừng", "Paused")
+            intakeDismissed -> if (prefs.language == "vi") prefs.respectfulLanguage.helpLabel else "Help"
             autoCollapsed -> tr("Nói", "Speak")
             userCollapsed -> tr("Tiếp tục", "Continue")
             else -> if (prefs.language == "vi") prefs.respectfulLanguage.helpLabel else "Help"
@@ -497,6 +508,11 @@ class GuideOverlay(
             savedState = state; savedCanOpen = canOpenLauncher
             hide()
             return
+        }
+        if (state.status == GuideStatus.SAFETY_PAUSED) intakeDismissed = false
+        if (intakeDismissed) {
+            savedState = state; savedCanOpen = canOpenLauncher
+            clearCard(); clearRing(); showBubble(); return
         }
         val safeNow = safeArea()
         val renderKey = GuideRenderIdentity.key(state, canOpenLauncher, userCollapsed, safeNow,

@@ -60,6 +60,7 @@ class VoiceActivity : ComponentActivity() {
     private var reviewText: String? = null
     private var submitting = false
     private var delivered = false
+    private var cancelledByUser = false
     private var awaitingPermission = false
     private var windowId = 0L
     private val companion = CompanionDrawable()
@@ -128,7 +129,9 @@ class VoiceActivity : ComponentActivity() {
         secondary = Button(this).apply { isAllCaps = false; textSize = GuideDesign.LABEL_SP; minHeight = dp(GuideDesign.SECONDARY_TARGET_DP) }
         cancel = Button(this).apply {
             text = tr("Hủy", "Cancel"); isAllCaps = false; textSize = GuideDesign.LABEL_SP
-            minHeight = dp(GuideDesign.SECONDARY_TARGET_DP); setOnClickListener { pressed(this); finish() }
+            minHeight = dp(GuideDesign.SECONDARY_TARGET_DP)
+            minimumWidth = dp(80); minWidth = dp(80)
+            setOnClickListener { pressed(this); cancelledByUser = true; recording.set(false); finish() }
         }
         stylePrimary(primary); styleSecondary(secondary); styleSecondary(cancel)
 
@@ -136,7 +139,7 @@ class VoiceActivity : ComponentActivity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(secondary, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(4) })
-            addView(cancel, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(4) })
+            addView(cancel, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(4) })
         }
 
         layout.addView(dragHandle)
@@ -447,10 +450,10 @@ class VoiceActivity : ComponentActivity() {
     override fun onDestroy() {
         companion.stop()
         recording.set(false); scope.cancel(); visible = false; activeSession = false
-        GuidingHandService.instance?.voiceClosed(windowId, if (delivered) null else tr(
+        GuidingHandService.instance?.voiceClosed(windowId, if (delivered || cancelledByUser) null else tr(
             "Đã đóng cửa sổ nghe. Bác có thể bấm Nói khi sẵn sàng.",
             "Listening window closed. Tap Speak when you are ready."
-        ))
+        ), cancelled = cancelledByUser)
         super.onDestroy()
     }
 

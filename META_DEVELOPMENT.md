@@ -56,7 +56,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.47`, Android code `56`; verify app/build.gradle.kts before relying on this value
+- Current source version at this handoff: `1.5.48`, Android code `57`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
@@ -205,6 +205,9 @@ development path, not the product architecture.
 - The voice window is compact, appears beside Help on its first visible frame, and suppresses every
   accessibility overlay while its lease is active. There must be no secondary blinking `Listening…`
   pill and no first-frame jump to the bottom.
+- Explicit Cancel discards local input and dismisses the intake to Help without a new notice card.
+  A latched safety pause takes precedence. Preserve the task; starting intake again clears the visual
+  dismissal flag. Typing gets the flexible row width; Cancel wraps its label with an 80dp minimum.
 
 See `docs/elder-ui-contract-2026-10-30.md` and
 `docs/elder-ux-regression-checklist-2026-11-01.md` before changing UI behavior.

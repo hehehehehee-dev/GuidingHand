@@ -983,3 +983,10 @@ package remains untouched.
 - Added root AGENTS.md as the entry point for agents and docs/current-development-state.md as the maintained continuation snapshot. Agents must review README after relevant changes, update affected docs/component maps, record installed/deployed state separately from source, and append evidence/blockers/next steps.
 - META_DEVELOPMENT.md now links these instructions, reflects 1.5.47/code 56 and current checks, maps new UI/Firestore components, and shows safety before transcription in its diagram. README updated only to expose the agent instructions/current-state links.
 - Documentation-only change: validated local links and git diff --check. No new Android build, phone installation, provider call or cloud deployment. Prior code-test results remain attached to the recorded feature build.
+
+## 2026-11-03 — Candidate 1.5.48/code 57 intake cancellation
+
+- Explicit Hủy/Cancel closes recording/input and returns to the Help bubble without the former “Listening window closed” notice card. Local draft is cleared; the task remains available. Safety pause takes precedence, and a new intake resets dismissal so later guidance can be shown normally.
+- Typing receives remaining horizontal space instead of half the row; Cancel wraps its label with an 80dp minimum and keeps the 48dp touch-height minimum. Short literal “Gõ chữ” label from 1.5.47 remains.
+- README reviewed/updated for source version; META_DEVELOPMENT updated for cancellation behavior. Native Cancel interaction and large-font layout still need user confirmation; deterministic tests do not constitute that evidence.
+- Verification: 122 Android tests, lint and Candidate assemble passed; 93 backend tests passed. Installed 1.5.48/code 57 on Xiaomi. Read-only smoke passed with Accessibility connected, no new fatal exception and stable idle overlay; evidence build/outputs/phone-smoke/phone-smoke-20261104-022336Z.json. No user-driven Cancel or typing interaction pass is claimed.

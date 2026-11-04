@@ -7,16 +7,19 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.47, version code 56; feature commit 3da2d1c |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.47/code 56 |
+| Source | 1.5.48, version code 57; see git log for the intake-cancellation change |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.48/code 57 |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Current cloud revision/hash has not been freshly queried for this snapshot. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 122 Android unit tests, Candidate lint and assemble; 93 backend tests passed for the 1.5.47 change |
-| Latest phone observation | Candidate installed, Accessibility enabled and not crashed, no new fatal exception; phone asleep/locked, so the overall smoke report was not a pass |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-020108Z.json (local generated output, may not exist in a fresh clone) |
+| Latest deterministic verification | 122 Android unit tests, Candidate lint and assemble; 93 backend tests passed for the 1.5.48 change |
+| Latest phone observation | Candidate installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. No interaction pass claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-022336Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 ## Latest behavior
+
+- Cancel in the intake returns to Help without a notice card, clears the local draft and preserves task state. Safety pause takes precedence. A new intake permits normal guidance again.
+- Typing gets flexible row width; Cancel uses its label width with an 80dp minimum and 48dp minimum touch height.
 
 - Help label names the person receiving help, e.g. “Giúp bà”. The microphone question uses both selected roles, e.g. “Bà cần cháu giúp gì ạ?”.
 - Action labels remain literal: “Gõ chữ”, “Hủy”, “Tiếp tục”. Never run those through narration rewriting.
@@ -27,7 +30,7 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
 
 ## Next concrete verification
 
-When Xiaomi is unlocked, have the user choose Bà/Cháu, tap Help, and verify “Giúp bà”, the microphone question, and short action labels. Toggle Character only and drag Help with the card open. Review Home sentence wrapping, custom address persistence and spoken output. Record observations for this installed build separately from earlier screenshots.
+Have the user tap Help then Cancel: the sheet should close to “Giúp bà” (or the chosen character-only presentation), with no extra notice. Reopen intake and verify that later guidance still appears. Check the wider typing action, including large fonts. Also verify Bà/Cháu wording, Character only, card dragging, Home wrapping and custom address persistence. Record observations for this installed build separately from earlier screenshots.
 
 Do not bypass the screen lock or Xiaomi's INJECT_EVENTS restriction. If disconnected or locked, continue useful bounded code/docs work and leave phone verification pending.
 

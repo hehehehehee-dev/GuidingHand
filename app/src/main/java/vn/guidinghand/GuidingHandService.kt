@@ -228,6 +228,7 @@ class GuidingHandService : AccessibilityService() {
     }
     fun voiceWindowOpened(windowId: Long) {
         if (voiceWindow.opened(windowId)) {
+            overlay.beginIntake()
             overlay.hide()
             GuideTrace.event(this, "voice_window_open")
         }
@@ -439,12 +440,17 @@ class GuidingHandService : AccessibilityService() {
             updates.trySend(Unit)
         }
     }
-    fun voiceClosed(windowId: Long, message: String? = null) {
+    fun voiceClosed(windowId: Long, message: String? = null, cancelled: Boolean = false) {
         if (!voiceWindow.closed(windowId)) return
         GuideTrace.event(this, "voice_window_close")
         voicePermitUntil = 0L
+        if (cancelled) {
+            voiceDraft.clear()
+            overlay.dismissIntakeToHelp()
+        }
         if (DeviceVisibility.allowed(this)) {
-            if (voiceSubmission?.isActive == true) overlay.showWorking(tr("Đang chuyển lời nói thành chữ…", "Turning speech into text…"))
+            if (cancelled) Unit
+            else if (voiceSubmission?.isActive == true) overlay.showWorking(tr("Đang chuyển lời nói thành chữ…", "Turning speech into text…"))
             else if (message != null) overlay.showVoiceNotice(if (prefs.language == "vi") prefs.respectfulLanguage.message(message) else message)
             else overlay.render(viewState, engine.launcherStep != null)
         }
