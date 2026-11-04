@@ -93,6 +93,10 @@ class GuidingHandService : AccessibilityService() {
                 overlay.updateScreenAvoidance(fresh)
                 val began = android.os.SystemClock.elapsedRealtime()
                 engine.onScreen(fresh)
+                // A pause is latched even on a later safe app. Restore its controls only after
+                // the full fresh screen passes the native safety gate, never from event text alone.
+                if (engine.status == GuideStatus.SAFETY_PAUSED && safe(fresh))
+                    overlay.restorePausedIfHidden(viewState)
                 GuideTrace.event(this@GuidingHandService, "screen_step", android.os.SystemClock.elapsedRealtime() - began, engine.status.name)
                 // Engine emissions already render the card. Re-rendering on every Accessibility
                 // event repeatedly detaches the ring and remeasures a card that has not changed.
@@ -553,20 +557,13 @@ class GuidingHandService : AccessibilityService() {
         // foreground app. Do not let those unrelated package events resurrect Help on top of it.
         if (ownSetupForeground() && !VoiceActivity.visible) { overlay.hide(); return }
         if (event.packageName?.toString() == packageName) {
-            // Our accessibility overlay also emits events under this package. Hiding it for
-            // those events creates a Help-bubble hide/show loop on top of another app.
-            val ownActivityForeground = windows.any { window ->
-                window.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION &&
-                    window.root?.packageName?.toString() == packageName &&
-                    (window.id == event.windowId || window.isActive || window.isFocused)
-            }
-            if (!ownActivityForeground) return
-            if (voiceUiActive()) overlay.hide()
-            else overlay.hide() // The in-app setup has its own large controls; do not cover them with the floating guide.
+            // The floating Help window emits events with our package. An old activity window
+            // can still be marked active during a transition; hiding Help here detached it
+            // about 150 ms after each attach on Xiaomi Home. The lifecycle/voice checks above
+            // already suppress overlays while our actual activities are visible.
             return
         }
         if (voiceUiActive()) { overlay.hide(); return }
-        if (engine.status == GuideStatus.IDLE) overlay.showBubble()
         val source = event.source
         // Xiaomi can deliver null entries in AccessibilityEvent.text during transient
         // window changes. Treat them as absent; a null must never crash the service and
@@ -580,7 +577,9 @@ class GuidingHandService : AccessibilityService() {
             model.cancel(); overlay.hide(); scope.launch {
                 if (VoiceActivity.visible) engine.inspectBeforeSpeech(hint) else engine.onScreen(hint)
             }
+            return
         }
+        if (engine.status == GuideStatus.IDLE) overlay.showBubble()
         if (event.eventType in setOf(AccessibilityEvent.TYPE_VIEW_CLICKED,
                 AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED, AccessibilityEvent.TYPE_VIEW_SCROLLED))
             engine.invalidateNativeMediaSelection()

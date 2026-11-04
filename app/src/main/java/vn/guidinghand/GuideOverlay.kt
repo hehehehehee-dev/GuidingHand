@@ -595,6 +595,12 @@ class GuideOverlay(
         }, prefs.reduceMotion)
     }
 
+    /** A safety pause stays latched, but Help must return after the elder leaves a sensitive screen. */
+    fun restorePausedIfHidden(state: GuideViewState) {
+        if (state.status == GuideStatus.SAFETY_PAUSED && !bubbleAttached && !suppressOverlay())
+            render(state, false)
+    }
+
     fun render(state: GuideViewState, canOpenLauncher: Boolean) {
         // IDLE is a privacy boundary. Clear before computing identity so repeated IDLE events
         // stay idempotent after the one intentional transcript-removal reflow.

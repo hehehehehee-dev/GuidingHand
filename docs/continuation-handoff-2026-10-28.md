@@ -1325,3 +1325,10 @@ package remains untouched.
   fatal exception or idle overlay churn. A user-driven wrong-tap return remains unverified.
   Backend unchanged; Cloud redeploy not needed. README and META_DEVELOPMENT reviewed and updated.
   No measured speed claim.
+
+## 2026-11-04 — Restore missing Help after safety pause
+
+- Acceptance criteria and baseline evidence: `docs/paused-help-restore-plan-2026-11-04.md`. On Candidate 1.5.68, the unlocked Xiaomi Home screen had no GuidingHand overlay despite Accessibility being enabled. Content-free trace showed `SAFETY_PAUSED`, safe Home reads, and repeated Help attach/detach pairs about 150 ms apart.
+- Candidate 1.5.69/code 78 ignores Accessibility events from its own overlay instead of classifying a stale app window as foreground. A latched safety pause may restore its Help controls only after a fresh full-screen safe read on an external app; the pause, screenshot/provider gate and ring rules remain unchanged.
+- 107 backend tests and 148 Candidate Android unit tests passed; Candidate lint, assemble and deterministic evaluation passed. Candidate-only installation on Xiaomi passed the read-only smoke at 2026-11-04 17:39:47 UTC. WindowManager then showed one visible GuidingHand Accessibility overlay on Xiaomi Home; the trace recorded `bubble_attached` without a subsequent detach in the observation. No touch injection or user interaction claim.
+- README and META_DEVELOPMENT reviewed and version updated. Cloud backend unchanged; no redeploy needed. Next: person-driven Help tap and return-from-sensitive-screen check, without entering credentials or claiming success from installation alone.

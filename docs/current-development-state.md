@@ -2,18 +2,18 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.68/code 77)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.69/code 78)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated untracked output/ and user screenshot |
-| Source | 1.5.68, version code 77; a short-lived wrong-tap replay restores a previously verified nonconsequential navigation step only when the full native screen and task still match, ignoring the interaction counter. General-app photo Send guidance still requires recipient and selected-media evidence. The Precise ring (SAM) setting defaults on; node bounds are an estimated ring only for nonconsequential actions when it is off. |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.68/code 77; read-only installation smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-153824Z.json`; wrong-tap replay and photo selection await user-driven checks |
+| Source | 1.5.69, version code 78; Help overlay events no longer hide Help, and a latched safety pause restores its controls after a fresh safe external screen read. The pause stays latched. Wrong-tap replay and photo Send guards remain as in 1.5.68. The Precise ring (SAM) setting defaults on; node bounds are an estimated ring only for nonconsequential actions when it is off. |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.69/code 78; read-only installation smoke passed at 2026-11-04 17:39:47 UTC. WindowManager showed one visible Accessibility overlay on Xiaomi Home; content-free trace showed a Help attach with no subsequent detach during the observation. User-driven Help and safety-pause return remain unverified. |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; the user reported deploying commit 0b065a2. The new SAM switch, next-step clarification rule, and compact Spark app list are source only until a new Cloud Run deployment. |
-| Latest deterministic verification | 107 backend tests and 148 Candidate Android unit tests passed; Candidate 1.5.68 lint, assemble and deterministic evaluation passed. No phone interaction pass is claimed. |
-| Latest phone observation | On installed 1.5.65, real taps reached VERIFYING without a new crash, but no strict delivery evidence was recorded. A read-only UI dump still showed the selected photo and Send; the Help window bounds overlapped Send. Source now avoids visible final-action controls with both Help and card. This placement change has not been installed or person-tested. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-153824Z.json and local content-free GuideTrace/AndroidRuntime logs (generated output may not exist in a fresh clone) |
+| Latest deterministic verification | Candidate 1.5.69: 107 backend tests and 148 Android unit tests, lint, assemble and deterministic evaluation passed. No phone interaction pass is claimed. |
+| Latest phone observation | On 1.5.68, Help was absent on unlocked Xiaomi Home despite enabled Accessibility. Trace showed a latched safety pause and Help attach/detach pairs ~150 ms apart. After installing 1.5.69, WindowManager showed a visible Help overlay on Home with no detach in the read-only sample. No elder tap or return-from-sensitive-screen pass yet. |
+| Phone evidence | Local 2026-11-04 17:39:47 UTC phone smoke report, WindowManager dump and content-free GuideTrace (generated output may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 The 2026-11-04 Instagram conversation trace shows a successful 736×1600 snapshot followed by about 7.1 s in Spark and no SAM invocation for the first `cannot_read` result. This identifies Spark uncertainty, not an Android screenshot failure, for that specific screen. The new source distinguishes it from SAM ambiguity and asks one spoken clarification instead of looping on Check again. This behavior still needs a real-phone interaction check after installation and Cloud Run redeployment.
