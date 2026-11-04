@@ -533,6 +533,66 @@ class CoreGuideEngineTest {
             assertEquals(GuideStatus.ASKING, rejected.status)
         }
     }
+    @Test fun checkedTapAndNewPreviewCanVerifyMediaWhenTheLaterTreeOmitsSelectionState() = runBlocking {
+        val mediaTask = PhotoTask("An", "white duck", "guide_app", "com.instagram.android")
+        val title = recipient.copy(text = "An")
+        val tile = ScreenNode("photo-tile", "", Region(.35f, .40f, .62f, .62f), true,
+            className = "android.widget.CheckBox")
+        val preview = ScreenNode("media-preview", "", Region(.02f, .89f, .10f, .96f), false,
+            className = "android.widget.ImageView")
+        val sendButton = send.copy(text = "Send")
+        val before = ScreenState(mediaTask.appPackage, listOf(title, tile, sendButton), windowId = 7)
+        val after = before.copy(nodes = listOf(title, tile, preview, sendButton), navigationGeneration = 1)
+        assertFalse(PhotoVerification.selectedMedia(after))
+        fun engine() = GuideEngine(Model { input ->
+            if (input.screen.navigationGeneration == 0L) GuideDecision.Step(step(before, tile, PhotoStage.ACTION), mediaTask)
+            else GuideDecision.Step(step(after, sendButton, PhotoStage.ACTION), mediaTask)
+        }, {})
+        val accepted = engine()
+        accepted.startGoal("Send the white duck photo to An", mediaTask)
+        accepted.onScreen(before)
+        accepted.onTap(tile, selectedNow = true)
+        accepted.onScreen(after)
+        assertEquals(GuideStatus.WAITING_TAP, accepted.status)
+
+        val lateSelection = engine()
+        lateSelection.startGoal("Send the white duck photo to An", mediaTask)
+        lateSelection.onScreen(before)
+        lateSelection.onTap(tile, selectedNow = false)
+        lateSelection.onNativeSelection(tile, selectedNow = true)
+        lateSelection.onScreen(after)
+        assertEquals(GuideStatus.WAITING_TAP, lateSelection.status)
+
+        val unchecked = engine()
+        unchecked.startGoal("Send the white duck photo to An", mediaTask)
+        unchecked.onScreen(before)
+        unchecked.onTap(tile, selectedNow = false)
+        unchecked.onScreen(after)
+        assertEquals(GuideStatus.ASKING, unchecked.status)
+
+        val invalidated = engine()
+        invalidated.startGoal("Send the white duck photo to An", mediaTask)
+        invalidated.onScreen(before)
+        invalidated.onTap(tile, selectedNow = true)
+        invalidated.invalidateNativeMediaSelection()
+        invalidated.onScreen(after)
+        assertEquals(GuideStatus.ASKING, invalidated.status)
+
+        val deselected = engine()
+        deselected.startGoal("Send the white duck photo to An", mediaTask)
+        deselected.onScreen(before)
+        deselected.onTap(tile, selectedNow = true)
+        deselected.onNativeSelection(tile, selectedNow = false)
+        deselected.onScreen(after)
+        assertEquals(GuideStatus.ASKING, deselected.status)
+
+        val wrongWindow = engine()
+        wrongWindow.startGoal("Send the white duck photo to An", mediaTask)
+        wrongWindow.onScreen(before)
+        wrongWindow.onTap(tile, selectedNow = true)
+        wrongWindow.onScreen(after.copy(windowId = 8))
+        assertNotEquals(GuideStatus.WAITING_TAP, wrongWindow.status)
+    }
     @Test fun recipientMentionInMessageBodyCannotProveTheConversation() {
         val body = ScreenNode("com.zing.zalo:id/message_text@3", "An", Region(.1f, .4f, .6f, .5f), false)
         assertFalse(PhotoVerification.conversation(zalo().copy(nodes = listOf(body, composer)), task))

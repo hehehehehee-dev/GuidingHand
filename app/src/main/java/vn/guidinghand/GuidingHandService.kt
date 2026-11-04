@@ -580,7 +580,10 @@ class GuidingHandService : AccessibilityService() {
                 if (VoiceActivity.visible) engine.inspectBeforeSpeech(hint) else engine.onScreen(hint)
             }
         }
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+        if (event.eventType in setOf(AccessibilityEvent.TYPE_VIEW_CLICKED,
+                AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED, AccessibilityEvent.TYPE_VIEW_SCROLLED))
+            engine.invalidateNativeMediaSelection()
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || event.eventType == AccessibilityEvent.TYPE_VIEW_SELECTED) {
             val bounds = wmBounds()
             var node = source
             for (ignored in 0 until 8) {
@@ -588,8 +591,15 @@ class GuidingHandService : AccessibilityService() {
                 if (actual != null) {
                     val read = readNode(actual, bounds, "event")
                     val match = screen?.nodes?.filter { it.region == read.region && it.className == read.className &&
-                        (it.text == read.text || it.labels.any { label -> label in read.labels }) }?.singleOrNull()
-                    if (match != null) { engine.onTap(match); GuideTrace.event(this, "elder_tap", code = viewState.step?.stage?.name); break }
+                        (it.text == read.text || it.labels.any { label -> label in read.labels } ||
+                            it.id.substringBefore('@') == read.id.substringBefore('@')) }?.singleOrNull()
+                    if (match != null) {
+                        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+                            engine.onTap(match, read.selected)
+                            GuideTrace.event(this, "elder_tap", code = viewState.step?.stage?.name)
+                        } else engine.onNativeSelection(match, read.selected)
+                        break
+                    }
                     node = actual.parent
                 }
             }
@@ -636,7 +646,13 @@ class GuidingHandService : AccessibilityService() {
             if (depth > 96 || nodes.size >= 350 || ++examined > 2500 || android.os.SystemClock.uptimeMillis() - began > 1200) { complete = false; return }
             if (!node.isVisibleToUser) return
             val value = readNode(node, display, path)
-            if (value.password || value.labels.isNotEmpty() || value.clickable || value.className.contains("EditText")) nodes += value
+            // Some galleries expose the selected-photo preview as an unlabeled, non-clickable
+            // ImageView. Preserve its geometry as native evidence; never infer image content.
+            val bottomPreview = value.className.endsWith("ImageView") && value.region?.let { box ->
+                box.top >= .8f && box.right - box.left >= .035f && box.bottom - box.top >= .035f
+            } == true
+            if (value.password || value.labels.isNotEmpty() || value.clickable ||
+                value.className.contains("EditText") || bottomPreview) nodes += value
             if (!value.password) for (index in 0 until node.childCount) {
                 if (!complete) break
                 node.getChild(index)?.let { walk(it, "$path.$index", depth + 1) }

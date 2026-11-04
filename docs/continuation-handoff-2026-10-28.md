@@ -1290,3 +1290,20 @@ package remains untouched.
 - Cloud Run still needs `git pull --ff-only` and a `gcloud run deploy --source backend` in Cloud
   Shell. Existing Cloud secrets and app-session token must remain server-side. Do not claim the
   optional SAM path works end to end until deployed and person-tested.
+
+## 2026-11-04 — Native selection receipt for Instagram-like galleries
+
+- Acceptance criteria were recorded before code in `docs/native-photo-selection-plan-2026-11-04.md`.
+  Purpose: avoid a false “photo not selected” stop when a real matched tap/selection event is
+  followed by a preview, but the later Accessibility tree drops the selected flag.
+- `GuidingHandService` forwards a matched node's checked/selected state from click and subsequent
+  selection events, and retains geometry for a small unlabeled bottom preview. `GuideEngine` binds
+  that receipt to the same package/window and uses it only with a newly visible preview for a
+  general-app photo task. A later click/edit/scroll, deselection, unsafe screen or window change
+  discards it. Recipient and Send-target validation, SAM policy and delivery proof stay intact.
+- Source Candidate 1.5.67/code 76. README and META_DEVELOPMENT reviewed and updated. Backend
+  tests (107), Candidate Android unit tests (146), lint, assemble and deterministic evaluation
+  passed. Installed only Candidate 1.5.67/code 76 on Xiaomi; read-only smoke passed at
+  `build/outputs/phone-smoke/phone-smoke-20261104-151843Z.json` with no new fatal exception
+  or idle overlay churn. Cloud deployment not changed; this fix is Android-only. No new latency
+  or person-driven success claim. Next: user-driven photo-selection check before Send.

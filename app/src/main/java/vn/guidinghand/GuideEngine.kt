@@ -51,6 +51,7 @@ class GuideEngine(
     private var conversationBeforeAttachment: ScreenState? = null
     private var attachmentInProgress = false
     private var selectedThumbnail: ScreenNode? = null
+    private var nativeMediaSelection: Pair<ScreenState, ScreenNode>? = null
     private var latest: ScreenState? = null
     private var lastPlanned: String? = null
     private var clicked = false
@@ -72,6 +73,7 @@ class GuideEngine(
             // A new spoken request may extend a general goal. A changing screen alone never can.
             verified.clear(); observations.clear(); recipientContext = false; photoContext = false
             sendBaseline = null; conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
+            nativeMediaSelection = null
         }
         task = next; boundUtteranceRevision = utteranceRevision
         return true
@@ -147,7 +149,7 @@ class GuideEngine(
         current = null; baseline = null; sendBaseline = null; latest = null; lastPlanned = null; clicked = false; tapObserved = false; awaitingAnswer = false
         recipientContext = false; photoContext = false
         utteranceRevision = 0; boundUtteranceRevision = 0
-        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
+        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null
         transitions.clear(); transitionSequence = 0
         emit(GuideStatus.IDLE, "")
     }
@@ -164,7 +166,7 @@ class GuideEngine(
         }
         generation++; staleResponses = 0; model.cancel(); answers += text.trim().take(300)
         while (answers.size > 5) answers.removeAt(0)
-        current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = false; lastPlanned = null
+        current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = false; lastPlanned = null; nativeMediaSelection = null
         emit(GuideStatus.READING, "Đang đọc lại màn hình…")
     }
     /** Retry applies to unreadable/unavailable screens. A hard safety pause ends only with Stop/new goal. */
@@ -172,7 +174,7 @@ class GuideEngine(
         if (goal.isBlank() || status !in setOf(GuideStatus.ASKING, GuideStatus.UNAVAILABLE)) return
         generation++; staleResponses = 0; model.cancel(); current = null; baseline = null; sendBaseline = null; clicked = false; tapObserved = false
         recipientContext = false; photoContext = false
-        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
+        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null
         awaitingAnswer = false; lastPlanned = null
         emit(GuideStatus.READING, "Đang kiểm tra lại màn hình…")
     }
@@ -182,13 +184,13 @@ class GuideEngine(
         if (status == GuideStatus.SAFETY_PAUSED) return
         generation++; model.cancel(); model.clearSessionMemory(); current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = true
         recipientContext = false; photoContext = false; sendBaseline = null
-        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
+        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null
         val message = messageVi?.takeIf { it.isNotBlank() && it.length <= 200 && !it.contains('\n') }
             ?: "Đã tạm dừng để bảo vệ thông tin. Ông bà có thể chọn Gọi người thân hoặc Dừng."
         emit(GuideStatus.SAFETY_PAUSED, message, reasonCode = "safety_gate")
     }
     private fun ask(message: String, reasonCode: String? = null) {
-        current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = true
+        current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = true; nativeMediaSelection = null
         emit(GuideStatus.ASKING, message, reasonCode = reasonCode)
     }
     private fun askAboutTask(candidate: PhotoTask? = null) {
@@ -226,13 +228,31 @@ class GuideEngine(
         return "Tôi chưa đọc rõ màn hình này. Bác đợi một chút rồi chọn Kiểm tra lại nhé."
     }
     fun inspectBeforeSpeech(screen: ScreenState): Boolean = gate(screen)
-    fun onTap(node: ScreenNode?) {
+    /** A later click, edit or scroll removes native evidence from an earlier media selection. */
+    fun invalidateNativeMediaSelection() { nativeMediaSelection = null }
+    private fun rememberNativeMediaSelection(selectedNow: Boolean) {
+        val before = baseline ?: return
+        val step = current ?: return
+        if (clicked && selectedNow && task?.id == "guide_app" && task?.photo?.isNotBlank() == true &&
+            step.stage == PhotoStage.ACTION &&
+            (step.target.className.endsWith("CheckBox") || step.target.className.endsWith("ImageView")) &&
+            !PhotoVerification.hasBottomMediaPreview(before))
+            nativeMediaSelection = before to step.target
+    }
+    /** Selection events may arrive just after the matching click, before the new tree is read. */
+    fun onNativeSelection(node: ScreenNode?, selectedNow: Boolean) {
+        val step = current ?: return
+        if (status != GuideStatus.VERIFYING || node?.id != step.target.id || node.region != step.target.region) return
+        if (selectedNow) rememberNativeMediaSelection(true) else invalidateNativeMediaSelection()
+    }
+    fun onTap(node: ScreenNode?, selectedNow: Boolean = false) {
         if (status != GuideStatus.WAITING_TAP) return
         val step = current ?: return
         generation++; model.cancel() // Stop old speech on either a correct tap or a wrong tap.
         tapObserved = node != null
         clicked = node != null && node.id == step.target.id && node.region == step.target.region
         if (clicked) {
+            rememberNativeMediaSelection(selectedNow)
             verifyStartElapsed = nowElapsed()
             if (task?.isPhotoTask == true && step.stage == PhotoStage.ATTACH) {
                 val active = task; val before = baseline
@@ -251,7 +271,7 @@ class GuideEngine(
         if ((PhotoVerification.hasComposer(screen) && !PhotoVerification.conversation(screen, task)) ||
             (screen.packageName != task.appPackage && !systemPicker)) {
             recipientContext = false; photoContext = false; sendBaseline = null
-            conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
+            conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null
         }
         val selected = PhotoVerification.selectedPhoto(screen, task)
         val preview = PhotoVerification.photoPreview(screen, task)
@@ -307,7 +327,10 @@ class GuideEngine(
         val generalRecipient = task.isPhotoTask || !sending || (task.recipient.isNotBlank() && PhotoVerification.recipientTitle(screen, task))
         val generalText = task.isPhotoTask || !sending ||
             (task.content.isBlank() || PhotoVerification.composerContains(screen, task))
-        val mediaSelected = PhotoVerification.selectedMedia(screen)
+        val mediaSelected = PhotoVerification.selectedMedia(screen) || nativeMediaSelection?.let { (before, target) ->
+            before.packageName == screen.packageName && before.windowId == screen.windowId &&
+                before.nodes.contains(target) && PhotoVerification.hasBottomMediaPreview(screen)
+        } == true
         val generalMedia = task.isPhotoTask || !sending || task.photo.isBlank() || mediaSelected
         val generalPayload = task.isPhotoTask || !sending || task.content.isNotBlank() || mediaSelected
         val boundedSam = step.sam.source == "sam-3.1-ui-bounded" && !model.developmentStandIn &&
@@ -340,8 +363,10 @@ class GuideEngine(
     }
     suspend fun onScreen(screen: ScreenState) {
         latest = screen
+        if (nativeMediaSelection?.first?.let { it.packageName != screen.packageName || it.windowId != screen.windowId } == true)
+            nativeMediaSelection = null
         if (goal.isBlank() || status in setOf(GuideStatus.IDLE, GuideStatus.DONE, GuideStatus.UNSUPPORTED)) return
-        if (!gate(screen)) return
+        if (!gate(screen)) { nativeMediaSelection = null; return }
         if (status == GuideStatus.SAFETY_PAUSED) return
         val active = task
         if (active?.isPhotoTask == true) {

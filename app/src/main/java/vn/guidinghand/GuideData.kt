@@ -204,17 +204,18 @@ object PhotoVerification {
             screen.has("Photos", "Ảnh", "Images"))
     fun selectedPhoto(screen: ScreenState, task: PhotoTask) = screen.nodes.any { node -> node.selected && node.labels.any { folded(it) == folded(task.photo) } }
     /** A visible selected gallery tile is media evidence; a count or an old chat image alone is not. */
+    fun hasBottomMediaPreview(screen: ScreenState) = screen.nodes.any { node ->
+        val box = node.region
+        node.className.endsWith("ImageView") && box != null &&
+            box.top >= .8f && box.right - box.left >= .035f && box.bottom - box.top >= .035f
+    }
     fun selectedMedia(screen: ScreenState): Boolean {
         val images = screen.nodes.filter { node ->
             val box = node.region
             node.className.endsWith("ImageView") && box != null && box.top in .2f.. .85f &&
                 box.right - box.left >= .12f && box.bottom - box.top >= .08f
         }
-        val bottomPreview = screen.nodes.any { node ->
-            val box = node.region
-            node.className.endsWith("ImageView") && box != null &&
-                box.top >= .8f && box.right - box.left >= .035f && box.bottom - box.top >= .035f
-        }
+        val bottomPreview = hasBottomMediaPreview(screen)
         // Instagram exposes a checked gallery tile as CheckBox, not as a selected ImageView.
         // Its large bounds and separate bottom preview distinguish it from a small toggle.
         if (bottomPreview && screen.nodes.any { node ->
