@@ -12,6 +12,8 @@ A phone can be a connection to family, information, and everyday services. Small
 
 GuidingHand brings patient, contextual guidance to the screen where help is needed. Its purpose is to help someone understand and carry out the next action while keeping control of their phone. The optional young-helper character represents a fictional assistant, never an actual grandchild or family member.
 
+GuidingHand has two horizons: in the short term, it offers calm, one-step guidance for the task in front of the person; in the long term, the repeated explanations of where to look and what each action does help build confidence and intuition for using a phone independently. It never taps or acts on the person's behalf.
+
 ## How it works
 
 1. **Ask from the current screen.** Tap Help, record a request, then stop recording. There is no need to open GuidingHand or type first.

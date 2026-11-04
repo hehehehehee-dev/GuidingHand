@@ -1086,3 +1086,9 @@ package remains untouched.
   `C8C704C6F1043D07A54A67184A2C9E1D7B30AADB78F1EFDFFCB6B1C08562E550`.
   A person-driven long-transcript paging/readability check remains pending; no usability or
   interaction pass is claimed.
+
+## 2026-11-04 — README purpose clarification
+
+- README now explains GuidingHand's two horizons: immediate one-step help and longer-term confidence
+  and phone-use intuition, while preserving the rule that the person performs every action.
+- No app code, version, model behavior, or evidence claim changed. README reviewed and updated.
