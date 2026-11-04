@@ -131,11 +131,9 @@ The project backend is deployed on Cloud Run. Cloud-connected speech transcripti
 | Evidence | Status |
 | --- | --- |
 | Submitted Instagram roleplay demo | [A new photo is visible on the outgoing side of the chat near 2:16](https://www.youtube.com/watch?v=qkLMDAfmR_0&t=136s), after the selected-photo/Send screen. The sampled frames do not show the exact tap or establish the current Candidate's build version. |
-| Latest-build complete real-phone send-photo flow | TBD |
-| Measured per-button ring accuracy | TBD |
-| Measured per-step latency | TBD |
-| Usability evaluation with older adults | TBD |
 | Public demo video | [GuidingHand roleplay demo](https://www.youtube.com/watch?v=qkLMDAfmR_0) |
+
+Design for target users, not a measured usability result: see Designed around different needs above for 24sp, 72dp targets, 13.26:1 contrast, colour-vision profiles, reduced motion, and Vietnamese and English guidance. Ring accuracy, per-step latency, and usability evaluation with older adults were not measured in this submission.
 
 Use the [phone smoke check](docs/phone-smoke-test.md) and [send-photo protocol](docs/send-photo-phone-test.md) to record actual outcomes. The repository also includes a [deterministic evaluation harness](backend/generate_evaluation_report.py) and [Meta trace viewer](backend/generate_meta_trace_viewer.py).
 
