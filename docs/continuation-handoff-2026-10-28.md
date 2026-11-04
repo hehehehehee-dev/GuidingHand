@@ -1068,3 +1068,21 @@ package remains untouched.
   capabilities request returned HTTP 401 because the retained value was the temporary local gateway
   token, not the Cloud app-session token. Cloud guidance remains blocked until the user replaces that
   field in Settings. No token value was printed or committed; no phone interaction pass is claimed.
+
+## 2026-11-04 — Candidate 1.5.56/code 65 no-swipe transcript review
+
+- The supplied phone video showed a long transcript inside a very short scroll lane. Review now
+  divides long text into short numbered pages with fixed Back/Next controls. It starts at page 1,
+  never auto-advances, and exposes Use this only on the final page. Edit and Stop stay available.
+- Page size responds to system font scale by creating more pages, not smaller text. Paging changes
+  presentation only; the task draft remains unchanged. The separate editor now opens with its caret
+  and viewport at the first character rather than deliberately jumping to the end.
+- Acceptance contract: `docs/transcript-review-companion-2026-11-03.md`. README and
+  `META_DEVELOPMENT.md` were updated for the current public behavior and component contract.
+- Deterministic verification: 97 backend tests; 136 Android unit tests; Candidate lint and assemble
+  passed; deterministic evaluation regenerated; `git diff --check` clean. Candidate 1.5.56/code 65
+  was installed side-by-side and its read-only smoke passed while Xiaomi Home was foreground:
+  `build/outputs/phone-smoke/phone-smoke-20261104-084948Z.json`. APK SHA256:
+  `C8C704C6F1043D07A54A67184A2C9E1D7B30AADB78F1EFDFFCB6B1C08562E550`.
+  A person-driven long-transcript paging/readability check remains pending; no usability or
+  interaction pass is claimed.

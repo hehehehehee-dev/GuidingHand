@@ -31,10 +31,30 @@ class GuidePanelLayoutTest {
         // The exact layout-engine box must remain the preferred anchor for the next frame.
         assertEquals(chosenByLayout, anchor.preferred(GuideBox(760, 540, 958, 618)))
     }
-    @Test fun longTranscriptGetsScrollAffordanceButShortDraftDoesNot() {
-        assertFalse(TranscriptPresentation.needsScrollHint("Gửi lời chào cho Minh"))
-        assertTrue(TranscriptPresentation.needsScrollHint("a".repeat(121)))
-        assertTrue(TranscriptPresentation.needsScrollHint("một\nhai\nba\nbốn"))
+    @Test fun transcriptPagingKeepsShortDraftOnOnePageAndLongDraftInOrder() {
+        assertEquals(listOf("Gửi lời chào cho Minh"),
+            TranscriptPagination.pages("Gửi lời chào cho Minh", 54))
+        val original = "Bà muốn tìm một bài thơ của Tố Hữu rồi mở kết quả phù hợp để đọc thật chậm và rõ ràng."
+        val pages = TranscriptPagination.pages(original, 36)
+        assertTrue(pages.size > 1)
+        assertTrue(pages.all { it.isNotBlank() && it.length <= 36 })
+        assertEquals(original, pages.joinToString(" "))
+    }
+
+    @Test fun largerSystemTextCreatesMoreTranscriptPagesInsteadOfSmallerText() {
+        assertEquals(54, TranscriptPagination.pageCharacters(1f))
+        assertEquals(36, TranscriptPagination.pageCharacters(1.5f))
+        assertEquals(27, TranscriptPagination.pageCharacters(2f))
+        val text = "một hai ba bốn năm sáu bảy tám chín mười mười một mười hai mười ba mười bốn"
+        assertTrue(TranscriptPagination.pages(text, TranscriptPagination.pageCharacters(2f)).size >=
+            TranscriptPagination.pages(text, TranscriptPagination.pageCharacters(1f)).size)
+    }
+
+    @Test fun transcriptPagingHandlesLongUnbrokenSpeechTokenWithoutEmptyPages() {
+        val pages = TranscriptPagination.pages("a".repeat(100), 36)
+        assertEquals(3, pages.size)
+        assertTrue(pages.all { it.isNotEmpty() && it.length <= 36 })
+        assertEquals("a".repeat(100), pages.joinToString(""))
     }
 
     @Test fun boundedVisualGateIgnoresTinyChangesButRejectsAnimation() {

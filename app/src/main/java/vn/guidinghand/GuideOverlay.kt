@@ -210,6 +210,7 @@ class GuideOverlay(
     private val content = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val draftValue = TextView(context).apply {
         textSize = GuideDesign.INSTRUCTION_SP; setTextColor(ink); setLineSpacing(px(3f), 1f)
+        maxLines = 3
         setPadding(dp(12), dp(10), dp(12), dp(10))
     }
     private val draftRow = LinearLayout(context).apply {
@@ -218,13 +219,8 @@ class GuideOverlay(
         addView(View(context).apply { setBackgroundColor(Color.parseColor(GuideDesign.YELLOW_HEX)) }, LinearLayout.LayoutParams(dp(5), -1))
         addView(draftValue, LinearLayout.LayoutParams(0, -2, 1f))
     }
-    private val draftScrollHint = TextView(context).apply {
-        textSize = GuideDesign.BODY_SP; setTextColor(ink); visibility = View.GONE
-        setPadding(dp(4), dp(6), dp(4), 0)
-    }
     private val draftContainer = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL; visibility = View.GONE
-        addView(draftScrollHint, LinearLayout.LayoutParams(-1, -2))
         addView(draftRow, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
     }
     private val heardSpeech = TextView(context).apply {
@@ -246,6 +242,20 @@ class GuideOverlay(
     }
     private val primaryActions = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
     private val footer = LinearLayout(context)
+    private val draftPagerBack = makeButton(tr("Quay lại", "Back"), false) { moveDraftPage(-1) }
+    private val draftPagerNext = makeButton(tr("Tiếp", "Next"), true) { moveDraftPage(1) }
+    private val draftPagerIndicator = TextView(context).apply {
+        textSize = GuideDesign.BODY_SP; setTextColor(ink); gravity = Gravity.CENTER
+        minHeight = dp(GuideDesign.SECONDARY_TARGET_DP)
+    }
+    private val draftPager = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; visibility = View.GONE
+        addView(draftPagerBack, LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(6) })
+        addView(draftPagerIndicator, LinearLayout.LayoutParams(-2, -2).apply {
+            marginStart = dp(4); marginEnd = dp(4)
+        })
+        addView(draftPagerNext, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(6) })
+    }
     private val scroll = ScrollView(context).apply {
         isFillViewport = false; isVerticalScrollBarEnabled = true
         setPadding(0, dp(8), 0, dp(8))
@@ -272,6 +282,9 @@ class GuideOverlay(
     private var cardPosition: WindowManager.LayoutParams? = null
     private var lastCardContentKey: String? = null
     private var lastRenderKey: String? = null
+    private var pagedDraft: String? = null
+    private var draftPages: List<String> = emptyList()
+    private var draftPageIndex = 0
     private var draggedCard: GuideBox? = null
     private var draggedBubble: GuideBox? = null
     private val bubbleAnchor = GuideAnchorState()
@@ -314,6 +327,14 @@ class GuideOverlay(
     private val bubbleCompanion = CompanionDrawable()
     private val cardCompanion = CompanionDrawable()
 
+    private fun moveDraftPage(delta: Int) {
+        val next = (draftPageIndex + delta).coerceIn(0, (draftPages.size - 1).coerceAtLeast(0))
+        if (next == draftPageIndex) return
+        draftPageIndex = next
+        lastRenderKey = null
+        savedState?.let { render(it, savedCanOpen) }
+    }
+
     private fun bubbleBounds(): GuideBox? {
         if (!bubbleAttached) return null
         val p = bubble.layoutParams as? WindowManager.LayoutParams ?: return null
@@ -338,6 +359,7 @@ class GuideOverlay(
         card.addView(header, LinearLayout.LayoutParams(-1, -2))
         card.addView(scroll, LinearLayout.LayoutParams(-1, -2))
         card.addView(busyElapsed, LinearLayout.LayoutParams(-1, -2))
+        card.addView(draftPager, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         card.addView(footer, LinearLayout.LayoutParams(-1, -2))
         // Help is the single movable handle while guidance is open. Keeping the card itself
         // non-draggable prevents the two overlay windows from being pulled apart.
@@ -609,15 +631,31 @@ class GuideOverlay(
                 View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
             else -> View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
-        draftValue.text = state.draftText?.let { "“$it”" }.orEmpty()
         val hasDraft = !state.draftText.isNullOrBlank()
+        if (state.draftText != pagedDraft) {
+            pagedDraft = state.draftText
+            draftPageIndex = 0
+        }
+        draftPages = TranscriptPagination.pages(state.draftText,
+            TranscriptPagination.pageCharacters(context.resources.configuration.fontScale))
+        draftPageIndex = draftPageIndex.coerceIn(0, (draftPages.size - 1).coerceAtLeast(0))
+        draftValue.text = draftPages.getOrNull(draftPageIndex)?.let { "“$it”" }.orEmpty()
         draftContainer.visibility = if (hasDraft) View.VISIBLE else View.GONE
         draftRow.visibility = if (hasDraft) View.VISIBLE else View.GONE
-        val showDraftHint = TranscriptPresentation.needsScrollHint(state.draftText)
-        draftScrollHint.text = if (prefs.language == "vi")
-            "${prefs.respectfulLanguage.assistantLabel} đọc lại toàn bộ câu. Phần chữ bắt đầu từ dòng đầu."
-        else "I will read the full sentence. The text starts at the first line."
-        draftScrollHint.visibility = if (showDraftHint) View.VISIBLE else View.GONE
+        val pagedReview = state.status == GuideStatus.CONFIRMING_INPUT && draftPages.size > 1
+        val lastDraftPage = draftPageIndex >= draftPages.lastIndex
+        draftPager.visibility = if (pagedReview) View.VISIBLE else View.GONE
+        if (pagedReview) {
+            draftPagerBack.text = tr("Quay lại", "Back")
+            draftPagerBack.setTextColor(feedbackText(false)); draftPagerBack.background = feedbackBackground(false)
+            draftPagerBack.visibility = if (draftPageIndex > 0) View.VISIBLE else View.INVISIBLE
+            draftPagerNext.text = tr("Tiếp", "Next")
+            draftPagerNext.setTextColor(feedbackText(true)); draftPagerNext.background = feedbackBackground(true)
+            draftPagerNext.visibility = if (!lastDraftPage) View.VISIBLE else View.INVISIBLE
+            draftPagerIndicator.text = "${draftPageIndex + 1} / ${draftPages.size}"
+            draftPagerBack.contentDescription = tr("Xem phần trước của câu", "Read the previous part")
+            draftPagerNext.contentDescription = tr("Xem phần tiếp theo của câu", "Read the next part")
+        }
         heardSpeech.visibility = if (heardSpeech.text.isNotBlank() && ConfirmedSpeechPresentation.showIn(state.status))
             View.VISIBLE else View.GONE
         val compact = GuideCardMode.compact(state.status)
@@ -659,11 +697,20 @@ class GuideOverlay(
             p.setMargins(dp(2), dp(4), dp(2), 0)
             footer.addView(makeButton(label, primary, callback), p)
         }
+        var stopAdded = false
         if (state.status == GuideStatus.SAFETY_PAUSED) footer.addView(makeButton(tr("Gọi người thân", "Call family"), true, callFamily),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
         else if (state.status == GuideStatus.CONFIRMING_INPUT) {
-            footerAction(tr("Đúng rồi", "Use this"), true, confirmDraft)
-            footerAction(tr("Sửa câu này", "Edit this"), false, editDraft)
+            if (lastDraftPage) footerAction(tr("Đúng rồi", "Use this"), true, confirmDraft)
+            val secondaryRow = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(makeButton(tr("Sửa câu này", "Edit this"), false, editDraft),
+                    LinearLayout.LayoutParams(0, -2, 1f).apply { marginEnd = dp(4); topMargin = dp(4) })
+                addView(makeButton(tr("Dừng", "Stop"), false, stop),
+                    LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(4); topMargin = dp(4) })
+            }
+            footer.addView(secondaryRow, LinearLayout.LayoutParams(-1, -2))
+            stopAdded = true
         } else if (state.status == GuideStatus.CONFIRMING_COPY) {
             footerAction(tr("Sao chép nội dung", "Copy message"), true, copyDraft)
         }
@@ -690,7 +737,7 @@ class GuideOverlay(
                     tr("Nghe lại hướng dẫn", "Replay the instruction")
             }
         }
-        footerAction(tr("Dừng", "Stop"), callback = stop)
+        if (!stopAdded) footerAction(tr("Dừng", "Stop"), callback = stop)
         val target = state.step?.sam?.region
         if (state.status == GuideStatus.WAITING_TAP && target != null) {
             region = target
@@ -736,7 +783,8 @@ class GuideOverlay(
     }
 
     private fun layoutCard(state: GuideViewState) {
-        val contentKey = listOf(state.status, state.instructionVi, state.draftText, state.options).joinToString("\u001f")
+        val contentKey = listOf(state.status, state.instructionVi, state.draftText, state.options,
+            if (state.status == GuideStatus.CONFIRMING_INPUT) draftPageIndex else -1).joinToString("\u001f")
         val contentChanged = contentKey != lastCardContentKey
         val compact = GuideCardMode.compact(state.status)
         val safe = safeArea(); val width = minOf(safe.width, dp(if (compact) 320 else 344))

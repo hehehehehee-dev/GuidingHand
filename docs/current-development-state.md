@@ -2,18 +2,18 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.55/code 64)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.56/code 65)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.55, version code 64; adds an authenticated debug-only switch from the temporary USB transport to the default Cloud URL without clearing user setup |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.55/code 64 |
+| Source | 1.5.56, version code 65; long transcript review uses explicit pages instead of requiring a swipe, and editing starts at the first character |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.56/code 65 |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 134 Android unit tests (0 failures/errors from test-result XML), Candidate lint and assemble; 97 backend tests passed for 1.5.55 |
-| Latest phone observation | Candidate 1.5.55 installed; read-only smoke passed. The stored loopback URL was removed and USB bridge disabled, so the effective URL is the default Cloud Run service. The retained local gateway token received HTTP 401 from Cloud and must be replaced with the Cloud app-session token before cloud guidance can work. No interaction pass claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-073405Z.json (local generated output, may not exist in a fresh clone) |
+| Latest deterministic verification | 136 Android unit tests (0 failures/errors), Candidate lint and assemble; 97 backend tests passed for 1.5.56 |
+| Latest phone observation | Candidate 1.5.56 installed; read-only smoke passed while Xiaomi Home was foreground, with Accessibility enabled, no new fatal exception and stable idle overlay. Transcript paging has not yet been operated by the user, so no interaction or readability pass is claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-084948Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 ## Latest behavior
@@ -31,9 +31,11 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
   Spark and SAM. A new click, selection, edit, scroll, window/tree change, or unsafe state still makes
   the capture stale. See `docs/animated-screen-capture-2026-11-04.md`.
 
-- Transcript review now starts at the first line instead of jumping to the bottom. The selected
-  companion introduces the transcript with the saved roles and Android offline TTS reads the full
-  sentence once. Fixed review actions remain visible; dictated words are not rewritten.
+- Transcript review starts at the first words and divides long text into short numbered pages with
+  large Back/Next controls. It never advances on a timer, and confirmation appears only on the final
+  page. Edit and Stop stay available; the editor opens at the first character. System font scaling
+  creates more pages rather than smaller text. The selected companion introduces the transcript and
+  Android offline TTS still reads the full sentence once; task text is not rewritten.
 - Cancel in the intake returns to Help without a notice card, clears the local draft and preserves task state. Safety pause takes precedence. A new intake permits normal guidance again.
 - Typing gets flexible row width; Cancel uses its label width with an 80dp minimum and 48dp minimum touch height.
 
@@ -52,9 +54,10 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
 
 ## Next concrete verification
 
-Tap Chạm để nói, stay silent or force a failure, and confirm the short retry line appears with the saved forms of address. Then have the user record a long request. Verify that the visible review begins with the first words, the
-young helper appears beside “Cháu nghe bà nói”, and local TTS reads the complete transcript exactly
-once before the user chooses an action.
+Have the user record a long request. Verify page 1 begins with the first words, Next/Back expose the
+whole sentence without a swipe, no page advances by itself, and Đúng rồi appears only on the last
+page. Confirm the young helper appears beside “Cháu nghe bà nói”, TTS reads the complete transcript
+exactly once, and Sửa câu này opens at the first character.
 For 1.5.53 also confirm: one tap confirms (no second overlay ask); a 15s-stuck verification asks again instead of looping silently; an “any app is fine” answer yields one named app. Then run the user-driven 20-step USB latency measurement and record median/p95 per stage. Then test Help → Cancel, the wider typing action, large fonts,
 Bà/Cháu wording, Character only, card dragging, Home wrapping and custom address persistence. Record
 observations for this installed build separately from earlier screenshots.

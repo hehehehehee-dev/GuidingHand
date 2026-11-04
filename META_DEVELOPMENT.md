@@ -56,7 +56,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.55`, Android code `64`; verify app/build.gradle.kts before relying on this value
+- Current source version at this handoff: `1.5.56`, Android code `65`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
@@ -110,8 +110,8 @@ All active Kotlin files are under `app/src/main/java/vn/guidinghand/` unless not
 | `GuideEngine.kt` | Real state machine for goal, clarifications, task data, verification, wrong-tap recovery, stale-result rejection | Only Stop/new goal/lock/sensitive state clears task memory |
 | `GuideData.kt` | Shared data contracts, safety policy, decisions, statuses, task/evidence types | Keep decisions typed; do not replace with keyword scripts |
 | `CoreBackendModel.kt` | Sole production `GuideModel`; serializes safe screen data, captures once, calls backend, validates binding/language/SAM | Same bitmap bytes for Spark and SAM; reject stale replies |
-| `GuideOverlay.kt` | Floating Help anchor, attached card, companion-led transcript review, ring/pointer, actions, rendering deduplication | Card remains attached to Help; transcript review opens at the first line; ring is non-touchable |
-| `GuidePanelLayout.kt` | Card/voice placement, target fusion geometry, edge handling, transcript presentation | Edge controls are valid when fusion agrees; do not reject merely for being near an edge |
+| `GuideOverlay.kt` | Floating Help anchor, attached card, companion-led paged transcript review, ring/pointer, actions, rendering deduplication | Card remains attached to Help; long review never requires a swipe; ring is non-touchable |
+| `GuidePanelLayout.kt` | Card/voice placement, target fusion geometry, edge handling, transcript pagination | More system font scaling creates more transcript pages, never smaller text or a hidden ending |
 | `VoiceActivity.kt` | Focusable mic/transcript window, recording, transcript editing and confirmation | The transcript is reviewed before task input; no duplicate `Listening…` overlay |
 | `VoiceWindowLease.kt` | Ensures only one voice window owns the overlay-suppression lease | A stale close cannot release a newer window's lease |
 | `SpeechInputClient.kt` | Uploads bounded audio to `/core/transcribe` | Requires consent and session authentication |
@@ -214,10 +214,12 @@ development path, not the product architecture.
 - Explicit Cancel discards local input and dismisses the intake to Help without a new notice card.
   A latched safety pause takes precedence. Preserve the task; starting intake again clears the visual
   dismissal flag. Typing gets the flexible row width; Cancel wraps its label with an 80dp minimum.
-- Transcript review opens at its first line rather than auto-scrolling to the end. The selected
-  companion introduces the review with the saved forms of address. Android offline TTS reads the
-  complete transcript once and asks for confirmation. This local playback is not a provider call;
-  dictated words remain verbatim, and fixed review actions stay outside the scroll lane.
+- Transcript review opens at its first words rather than auto-scrolling to the end. Long reviews use
+  short numbered pages with fixed 48/72dp Back and Next actions and no automatic advance. Confirm is
+  available only on the final page; Edit and Stop remain available. More system font scaling creates
+  more pages instead of smaller text. The selected companion introduces the review with the saved
+  forms of address. Android offline TTS reads the complete transcript once and asks for confirmation.
+  This local playback is not a provider call; the exact task draft remains unchanged by pagination.
 
 See `docs/elder-ui-contract-2026-10-30.md` and
 `docs/elder-ux-regression-checklist-2026-11-01.md` before changing UI behavior.

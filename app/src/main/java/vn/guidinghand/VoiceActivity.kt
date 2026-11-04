@@ -194,11 +194,11 @@ class VoiceActivity : ComponentActivity() {
     private fun showTranscriptEditor(text: String) {
         recording.set(false); submitting = false
         status.text = tr("Kiểm tra và sửa câu này", "Review and edit this sentence")
-        example.text = tr("Kéo lên hoặc xuống để đọc hết. Bác có thể sửa trước khi dùng.",
-            "Scroll up or down to read everything. You can edit before using it.")
+        example.text = tr("Câu bắt đầu từ dòng đầu. Bác có thể sửa trước khi dùng.",
+            "The sentence starts at the beginning. You can edit before using it.")
         example.visibility = View.VISIBLE; waveform.visibility = View.GONE
-        editor.visibility = View.VISIBLE; editor.setText(text); editor.setSelection(editor.text.length)
-        editor.post { editor.scrollTo(0, editor.layout?.getLineTop(editor.lineCount) ?: 0) }
+        editor.visibility = View.VISIBLE; editor.setText(text); editor.setSelection(0)
+        editor.post { editor.scrollTo(0, 0) }
         primary.visibility = View.VISIBLE; primary.isEnabled = true
         primary.text = tr("Dùng câu đã sửa", "Use edited text")
         primary.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)

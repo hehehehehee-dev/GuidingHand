@@ -15,7 +15,7 @@ GuidingHand brings patient, contextual guidance to the screen where help is need
 ## How it works
 
 1. **Ask from the current screen.** Tap Help, record a request, then stop recording. There is no need to open GuidingHand or type first.
-2. **Review what was heard.** The companion shows the transcript from its first line and reads the complete sentence aloud once with offline Android TTS. You can use it, edit it, or record again. If intent, recipient, or content is unclear, the assistant asks one question at a time.
+2. **Review what was heard.** The companion shows a short transcript at once; a longer one is divided into numbered pages with large Back and Next controls, so reading it does not depend on discovering a swipe gesture. The complete sentence is read aloud once with offline Android TTS. You can use it, edit it, or record again. If intent, recipient, or content is unclear, the assistant asks one question at a time.
 3. **Follow one step.** A solid guide card stays beside Help. A spoken sentence and a non-touchable ring identify the next action. The card can collapse, and dragging Help moves its attached card.
 4. **Act at your own pace.** You tap, type, swipe, and make final decisions yourself. Repeat the instruction or stop whenever needed.
 5. **Continue from what happened.** GuidingHand reads the resulting screen, checks progress, and keeps the goal after a wrong tap instead of restarting from Home.
@@ -31,7 +31,7 @@ These features are **designed to support** the following needs. Their presence a
 | Difficulty reading small text or low-contrast content | Guide instructions start at **24sp**, button labels at **22sp**, and body text at **20sp**. System font scaling is respected. Dark-green instruction text on opaque cream measures **13.26:1** contrast. |
 | Shaky hands or difficulty selecting small controls | Main GuidingHand targets are at least **72dp** and secondary targets at least **48dp**. The ring leaves the target available for the person's own touch. Third-party app controls retain their original sizes. |
 | Difficulty remembering a sequence or recovering from mistakes | One instruction and target at a time, Repeat and Stop controls, and recovery from the newly observed screen while retaining the goal. |
-| Difficulty typing or unfamiliarity with keyboards | Spoken requests, editable transcription, and spoken guidance. During review, the companion reads the complete transcript aloud, while a typing option remains available. |
+| Difficulty typing, scrolling, or using an unfamiliar keyboard | Spoken requests, editable transcription, and spoken guidance. Long reviews use explicit numbered pages instead of requiring a swipe; the companion also reads the complete transcript aloud. A typing option remains available. |
 | Difficulty distinguishing colors | High-contrast, protanopia, deuteranopia, tritanopia, and monochrome profiles. Words, shapes, checkmarks, and borders supplement color. Wrong taps do not use a red error cue. |
 | Sensitivity to motion or distraction | A reduced-motion setting and short companion gestures tied to state changes. No repeating decorative animation is needed to follow a step. |
 | Different language and communication preferences | English and Vietnamese guidance; Vietnamese preset or custom forms of address for both the user and assistant. The Home illustration follows the preset user address; custom names use a neutral portrait. |
@@ -114,11 +114,11 @@ Requirements: **Android 11 or newer**, microphone and Accessibility permissions,
 3. In Settings, confirm the HTTPS server, enter its app-session token, choose language and communication preferences, and enable the required permissions and consent.
 4. Open an app, tap Help, and speak. A Ready status checks backend protocol access; it does not prove a particular task will succeed.
 
-The current source build is **1.5.55** (Android version code **64**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
+The current source build is **1.5.56** (Android version code **65**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
 
 ## Validation and demo
 
-Current local checks: **134 Android unit tests** and **97 backend tests** pass; Candidate lint and assembly pass. These are deterministic checks, including real Firestore SDK behavior with mocked network calls, not live model quality measurements.
+Current local checks: **136 Android unit tests** and **97 backend tests** pass; Candidate lint and assembly pass. These are deterministic checks, including real Firestore SDK behavior with mocked network calls, not live model quality measurements.
 
 The project backend is deployed on Cloud Run. Cloud-connected speech transcription was confirmed by the developer on the real Xiaomi after the Firestore fix. That confirmation does not establish complete multi-app reliability or an end-to-end send-photo pass for the latest build.
 

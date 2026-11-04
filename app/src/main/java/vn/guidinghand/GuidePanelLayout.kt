@@ -62,9 +62,35 @@ object GuideCardMode {
     )
 }
 
-object TranscriptPresentation {
-    /** Short drafts fit at a glance. Long drafts get a visible, localized scroll instruction. */
-    fun needsScrollHint(value: String?) = value?.let { it.length > 120 || it.count { character -> character == '\n' } >= 3 } == true
+object TranscriptPagination {
+    private const val DEFAULT_CHARACTERS = 54
+
+    /** Larger system text creates more pages instead of shrinking or hiding the transcript. */
+    fun pageCharacters(fontScale: Float): Int =
+        (DEFAULT_CHARACTERS / fontScale.coerceAtLeast(1f)).toInt().coerceIn(27, DEFAULT_CHARACTERS)
+
+    /** Paging is presentation-only; the exact draft remains untouched in GuideViewState. */
+    fun pages(value: String?, maxCharacters: Int): List<String> {
+        val normalized = value?.trim()?.replace(Regex("\\s+"), " ").orEmpty()
+        if (normalized.isEmpty()) return emptyList()
+        val limit = maxCharacters.coerceAtLeast(12)
+        val result = mutableListOf<String>()
+        var remaining = normalized
+        while (remaining.length > limit) {
+            val search = remaining.substring(0, limit)
+            val boundary = search.indexOfLast { it.isWhitespace() || it in ".,;:!?" }
+                .takeIf { it >= limit / 2 }
+            val end = when {
+                boundary == null -> limit
+                remaining[boundary].isWhitespace() -> boundary
+                else -> boundary + 1
+            }
+            result += remaining.substring(0, end).trim()
+            remaining = remaining.substring(end).trimStart()
+        }
+        if (remaining.isNotEmpty()) result += remaining
+        return result
+    }
 }
 
 /**
