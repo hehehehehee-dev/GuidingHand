@@ -2,21 +2,26 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.54/code 63)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.55/code 64)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.54, version code 63; Spark 1.3 uses minimal reasoning and bounded animated screens freeze the second safe frame when the actionable tree and interaction generation remain unchanged |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.54/code 63 |
+| Source | 1.5.55, version code 64; adds an authenticated debug-only switch from the temporary USB transport to the default Cloud URL without clearing user setup |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.55/code 64 |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 134 Android unit tests (0 failures/errors from test-result XML), Candidate lint and assemble; 97 backend tests passed for 1.5.54 |
-| Latest phone observation | Candidate 1.5.54 installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. Foreground was the launcher. No interaction pass claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-071256Z.json (local generated output, may not exist in a fresh clone) |
+| Latest deterministic verification | 134 Android unit tests (0 failures/errors from test-result XML), Candidate lint and assemble; 97 backend tests passed for 1.5.55 |
+| Latest phone observation | Candidate 1.5.55 installed; read-only smoke passed. The stored loopback URL was removed and USB bridge disabled, so the effective URL is the default Cloud Run service. The retained local gateway token received HTTP 401 from Cloud and must be replaced with the Cloud app-session token before cloud guidance can work. No interaction pass claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-073405Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 ## Latest behavior
+
+- An authenticated debug action can leave the temporary USB bridge and restore the default Cloud Run
+  URL while preserving language, accessibility preferences, consent, family setup, and the saved
+  app-session token. It does not convert a local token into a Cloud token; Cloud correctly returns 401
+  until the Cloud app-session token is entered in Settings.
 
 - Muse Spark 1.3 requests use `reasoning_effort=minimal`. Provider quality and latency on this build
   remain unmeasured until the backend is deployed or an explicitly authorized live check runs.

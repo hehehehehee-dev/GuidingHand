@@ -56,7 +56,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.54`, Android code `63`; verify app/build.gradle.kts before relying on this value
+- Current source version at this handoff: `1.5.55`, Android code `64`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
@@ -163,7 +163,7 @@ All backend files are under `backend/`.
 | `speech_input.py` | Audio validation and Muse Voice Transcribe adapter |
 | `gateway.py` | Local development server plus shared budget implementations, including production Firestore accounting |
 | `test_firestore_sdk.py` | Real pinned Firestore SDK behavior with mocked network calls; reservation/settlement regressions |
-| `pair_phone.py` | Temporary USB pairing and `adb reverse`; never transfers the Meta key to Android |
+| `pair_phone.py` | Temporary USB pairing and `adb reverse`, or an authenticated debug switch back to the default Cloud URL; never transfers the Meta key to Android |
 | `Dockerfile` | Production-shaped Gunicorn container; expects HTTPS termination in front |
 | `test_core.py` | Core safety, snapshot, Spark/SAM and response-contract tests |
 | `test_speech_input.py` | Transcription request and validation tests |
@@ -266,6 +266,16 @@ In a second terminal, with an authorized device connected:
 adb devices -l
 python backend/pair_phone.py --serial <DEVICE_SERIAL> --candidate
 ```
+
+Return a paired Candidate to the default Cloud Run URL without clearing its app-session token or
+other user setup:
+
+```powershell
+python backend/pair_phone.py --serial <DEVICE_SERIAL> --candidate --cloud
+```
+
+The saved token must be the Cloud backend's app-session token. A local gateway token is intentionally
+rejected by Cloud Run and must be replaced in Settings; neither command reads the Meta provider key.
 
 Do not put the device serial in committed documentation or evidence. Pairing configures only the
 app-session token and loopback endpoint. Microphone and screen-sharing consent still require the

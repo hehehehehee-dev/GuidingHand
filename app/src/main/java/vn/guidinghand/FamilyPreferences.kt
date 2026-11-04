@@ -96,6 +96,10 @@ class FamilyPreferences(context: Context) {
     var backendSession: String
         get() = prefs.getString("coreBackendSession", "").orEmpty()
         set(value) { prefs.edit().putString("coreBackendSession", value.trim()).apply() }
+    /** Leave a temporary USB bridge without clearing the private app-session token or user setup. */
+    fun useCloudBackend() {
+        prefs.edit().remove("coreBackendUrl").putBoolean("devUsbBridge", false).apply()
+    }
     var screenConsent: Boolean
         get() = prefs.getBoolean("coreScreenConsent", false)
         set(value) { prefs.edit().putBoolean("coreScreenConsent", value).apply() }

@@ -1054,3 +1054,17 @@ package remains untouched.
   Real animated-screen behavior and latency are TBD.
 - README and META_DEVELOPMENT were updated for the public/current architecture. Unrelated untracked
   `output/` and the existing transcript-review contract were preserved.
+
+## 2026-11-04 — Candidate 1.5.55/code 64 return to Cloud transport
+
+- Added a nonce-authenticated, debug-only `--cloud` path to `backend/pair_phone.py`. It removes the
+  saved loopback URL, disables the USB bridge and reloads the model without clearing the app-session
+  token, language, consent, family setup, or accessibility preferences. It never reads or transfers
+  the Meta provider key.
+- Verification: 97 backend tests; 134 Android unit tests with zero failures/errors; Candidate lint and
+  assemble passed. Candidate 1.5.55 was installed side-by-side and the read-only phone smoke passed:
+  `build/outputs/phone-smoke/phone-smoke-20261104-073405Z.json`.
+- The Xiaomi now resolves the default HTTPS Cloud Run URL and `devUsbBridge=false`. An authenticated
+  capabilities request returned HTTP 401 because the retained value was the temporary local gateway
+  token, not the Cloud app-session token. Cloud guidance remains blocked until the user replaces that
+  field in Settings. No token value was printed or committed; no phone interaction pass is claimed.

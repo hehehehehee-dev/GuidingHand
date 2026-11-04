@@ -114,7 +114,7 @@ Requirements: **Android 11 or newer**, microphone and Accessibility permissions,
 3. In Settings, confirm the HTTPS server, enter its app-session token, choose language and communication preferences, and enable the required permissions and consent.
 4. Open an app, tap Help, and speak. A Ready status checks backend protocol access; it does not prove a particular task will succeed.
 
-The current source build is **1.5.54** (Android version code **63**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
+The current source build is **1.5.55** (Android version code **64**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
 
 ## Validation and demo
 

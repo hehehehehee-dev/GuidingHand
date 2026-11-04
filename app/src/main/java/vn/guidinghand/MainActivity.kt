@@ -89,7 +89,8 @@ class MainActivity : SetupActivity() {
     private fun configureDevelopment(source: Intent) {
         if (!BuildConfig.DEBUG) return
         val prefs = FamilyPreferences(this)
-        if (source.getBooleanExtra("configureCoreDev", false) && source.getStringExtra("devPairNonce") == prefs.devPairNonce) {
+        val authenticated = source.getStringExtra("devPairNonce") == prefs.devPairNonce
+        if (source.getBooleanExtra("configureCoreDev", false) && authenticated) {
             source.getStringExtra("backendSession")?.takeIf { it.matches(Regex("[a-f0-9]{48}")) }?.let {
                 val port = BuildConfig.DEV_BACKEND_PORT
                 prefs.backendUrl = "http://127.0.0.1:$port"; prefs.backendSession = it
@@ -100,8 +101,15 @@ class MainActivity : SetupActivity() {
                 prefs.devPairNonce = java.util.UUID.randomUUID().toString().replace("-", "")
                 GuidingHandService.instance?.reloadModel()
             }
+        } else if (source.getBooleanExtra("configureCloudDev", false) && authenticated) {
+            // Return from the temporary USB transport without exposing, replacing, or clearing the
+            // app-session token. This authenticated debug-only action is used by the developer tool.
+            prefs.useCloudBackend(); prefs.devStandIn = false
+            prefs.devPairNonce = java.util.UUID.randomUUID().toString().replace("-", "")
+            GuidingHandService.instance?.reloadModel()
         }
-        source.removeExtra("configureCoreDev"); source.removeExtra("devPairNonce"); source.removeExtra("backendSession"); source.removeExtra("devLanguage")
+        source.removeExtra("configureCoreDev"); source.removeExtra("configureCloudDev"); source.removeExtra("devPairNonce")
+        source.removeExtra("backendSession"); source.removeExtra("devLanguage")
     }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); setIntent(intent); configureDevelopment(intent) }
     override fun onCreate(savedInstanceState: Bundle?) {
