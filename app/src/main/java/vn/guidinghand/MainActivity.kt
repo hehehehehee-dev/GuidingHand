@@ -176,9 +176,8 @@ class MainActivity : SetupActivity() {
                             FamilyPortrait(prefs.respectfulLanguage.user,
                                 tr("Người dùng và người đồng hành", "The user and a companion"))
                             val wording = prefs.respectfulLanguage
-                            val userLabel = wording.userLabel.ifBlank { "Bạn" }
-                            Text(tr("$userLabel nói. ${wording.assistantLabel} chỉ. $userLabel tự bấm.", "You speak. I point. You tap."),
-                                fontSize = 26.sp, fontWeight = FontWeight.SemiBold)
+                            Text(tr(wording.homeMessage, "A little guidance, so you can use your phone with confidence."),
+                                fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Medium)
                         }
                     }
 
@@ -410,6 +409,7 @@ class SettingsActivity : SetupActivity() {
             var reduceMotion by remember { mutableStateOf(prefs.reduceMotion) }
             var cardSize by remember { mutableStateOf(prefs.cardSize) }
             var mascot by remember { mutableStateOf(prefs.mascot) }
+            var characterOnly by remember { mutableStateOf(prefs.characterOnlyBubble) }
             var technical by remember { mutableStateOf(false) }
             var backend by remember { mutableStateOf(prefs.backendUrl) }
             var session by remember { mutableStateOf(prefs.backendSession) }
@@ -423,12 +423,13 @@ class SettingsActivity : SetupActivity() {
             // Ordinary preferences persist as soon as they change. This removes the easy-to-miss
             // Save step while keeping the user's current task and explicit safety choices intact.
             LaunchedEffect(language, phone, contact, user, assistant, tone, customUser, customAssistant, visionProfile,
-                showPointer, reduceMotion, cardSize, mascot, backend, session, screenConsent,
+                showPointer, reduceMotion, cardSize, mascot, characterOnly, backend, session, screenConsent,
                 voiceConsent, devStandIn) {
                 prefs.language = language; prefs.phone = phone; prefs.contact = contact
                 prefs.respectfulLanguage = preview; prefs.visionProfile = visionProfile
                 prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion
                 prefs.cardSize = cardSize; prefs.mascot = mascot
+                prefs.characterOnlyBubble = characterOnly
                 prefs.backendUrl = backend; prefs.backendSession = session
                 prefs.screenConsent = screenConsent; prefs.voiceConsent = voiceConsent
                 if (BuildConfig.DEBUG) prefs.devStandIn = devStandIn
@@ -491,7 +492,7 @@ class SettingsActivity : SetupActivity() {
                         }
                     }
                     SettingsSection(tr("Người đồng hành", "Companion"), tr(
-                        "Chọn hình xuất hiện trên nút Giúp tôi. Cả hai đều là trợ lý GuidingHand.",
+                        "Chọn hình xuất hiện trên nút hỗ trợ nổi. Cả hai đều là trợ lý GuidingHand.",
                         "Choose the character shown on the Help button. Both represent the GuidingHand assistant.")) {
                         MascotChoiceButton(mascot == GuideMascot.HAND, tr("Bàn tay", "Guiding hand"),
                             tr("Đơn giản, quen thuộc và tập trung vào thao tác.", "Simple, familiar, and focused on the next action."),
@@ -500,6 +501,10 @@ class SettingsActivity : SetupActivity() {
                             tr("Tạo cảm giác ấm áp. Đây vẫn là trợ lý, không giả làm người thân thật.",
                                 "Adds warmth while remaining an assistant, never a real family member."),
                             R.drawable.guidinghand_companion) { mascot = GuideMascot.YOUNG_HELPER; saved = false }
+                        ToggleSetting(tr("Chỉ hiện nhân vật", "Character only"),
+                            tr("Ẩn chữ trên nút nổi. Vẫn chạm để nói và kéo để di chuyển.",
+                                "Hide the floating label. Tap to speak and drag to move."),
+                            characterOnly) { characterOnly = it; saved = false }
                     }
                     SettingsSection(tr("Thị lực và chuyển động", "Vision and motion"),
                         tr("Chọn kiểu dễ nhìn nhất. GuidingHand luôn dùng thêm hình dạng, đường viền và chữ — không chỉ dùng màu.",

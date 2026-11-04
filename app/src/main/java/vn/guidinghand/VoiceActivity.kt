@@ -116,7 +116,7 @@ class VoiceActivity : ComponentActivity() {
         }
         editor = EditText(this).apply {
             textSize = GuideDesign.INSTRUCTION_SP; setTextColor(ink()); setHintTextColor(Color.rgb(98, 109, 103))
-            hint = tr("Gõ điều bác cần giúp", "Type what you need help with")
+            hint = tr("Gõ điều cần giúp", "Type what you need help with")
             minHeight = dp(120); minLines = 3; maxLines = 7; gravity = Gravity.TOP or Gravity.START
             isVerticalScrollBarEnabled = true; overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
             setHorizontallyScrolling(false); filters = arrayOf(InputFilter.LengthFilter(500)); visibility = View.GONE
@@ -201,7 +201,7 @@ class VoiceActivity : ComponentActivity() {
         primary.setOnClickListener {
             pressed(primary)
             val value = editor.text?.toString()?.trim().orEmpty()
-            if (value.isEmpty()) { status.text = tr("Bác viết một câu trước nhé.", "Please enter a sentence first."); return@setOnClickListener }
+            if (value.isEmpty()) { status.text = tr("Vui lòng viết một câu trước.", "Please enter a sentence first."); return@setOnClickListener }
             val service = GuidingHandService.instance
             if (service == null || !service.localRecordingAllowed()) {
                 showError(tr("Phiên hỗ trợ đã dừng. Bác bấm Giúp để mở lại nhé.", "This help session has stopped. Tap Help again.")); return@setOnClickListener
@@ -239,7 +239,7 @@ class VoiceActivity : ComponentActivity() {
         if (!prefs.voiceConsent || !prefs.screenConsent) {
             android.app.AlertDialog.Builder(this)
                 .setTitle(tr("Cho phép trợ lý lắng nghe?", "Allow voice guidance?"))
-                .setMessage(tr(
+                .setMessage(narration(
                     "Chỉ khi bác chạm nút micro, bản ghi mới được gửi tới Meta qua máy chủ GuidingHand. Màn hình mật khẩu, thanh toán hoặc OTP luôn dừng chia sẻ.",
                     "Only after you tap the microphone is the recording sent to Meta through GuidingHand. Password, payment and OTP screens always stop sharing."
                 ))
@@ -358,7 +358,7 @@ class VoiceActivity : ComponentActivity() {
 
     private fun showTyping() {
         if (recording.get() || submitting) return
-        status.text = tr("Bác gõ điều cần giúp", "Type what you need help with")
+        status.text = tr("Gõ điều cần giúp", "Type what you need help with")
         example.visibility = View.GONE; waveform.visibility = View.GONE; editor.visibility = View.VISIBLE; editor.requestFocus()
         primary.text = tr("Dùng nội dung này", "Use this text"); primary.contentDescription = primary.text
         primary.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, 0, 0)
@@ -366,7 +366,7 @@ class VoiceActivity : ComponentActivity() {
         primary.setOnClickListener {
             pressed(primary)
             val value = editor.text?.toString()?.trim().orEmpty()
-            if (value.isEmpty()) { status.text = tr("Bác gõ một câu trước nhé.", "Type a sentence first."); return@setOnClickListener }
+            if (value.isEmpty()) { status.text = tr("Vui lòng viết một câu trước.", "Type a sentence first."); return@setOnClickListener }
             val service = GuidingHandService.instance
             if (service == null || !service.localRecordingAllowed()) {
                 showError(tr("Phiên hỗ trợ đã dừng. Bác đóng cửa sổ rồi bấm Giúp để mở lại nhé.",
@@ -457,14 +457,16 @@ class VoiceActivity : ComponentActivity() {
     private fun readyText() = when (purpose) {
         SpeechPurpose.MESSAGE_CONTENT -> tr("Chạm micro rồi nói nội dung tin nhắn", "Tap the microphone and say the message")
         SpeechPurpose.RECIPIENT -> tr("Chạm micro rồi nói tên người nhận", "Tap the microphone and say the recipient's name")
-        SpeechPurpose.GENERAL -> tr("Bác cần tôi giúp việc gì?", "What can I help you with?")
+        SpeechPurpose.GENERAL -> if (prefs.language == "vi") prefs.respectfulLanguage.helpQuestion else "What can I help you with?"
     }
     private fun listeningText() = when (purpose) {
         SpeechPurpose.MESSAGE_CONTENT -> tr("Đang nghe nội dung tin nhắn…", "Listening for the message…")
         SpeechPurpose.RECIPIENT -> tr("Đang nghe tên người nhận…", "Listening for the recipient's name…")
         SpeechPurpose.GENERAL -> tr("Đang nghe…", "Listening…")
     }
-    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else prefs.respectfulLanguage.message(vi)
+    // Action labels are literal UI text. Only narration receives address rewriting.
+    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else vi
+    private fun narration(vi: String, en: String) = if (prefs.language == "en") en else prefs.respectfulLanguage.message(vi)
     private fun ink() = Color.parseColor(GuideDesign.INK_HEX)
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }

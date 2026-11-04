@@ -5,6 +5,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RespectfulLanguageTest {
+    @Test fun helpActionRefersToUserAndQuestionUsesAssistantRole() {
+        val wording = RespectfulLanguage(UserAddress.BA, AssistantAddress.CHAU)
+        assertEquals("Giúp bà", wording.helpLabel)
+        assertEquals("Bà cần cháu giúp gì ạ?", wording.helpQuestion)
+        assertEquals("Bà cần cháu giúp việc gì ạ?", wording.message("Bác cần tôi giúp việc gì?"))
+        assertEquals("Cháu hướng dẫn từng bước, để bà tự tin dùng điện thoại.", wording.homeMessage)
+        val custom = wording.copy(user = UserAddress.CUSTOM, customUser = "Ông Sáu")
+        assertEquals("Giúp ông Sáu", custom.helpLabel)
+        assertEquals("Trợ giúp", wording.copy(user = UserAddress.NONE).helpLabel)
+    }
     @Test fun modelAndSystemSelfReferencesUseChosenVoice() {
         val language = RespectfulLanguage(UserAddress.BA, AssistantAddress.CHAU)
         assertEquals("Cháu chưa nghe rõ. Bà nói lại giúp cháu nhé.",

@@ -28,6 +28,9 @@ class FamilyPreferences(context: Context) {
         const val DEFAULT_BACKEND_URL = "https://guidinghand-backend-gquf6kjoea-uc.a.run.app"
     }
     private val prefs = context.getSharedPreferences("GuidingHand", Context.MODE_PRIVATE)
+    var characterOnlyBubble: Boolean
+        get() = prefs.getBoolean("characterOnlyBubble", false)
+        set(value) { prefs.edit().putBoolean("characterOnlyBubble", value).apply() }
     var voiceConsent: Boolean
         get() = prefs.getBoolean("voiceInputConsent", false)
         set(value) { prefs.edit().putBoolean("voiceInputConsent", value).apply() }

@@ -36,6 +36,10 @@ data class RespectfulLanguage(
         cleanAddress(customAssistant).ifBlank { AssistantAddress.TOI.label } else assistant.label
     private val address get() = userLabel
     private val self get() = assistantLabel
+    val helpLabel get() = if (address.isBlank()) "Trợ giúp" else "Giúp ${address.replaceFirstChar { it.lowercase() }}"
+    val helpQuestion get() = if (address.isBlank()) "$self có thể giúp gì ạ?" else "$address cần ${self.lowercase()} giúp gì ạ?"
+    val homeMessage get() = if (address.isBlank()) "$self hướng dẫn từng bước, để bạn tự tin dùng điện thoại."
+        else "$self hướng dẫn từng bước, để ${address.replaceFirstChar { it.lowercase() }} tự tin dùng điện thoại."
     val goalQuestion get() = if (address.isEmpty()) "Cần hỗ trợ việc gì ạ?" else "$address muốn được hỗ trợ việc gì ạ?"
     val waitingExample get() = if (address.isEmpty()) "$self sẽ chờ, không cần vội ạ." else "$address cứ thong thả, ${self.lowercase()} sẽ chờ."
     fun message(value: String, protectedLabels: List<String> = emptyList()): String {
@@ -70,7 +74,7 @@ data class RespectfulLanguage(
         text = Regex("^(?:Xin vui lòng|Vui lòng|Xin|Hãy) (?=(?:$actionWords)\\s)", RegexOption.IGNORE_CASE).replaceFirst(text, "")
         val leadingAddress = Regex("^(Ông bà|Bác|Ông|Bà|Cô|Chú|Anh|Chị) (?=(?:vui lòng|muốn|có thể|cứ|hãy|bấm|kiểm tra|chọn|nhập|tự)\\b)")
         text = leadingAddress.replaceFirst(text, if (address.isEmpty()) "" else "$address ")
-        text = Regex("(?<![\\p{L}\\p{N}_])(Tôi|Mình|Cháu|Con|Trợ lý)(?=\\s+(?:sẽ|đã|đang|chưa|không|có thể|cần|hiểu|nghe|thấy|xin|muốn|dừng)(?![\\p{L}\\p{N}_]))", RegexOption.IGNORE_CASE)
+        text = Regex("(?<![\\p{L}\\p{N}_])(Tôi|Mình|Cháu|Con|Trợ lý)(?=\\s+(?:sẽ|đã|đang|chưa|không|có thể|cần|hiểu|nghe|thấy|xin|muốn|dừng|giúp|hướng dẫn|chỉ)(?![\\p{L}\\p{N}_]))", RegexOption.IGNORE_CASE)
             .replace(text) { match -> if (match.range.first == 0 || text.substring(0, match.range.first).trimEnd().lastOrNull() in listOf('.', '!', '?')) self else self.lowercase() }
         text = Regex("(?i)(giúp) (tôi|mình)(?=[\\s.!?,]|$)")
             .replace(text) { "${it.groupValues[1]} ${self.lowercase()}" }

@@ -58,7 +58,8 @@ class GuideOverlay(
     private fun px(value: Float) = value * density
     private fun sp(value: Float) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_SP, value, context.resources.displayMetrics)
-    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else prefs.respectfulLanguage.message(vi)
+    private fun tr(vi: String, en: String) = if (prefs.language == "en") en else vi
+    private fun narration(vi: String, en: String) = if (prefs.language == "en") en else prefs.respectfulLanguage.message(vi)
     private fun feedbackBackground(primary: Boolean, radiusDp: Float = 14f, strokeDp: Int = 1): android.graphics.drawable.Drawable {
         fun shape(fill: Int, stroke: Int) = GradientDrawable().apply {
             setColor(fill); cornerRadius = px(radiusDp); setStroke(dp(strokeDp), stroke)
@@ -233,7 +234,7 @@ class GuideOverlay(
     }
     private val heardSpeechMemory = EphemeralDisplayText()
     fun setHeardSpeech(value: String) {
-        heardSpeechMemory.replace(tr("Bác nói: ", "You said: ") + value)
+        heardSpeechMemory.replace(narration("Bác nói:", "You said:") + " " + value)
         heardSpeech.text = heardSpeechMemory.value().orEmpty()
         heardSpeech.visibility = View.VISIBLE
         savedState?.let { render(it, savedCanOpen) }
@@ -419,10 +420,10 @@ class GuideOverlay(
     /** In-flight work is informative, not a recoverable error. Only Stop remains available. */
     fun showWorking(text: String) { render(GuideViewState(GuideStatus.PLANNING, text), false) }
     fun showDraftReview(text: String, purpose: SpeechPurpose) = render(GuideViewState(GuideStatus.CONFIRMING_INPUT,
-        if (purpose == SpeechPurpose.MESSAGE_CONTENT) tr("Bác muốn viết:", "You would like to write:")
-        else tr("Bác nói:", "You said:"), speechPurpose = purpose, draftText = text), false)
+        if (purpose == SpeechPurpose.MESSAGE_CONTENT) narration("Bác muốn viết:", "You would like to write:")
+        else narration("Bác nói:", "You said:"), speechPurpose = purpose, draftText = text), false)
     fun showCopyConsent(text: String) = render(GuideViewState(GuideStatus.CONFIRMING_COPY,
-        tr("Sao chép tạm nội dung này? Bác vẫn tự bấm Dán và Gửi trong ứng dụng.",
+        narration("Sao chép tạm nội dung này? Bác vẫn tự bấm Dán và Gửi trong ứng dụng.",
             "Copy this message temporarily? You will still tap Paste and Send in the app."), draftText = text), false)
 
     fun showBubble() {
@@ -433,10 +434,13 @@ class GuideOverlay(
             userCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED -> tr("Tạm dừng", "Paused")
             autoCollapsed -> tr("Nói", "Speak")
             userCollapsed -> tr("Tiếp tục", "Continue")
-            else -> tr("Giúp tôi", "Help")
+            else -> if (prefs.language == "vi") prefs.respectfulLanguage.helpLabel else "Help"
         }
-        if (bubble.text.toString() != label) bubble.text = label
-        val showIcon = !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)
+        val visibleLabel = if (prefs.characterOnlyBubble) "" else label
+        if (bubble.text.toString() != visibleLabel) bubble.text = visibleLabel
+        bubble.compoundDrawablePadding = if (prefs.characterOnlyBubble) 0 else dp(8)
+        bubble.setPadding(dp(14), dp(10), dp(if (prefs.characterOnlyBubble) 14 else 18), dp(10))
+        val showIcon = prefs.characterOnlyBubble || !(autoCollapsed && savedState?.status == GuideStatus.SAFETY_PAUSED)
         val iconKey = if (!showIcon) "none" else prefs.mascot.key
         if (bubbleIconKey != iconKey) {
             val icon = if (showIcon) (if (prefs.mascot == GuideMascot.YOUNG_HELPER)
@@ -497,7 +501,7 @@ class GuideOverlay(
         val safeNow = safeArea()
         val renderKey = GuideRenderIdentity.key(state, canOpenLauncher, userCollapsed, safeNow,
             GuideRenderPreferences(prefs.language, prefs.reduceMotion, prefs.cardSize, prefs.visionProfile,
-                prefs.showPointer, prefs.mascot, context.resources.configuration.fontScale), heardSpeechMemory.revision)
+                prefs.showPointer, prefs.mascot, context.resources.configuration.fontScale, prefs.characterOnlyBubble), heardSpeechMemory.revision)
         val expectedRing = (state.status == GuideStatus.WAITING_TAP && state.step?.sam?.region != null) ||
             (state.status == GuideStatus.WAITING_NAVIGATION && state.navigationCue != NavigationCue.NONE)
         val mounted = bubbleAttached && (userCollapsed || autoCollapsed || state.status == GuideStatus.IDLE || cardAttached) &&

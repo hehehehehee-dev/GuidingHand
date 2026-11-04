@@ -39,6 +39,8 @@ These features are **designed to support** the following needs. Their presence a
 
 The default ring has a **black outer border and bright-yellow inner border**, each at least **6dp**, with **12dp** target padding. Its accent follows the selected vision profile. An optional hand or young-helper cue accompanies the ring. The young helper has poses for listening, thinking, questions, guidance, completion, and pauses.
 
+The floating Help control can show the character alone or the character with a label. Its label refers to the person receiving help, while spoken narration uses the assistant's chosen self-reference.
+
 The interface uses warm cream and dark green, light-catching edges, and shallow shadows. The Help gradient retains at least **8.36:1** text contrast at its lightest endpoint. Decorative depth does not make instruction text transparent.
 
 ## The person stays in control
@@ -112,11 +114,11 @@ Requirements: **Android 11 or newer**, microphone and Accessibility permissions,
 3. In Settings, confirm the HTTPS server, enter its app-session token, choose language and communication preferences, and enable the required permissions and consent.
 4. Open an app, tap Help, and speak. A Ready status checks backend protocol access; it does not prove a particular task will succeed.
 
-The current source build is **1.5.46** (Android version code **55**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
+The current source build is **1.5.47** (Android version code **56**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
 
 ## Validation and demo
 
-Current local checks: **121 Android unit tests** and **93 backend tests** pass; Candidate lint and assembly pass. These are deterministic checks, including real Firestore SDK behavior with mocked network calls, not live model quality measurements.
+Current local checks: **122 Android unit tests** and **93 backend tests** pass; Candidate lint and assembly pass. These are deterministic checks, including real Firestore SDK behavior with mocked network calls, not live model quality measurements.
 
 The project backend is deployed on Cloud Run. Cloud-connected speech transcription was confirmed by the developer on the real Xiaomi after the Firestore fix. That confirmation does not establish complete multi-app reliability or an end-to-end send-photo pass for the latest build.
 

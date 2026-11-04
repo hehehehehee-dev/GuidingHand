@@ -24,7 +24,8 @@ data class GuideTargetFusion(val target: GuideBox, val mode: String, val overlap
                              val edgeAdjusted: Boolean)
 data class GuideRenderPreferences(val language: String, val reduceMotion: Boolean,
                                   val cardSize: GuideCardSize, val visionProfile: VisionProfile,
-                                  val showPointer: Boolean, val mascot: GuideMascot, val fontScale: Float)
+                                  val showPointer: Boolean, val mascot: GuideMascot, val fontScale: Float,
+                                  val characterOnlyBubble: Boolean = false)
 
 /**
  * Keeps the last geometry chosen by the layout engine while an overlay is temporarily removed.
