@@ -7,6 +7,55 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CoreGuideEngineTest {
+    @Test fun wrongTapReturnReplaysTheSameSafeNavigationStepWithoutAnotherModelCall() = runBlocking {
+        val appTask = PhotoTask("", "", "guide_app", "com.example.app")
+        val target = ScreenNode("menu", "Open menu", Region(.7f, .1f, .9f, .2f), true,
+            className = "android.widget.Button")
+        val before = ScreenState(appTask.appPackage, listOf(target), windowId = 12)
+        val wrong = ScreenState("com.example.other", listOf(ScreenNode("page", "Other page", Region(.1f, .2f, .8f, .3f), true)), windowId = 21)
+        val model = Model { input -> if (input.screen.packageName == appTask.appPackage)
+            GuideDecision.Step(step(input.screen, target, PhotoStage.ACTION), appTask)
+        else GuideDecision.Navigate("Go back to the previous screen.", appTask) }
+        val views = mutableListOf<GuideViewState>()
+        val engine = GuideEngine(model, views::add, locale = "en")
+        engine.startGoal("Open the menu", appTask)
+        engine.onScreen(before)
+        engine.onTap(ScreenNode("wrong", "Other", Region(.1f, .5f, .3f, .6f), true))
+        engine.onScreen(wrong)
+        assertEquals(GuideStatus.WAITING_NAVIGATION, engine.status)
+        val calls = model.inputs.size
+        engine.onScreen(before.copy(navigationGeneration = 2))
+        assertEquals(GuideStatus.WAITING_TAP, engine.status)
+        assertEquals(calls, model.inputs.size)
+        assertEquals(before.copy(navigationGeneration = 2).planningFingerprint,
+            views.last().step?.sam?.frameFingerprint)
+        assertTrue(model.spoken > 0)
+    }
+
+    @Test fun wrongTapReplayRequiresExactUiAndExpiresAndExcludesConsequentialTargets() = runBlocking {
+        val appTask = PhotoTask("", "", "guide_app", "com.example.app")
+        val target = ScreenNode("menu", "Open menu", Region(.7f, .1f, .9f, .2f), true,
+            className = "android.widget.Button")
+        val before = ScreenState(appTask.appPackage, listOf(target), windowId = 12)
+        assertTrue(sameReplayScreen(before, before.copy(navigationGeneration = 9)))
+        assertFalse(sameReplayScreen(before, before.copy(windowId = 13)))
+        assertFalse(sameReplayScreen(before, before.copy(nodes = listOf(target.copy(region = Region(.6f, .1f, .9f, .2f))))))
+        assertFalse(sameReplayScreen(before, before.copy(nodes = listOf(target.copy(clickable = false)))))
+        assertFalse(replayableStep(step(before, target.copy(text = "Send"), PhotoStage.ACTION)))
+        assertFalse(replayableStep(step(before, target, PhotoStage.SEND)))
+        var now = 0L
+        val wrong = ScreenState("com.example.other", listOf(ScreenNode("page", "Other page", Region(.1f, .2f, .8f, .3f), true)), windowId = 21)
+        val model = Model { input -> if (input.screen.packageName == appTask.appPackage)
+            GuideDecision.Step(step(input.screen, target, PhotoStage.ACTION), appTask)
+        else GuideDecision.Navigate("Go back.", appTask) }
+        val engine = GuideEngine(model, {}, locale = "en", nowElapsed = { now })
+        engine.startGoal("Open menu", appTask); engine.onScreen(before)
+        engine.onTap(null); engine.onScreen(wrong)
+        now = 30_001L
+        val calls = model.inputs.size
+        engine.onScreen(before.copy(navigationGeneration = 2))
+        assertTrue(model.inputs.size > calls)
+    }
     @Test fun structuredHomeGestureReachesWaitingNavigationWithoutInventingATarget() = runBlocking {
         val appTask = PhotoTask("", "", "guide_app", "com.zing.zalo")
         val model = Model { GuideDecision.Navigate("Swipe up from the bottom to go Home.",

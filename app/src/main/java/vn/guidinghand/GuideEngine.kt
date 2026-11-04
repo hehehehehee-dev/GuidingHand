@@ -19,6 +19,19 @@ internal fun shouldConcludeVerify(verifyStartElapsed: Long?, nowElapsed: Long): 
     return nowElapsed - verifyStartElapsed > VERIFY_TIMEOUT_MS
 }
 
+private const val WRONG_TAP_REPLAY_MS = 30_000L
+private val replayExcludedLabel = Regex("(^|[^a-z0-9])(send|call|dial|post|publish|pay|checkout|purchase|buy|delete|remove|confirm|allow|accept|save|gui|goi|dang|mua|xoa|xac nhan|cho phep|dong y|luu)([^a-z0-9]|$)")
+private val replayNavigationLabels = setOf("back", "quay lai", "menu", "open menu", "home", "trang chu",
+    "search", "tim kiem", "photos", "anh", "gallery", "thu vien", "settings", "cai dat", "messages", "tin nhan")
+/** Ignore only interaction generation; every visible node, window and safety field must match. */
+internal fun sameReplayScreen(before: ScreenState, after: ScreenState): Boolean =
+    before.copy(navigationGeneration = 0) == after.copy(navigationGeneration = 0)
+internal fun replayableStep(step: GuidanceStep): Boolean =
+    step.stage !in setOf(PhotoStage.PHOTO, PhotoStage.SEND, PhotoStage.DELIVERY) &&
+        step.target.className.let { !it.endsWith("CheckBox") && !it.endsWith("ImageView") } &&
+        step.target.labels.none { replayExcludedLabel.containsMatchIn(folded(it)) } &&
+        (step.stage != PhotoStage.ACTION || step.target.labels.any { folded(it) in replayNavigationLabels })
+
 class GuideEngine(
     private val model: GuideModel, private val present: (GuideViewState) -> Unit,
     private val family: FamilyContext = FamilyContext(), private val allowDevStandIn: Boolean = false,
@@ -52,6 +65,9 @@ class GuideEngine(
     private var attachmentInProgress = false
     private var selectedThumbnail: ScreenNode? = null
     private var nativeMediaSelection: Pair<ScreenState, ScreenNode>? = null
+    private data class ReplayCandidate(val step: GuidanceStep, val screen: ScreenState,
+        val task: PhotoTask, val goal: String, val utteranceRevision: Long, val savedAt: Long)
+    private var wrongTapReplay: ReplayCandidate? = null
     private var latest: ScreenState? = null
     private var lastPlanned: String? = null
     private var clicked = false
@@ -65,6 +81,7 @@ class GuideEngine(
     val transitionHistory: List<GuideTransition> get() = transitions.toList()
     private var utteranceRevision = 0L
     private var boundUtteranceRevision = 0L
+    fun invalidateWrongTapReplay() { wrongTapReplay = null }
     private val canUpdateGeneralTask get() = task?.id == "guide_app" && utteranceRevision > boundUtteranceRevision
     private fun bindTask(next: PhotoTask): Boolean {
         if (!next.valid) return false
@@ -74,6 +91,7 @@ class GuideEngine(
             verified.clear(); observations.clear(); recipientContext = false; photoContext = false
             sendBaseline = null; conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null
             nativeMediaSelection = null
+            wrongTapReplay = null
         }
         task = next; boundUtteranceRevision = utteranceRevision
         return true
@@ -84,6 +102,7 @@ class GuideEngine(
         val changed = this.locale != locale
         language = value; this.locale = if (locale == "en") "en" else "vi"
         if (changed && hasGoal && status !in setOf(GuideStatus.SAFETY_PAUSED, GuideStatus.DONE, GuideStatus.UNSUPPORTED)) {
+            wrongTapReplay = null
             generation++; model.cancel(); current = null; baseline = null; awaitingAnswer = false; lastPlanned = null
             emit(GuideStatus.READING, "Đang đọc lại màn hình…"); return
         }
@@ -149,7 +168,7 @@ class GuideEngine(
         current = null; baseline = null; sendBaseline = null; latest = null; lastPlanned = null; clicked = false; tapObserved = false; awaitingAnswer = false
         recipientContext = false; photoContext = false
         utteranceRevision = 0; boundUtteranceRevision = 0
-        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null
+        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null; wrongTapReplay = null
         transitions.clear(); transitionSequence = 0
         emit(GuideStatus.IDLE, "")
     }
@@ -166,7 +185,7 @@ class GuideEngine(
         }
         generation++; staleResponses = 0; model.cancel(); answers += text.trim().take(300)
         while (answers.size > 5) answers.removeAt(0)
-        current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = false; lastPlanned = null; nativeMediaSelection = null
+        current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = false; lastPlanned = null; nativeMediaSelection = null; wrongTapReplay = null
         emit(GuideStatus.READING, "Đang đọc lại màn hình…")
     }
     /** Retry applies to unreadable/unavailable screens. A hard safety pause ends only with Stop/new goal. */
@@ -174,7 +193,7 @@ class GuideEngine(
         if (goal.isBlank() || status !in setOf(GuideStatus.ASKING, GuideStatus.UNAVAILABLE)) return
         generation++; staleResponses = 0; model.cancel(); current = null; baseline = null; sendBaseline = null; clicked = false; tapObserved = false
         recipientContext = false; photoContext = false
-        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null
+        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null; wrongTapReplay = null
         awaitingAnswer = false; lastPlanned = null
         emit(GuideStatus.READING, "Đang kiểm tra lại màn hình…")
     }
@@ -184,7 +203,7 @@ class GuideEngine(
         if (status == GuideStatus.SAFETY_PAUSED) return
         generation++; model.cancel(); model.clearSessionMemory(); current = null; baseline = null; clicked = false; tapObserved = false; awaitingAnswer = true
         recipientContext = false; photoContext = false; sendBaseline = null
-        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null
+        conversationBeforeAttachment = null; attachmentInProgress = false; selectedThumbnail = null; nativeMediaSelection = null; wrongTapReplay = null
         val message = messageVi?.takeIf { it.isNotBlank() && it.length <= 200 && !it.contains('\n') }
             ?: "Đã tạm dừng để bảo vệ thông tin. Ông bà có thể chọn Gọi người thân hoặc Dừng."
         emit(GuideStatus.SAFETY_PAUSED, message, reasonCode = "safety_gate")
@@ -249,7 +268,7 @@ class GuideEngine(
         if (status != GuideStatus.WAITING_TAP) return
         val step = current ?: return
         generation++; model.cancel() // Stop old speech on either a correct tap or a wrong tap.
-        tapObserved = node != null
+        tapObserved = true // TYPE_VIEW_CLICKED itself is evidence even if its source has no matching node.
         clicked = node != null && node.id == step.target.id && node.region == step.target.region
         if (clicked) {
             rememberNativeMediaSelection(selectedNow)
@@ -266,6 +285,24 @@ class GuideEngine(
         }
     }
     private fun record(stage: PhotoStage) { if (stage != PhotoStage.RECOVER) verified += stage.name.lowercase() }
+    private suspend fun replayReturnedStep(screen: ScreenState): Boolean {
+        val saved = wrongTapReplay ?: return false
+        if (nowElapsed() - saved.savedAt > WRONG_TAP_REPLAY_MS || task != saved.task ||
+            goal != saved.goal || utteranceRevision != saved.utteranceRevision) {
+            wrongTapReplay = null; return false
+        }
+        if (!sameReplayScreen(saved.screen, screen)) return false
+        wrongTapReplay = null // Consume once, including when revalidation rejects it.
+        val rebound = saved.step.copy(sam = saved.step.sam.copy(frameFingerprint = screen.planningFingerprint))
+        if (!replayableStep(rebound) || !validateStep(rebound, screen, saved.task)) return false
+        generation++; model.cancel(); awaitingAnswer = false; clicked = false; tapObserved = false
+        current = rebound; baseline = screen; verifyStartElapsed = null; lastPlanned = screen.planningFingerprint
+        emit(GuideStatus.WAITING_TAP, rebound.instructionVi, rebound)
+        try { model.repeat(wording(rebound)) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { ask("Chưa phát được giọng hướng dẫn. Nhờ người thân kiểm tra giọng đọc ngoại tuyến đã cài nhé.") }
+        return true
+    }
     private fun observeContext(screen: ScreenState, task: PhotoTask) {
         val systemPicker = screen.packageName in setOf("com.google.android.providers.media.module", "com.android.providers.media.module", "com.google.android.documentsui", "com.android.documentsui")
         if ((PhotoVerification.hasComposer(screen) && !PhotoVerification.conversation(screen, task)) ||
@@ -380,6 +417,7 @@ class GuideEngine(
                 sayMessage(rawView.instructionVi, screen); return
             }
         }
+        if (replayReturnedStep(screen)) return
         if (awaitingAnswer) return
         if (status == GuideStatus.VERIFYING && shouldConcludeVerify(verifyStartElapsed, nowElapsed())) {
             verifyStartElapsed = null
@@ -400,6 +438,8 @@ class GuideEngine(
             (screen.planningFingerprint != before.planningFingerprint || !targetStillCurrent ||
                 (tapObserved && screen.fingerprint != before.fingerprint))
         if (meaningfulStepChange) {
+            if (tapObserved && !clicked && active != null && replayableStep(old))
+                wrongTapReplay = ReplayCandidate(old, before, active, goal, utteranceRevision, nowElapsed())
             val matchedGeneralAction = active?.isPhotoTask == false && clicked &&
                 old.stage in setOf(PhotoStage.ACTION, PhotoStage.RECOVER)
             val success = active != null && (if (active.isPhotoTask) verifiedTransition(old, before, screen, active) else

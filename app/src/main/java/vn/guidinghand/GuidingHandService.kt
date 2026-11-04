@@ -122,6 +122,7 @@ class GuidingHandService : AccessibilityService() {
     fun refreshLanguage() { engine.updateLanguage(prefs.respectfulLanguage, prefs.language); updates.trySend(Unit) }
     fun refreshPreferences() {
         engine.updateLanguage(prefs.respectfulLanguage, prefs.language)
+        engine.invalidateWrongTapReplay()
         overlay.refreshPreferences()
         if (ownSetupForeground() && !VoiceActivity.visible) overlay.hide()
         updates.trySend(Unit)
@@ -586,6 +587,7 @@ class GuidingHandService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || event.eventType == AccessibilityEvent.TYPE_VIEW_SELECTED) {
             val bounds = wmBounds()
             var node = source
+            var matched = false
             for (ignored in 0 until 8) {
                 val actual = node
                 if (actual != null) {
@@ -594,6 +596,7 @@ class GuidingHandService : AccessibilityService() {
                         (it.text == read.text || it.labels.any { label -> label in read.labels } ||
                             it.id.substringBefore('@') == read.id.substringBefore('@')) }?.singleOrNull()
                     if (match != null) {
+                        matched = true
                         if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
                             engine.onTap(match, read.selected)
                             GuideTrace.event(this, "elder_tap", code = viewState.step?.stage?.name)
@@ -603,6 +606,8 @@ class GuidingHandService : AccessibilityService() {
                     node = actual.parent
                 }
             }
+            if (!matched && event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED)
+                engine.onTap(null)
         }
         // Bind a provider frame to the absence of a newer elder interaction. Decorative
         // TYPE_WINDOW_CONTENT_CHANGED events do not advance this counter, so video and ads can be

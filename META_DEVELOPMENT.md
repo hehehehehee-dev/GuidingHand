@@ -60,7 +60,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.67`, Android code `76`; verify app/build.gradle.kts before relying on this value
+- Current source version at this handoff: `1.5.68`, Android code `77`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
@@ -112,7 +112,7 @@ All active Kotlin files are under `app/src/main/java/vn/guidinghand/` unless not
 | --- | --- | --- |
 | `GuidingHandService.kt` | `AccessibilityService`; reads windows, owns the session, mic lease, capture, overlay, event coalescing and matched click/selection events | Never dispatch target-app gestures or input |
 | `SecondCaptureBackoff.kt` | Briefly suppresses a repeated optional second window screenshot after Android's internal capture error | The first frame still needs a fresh safe-screen check; retry after 30 seconds or a window change |
-| `GuideEngine.kt` | Real state machine for goal, clarifications, task data, native media-selection evidence, verification, wrong-tap recovery, stale-result rejection | Only Stop/new goal/lock/sensitive state clears task memory; a tap alone never proves selection or delivery |
+| `GuideEngine.kt` | Real state machine for goal, clarifications, task data, native media-selection evidence, verification, wrong-tap recovery, bounded exact-screen step replay, stale-result rejection | A tap alone never proves selection or delivery; replay never acts inside another app and excludes consequential targets |
 | `GuideData.kt` | Shared data contracts, safety policy, decisions, statuses, task/evidence types | Keep decisions typed; do not replace with keyword scripts |
 | `CoreBackendModel.kt` | Sole production `GuideModel`; serializes safe screen data, captures once, calls backend, validates binding/language/SAM | Same bitmap bytes for Spark and SAM; reject stale replies |
 | `GuideOverlay.kt` | Floating Help anchor, attached card, companion-led paged transcript review, ring/pointer, actions, rendering deduplication | Card remains attached to Help; long review never requires a swipe; ring is non-touchable |

@@ -1307,3 +1307,21 @@ package remains untouched.
   `build/outputs/phone-smoke/phone-smoke-20261104-151843Z.json` with no new fatal exception
   or idle overlay churn. Cloud deployment not changed; this fix is Android-only. No new latency
   or person-driven success claim. Next: user-driven photo-selection check before Send.
+
+## 2026-11-04 — Short-lived wrong-tap navigation replay
+
+- Acceptance criteria: `docs/wrong-tap-replay-plan-2026-11-04.md`. The existing exact-screen
+  backend cache includes interaction generation and observations, so returning after a wrong tap
+  misses it despite an identical native screen.
+- `GuideEngine` now retains one nonconsequential prior step only after an observed wrong tap and
+  meaningful transition. If the elder returns within 30 seconds to the same package, window,
+  complete node tree and unchanged task/goal, native safety and live-target validation run again;
+  the ring is rebound to the current screen and offline TTS repeats it. No Spark/SAM call is made
+  for that replay. The wrong screen still uses ordinary recovery, with no automated Back action.
+  Send/call/post/payment/delete/confirm and media-selection targets are excluded.
+- Source Candidate 1.5.68/code 77. Android unit tests (148), backend tests (107), lint,
+  assemble and deterministic evaluation passed. Installed only Candidate on Xiaomi; read-only
+  smoke passed at `build/outputs/phone-smoke/phone-smoke-20261104-153824Z.json` with no new
+  fatal exception or idle overlay churn. A user-driven wrong-tap return remains unverified.
+  Backend unchanged; Cloud redeploy not needed. README and META_DEVELOPMENT reviewed and updated.
+  No measured speed claim.
