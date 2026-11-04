@@ -130,6 +130,7 @@ The project backend is deployed on Cloud Run. Cloud-connected speech transcripti
 
 | Evidence | Status |
 | --- | --- |
+| Submitted Instagram roleplay demo | [A new photo is visible on the outgoing side of the chat near 2:16](https://www.youtube.com/watch?v=qkLMDAfmR_0&t=136s), after the selected-photo/Send screen. The sampled frames do not show the exact tap or establish the current Candidate's build version. |
 | Latest-build complete real-phone send-photo flow | TBD |
 | Measured per-button ring accuracy | TBD |
 | Measured per-step latency | TBD |
