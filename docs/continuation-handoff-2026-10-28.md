@@ -1105,3 +1105,14 @@ package remains untouched.
   foreground: `build/outputs/phone-smoke/phone-smoke-20261104-094659Z.json`. APK SHA256:
   `5693421547197DC57E93CDA09020B58C965F0CD2F8E9DB9B8C33883A4336D207`.
   Person-driven motion capture verification remains pending; no safety or interaction pass is claimed.
+
+## 2026-11-04 — Candidate 1.5.58/code 67 distinct screen-block explanations
+
+- The user saw “màn hình chưa an toàn” on an ordinary Meta screen. The model boundary used one
+  generic phrase for locked, sensitive, unreadable, and sensitive-goal states. It now explains the
+  actual reason: privacy pause for password/OTP/payment, unlock required, or controls not readable.
+  No safety gate was relaxed; the change only prevents a misleading warning.
+- Candidate 1.5.58/code 67 was installed side-by-side and read-only smoke passed while Messages was
+  foreground: `build/outputs/phone-smoke/phone-smoke-20261104-095745Z.json`. APK SHA256:
+  `D3CAD61923D58330A89E8F24BC5E44BCED59EAED2F725A18BEBDBA4C72A02107`.
+  Person-driven screen-block verification remains pending; no safety or interaction pass is claimed.

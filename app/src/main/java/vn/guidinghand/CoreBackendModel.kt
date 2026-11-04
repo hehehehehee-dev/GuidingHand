@@ -45,7 +45,23 @@ class CoreBackendModel(
         return safe(actual) && actual.fingerprint == expected.fingerprint && preferences.screenConsent && DeviceVisibility.allowed(context)
     }
     override suspend fun next(input: GuideInput): GuideDecision {
-        if (!safe(input.screen) || SafetyPolicy.sensitiveGoal(input.goal)) return GuideDecision.Await(tr("Màn hình chưa an toàn để hướng dẫn.", "I cannot guide on this screen yet."))
+        val verdict = ScreenReadPolicy.verdict(input.screen)
+        if (verdict == ScreenReadVerdict.SENSITIVE) return GuideDecision.Await(tr(
+            "Màn hình có thể chứa mật khẩu, mã xác nhận hoặc thanh toán. Cháu tạm dừng để bảo vệ bà.",
+            "This screen may contain a password, verification code, or payment details. I paused to protect you."
+        ), "sensitive_screen")
+        if (verdict == ScreenReadVerdict.LOCKED) return GuideDecision.Await(tr(
+            "Màn hình đang khóa. Bà mở khóa rồi thử lại nhé.",
+            "The screen is locked. Unlock it, then try again."
+        ), "locked_screen")
+        if (verdict == ScreenReadVerdict.CANNOT_READ) return GuideDecision.Await(tr(
+            "Cháu chưa đọc rõ các nút trên màn hình này. Bà giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
+            "I cannot read the controls on this screen clearly yet. Keep it open and choose Check again."
+        ), "cannot_read")
+        if (SafetyPolicy.sensitiveGoal(input.goal)) return GuideDecision.Await(tr(
+            "Yêu cầu này có thể liên quan đến thông tin nhạy cảm. Cháu tạm dừng để bảo vệ bà.",
+            "This request may involve sensitive information. I paused to protect you."
+        ), "sensitive_goal")
         val contextText = input.answers + input.userUpdates + listOf(input.family.recipient, input.family.photo, input.task?.recipient.orEmpty(), input.task?.photo.orEmpty(), input.task?.content.orEmpty())
         if (contextText.any { SafetyPolicy.sensitiveGoal(it) }) return GuideDecision.Await(tr("Thông tin cần được kiểm tra trước khi tiếp tục. Đã dừng chỉ dẫn.", "This information needs to be checked before continuing. Guidance is paused."))
         if (!preferences.screenConsent) return GuideDecision.Unavailable("Consent", tr("Cần đồng ý chia sẻ màn hình với máy chủ hướng dẫn trong Thiết lập.", "Please allow screen sharing with the guidance server in Setup."))

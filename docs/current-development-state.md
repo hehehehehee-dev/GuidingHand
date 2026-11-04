@@ -2,18 +2,18 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.57/code 66)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.58/code 67)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.57, version code 66; long transcript review uses explicit pages and capture accepts same-package app windows during harmless animation |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.57/code 66 |
+| Source | 1.5.58, version code 67; long transcript review uses explicit pages, harmless same-package motion is tolerated, and screen-block messages distinguish sensitive from unreadable |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.58/code 67 |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
 | Latest deterministic verification | 136 Android unit tests (0 failures/errors), Candidate lint and assemble; 97 backend tests passed for 1.5.56 |
-| Latest phone observation | Candidate 1.5.57 installed; read-only smoke passed while Instagram was foreground, with Accessibility enabled, no new fatal exception and stable idle overlay. Same-package motion capture has not yet been operated by the user, so no interaction or readability pass is claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-094659Z.json (local generated output, may not exist in a fresh clone) |
+| Latest phone observation | Candidate 1.5.58 installed; read-only smoke passed while Messages was foreground, with Accessibility enabled, no new fatal exception and stable idle overlay. Screen-block wording has not yet been operated by the user, so no interaction or readability pass is claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-095745Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 ## Latest behavior
