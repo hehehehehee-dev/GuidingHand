@@ -1128,3 +1128,17 @@ package remains untouched.
   source; read-only Candidate installation passed in `build/outputs/phone-smoke/phone-smoke-20261104-101548Z.json`.
   APK SHA256 is `372B4DBD966BE228C6C7B8C590E0F5E6745249960B9227328C629056BC9837C5`.
   Person-driven timing verification remains pending; no interaction pass is claimed.
+
+## 2026-11-04 — Candidate 1.5.60/code 69 Instagram capture diagnosis
+
+- Real Xiaomi content-free trace around 18:21 local time: first Instagram window capture succeeded;
+  the immediate second window capture failed with Android error 3 twice, then the UI reported
+  `snapshot_unavailable`. This was a capture API failure, not evidence that the elder acted or
+  the screen changed. A later attempt captured both frames and reached Spark.
+- If only the optional second frame fails, the service now checks safety and interaction identity
+  again and uses the successful first frame for the single shared Spark/SAM request. A genuinely
+  stale or unsafe frame is still discarded. The failure copy no longer falsely says the screen
+  was changing. Backend 97 tests and Android Candidate unit/lint/assemble passed. Installed
+  Candidate read-only smoke: `build/outputs/phone-smoke/phone-smoke-20261104-102755Z.json`,
+  APK SHA256 `482BB64E2207DDDA328B40461D4F41ACCA68D7A8611CFD861FE9EC27791B8258`.
+  Person-driven Instagram capture validation is pending.

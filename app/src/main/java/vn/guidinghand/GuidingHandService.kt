@@ -726,8 +726,20 @@ class GuidingHandService : AccessibilityService() {
                 first.recycle(); return null
             }
             val second = attempt(usedWindow)
+            if (second == null) {
+                // Some devices throttle consecutive accessibility screenshots. The first frame
+                // is already a successful on-demand capture. Recheck the safety and interaction
+                // binding before returning that exact frame to the shared Spark/SAM request.
+                val stillCurrent = readFresh()
+                if (stillCurrent != null && safe(stillCurrent) &&
+                    stillCurrent.captureFingerprint == expected.captureFingerprint) {
+                    GuideTrace.event(this@GuidingHandService, "capture_single_frame", code = "second_unavailable")
+                    return first
+                }
+                first.recycle()
+                return null
+            }
             first.recycle()
-            if (second == null) throw SnapshotCaptureUnavailable()
             val secondSample = sampleFrame(second)
             if (!VisualFrameStability.isStable(firstSample, secondSample)) {
                 // The safe tree and interaction generation were checked immediately before the

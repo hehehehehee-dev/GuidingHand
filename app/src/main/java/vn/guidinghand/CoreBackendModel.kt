@@ -113,8 +113,8 @@ class CoreBackendModel(
                 try { captureForSam(input.screen) }
                 catch (_: SnapshotCaptureUnavailable) {
                 return GuideDecision.Await(tr(
-                    "Màn hình đang thay đổi nên cháu chưa chụp kịp. Bà không cần bấm gì; giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
-                    "The screen is changing, so I could not capture it yet. You do not need to tap anything; keep it open and choose Check again."
+                    "Cháu chưa chụp được màn hình này. Bà giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
+                    "I could not capture this screen. Keep it open and choose Check again."
                 ), "snapshot_unavailable")
                 }
             } ?: return stale("snapshot_unstable")
