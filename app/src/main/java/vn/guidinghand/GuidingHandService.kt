@@ -641,7 +641,11 @@ class GuidingHandService : AccessibilityService() {
             }
         }
         walk(root, "0", 0)
-        synchronized(this) { if (sourceWindow != root.windowId) { sourceWindow = root.windowId; sourceGeneration++ } }
+        // Window ids can be recreated by an app without any elder action (for example when
+        // Instagram swaps an internal surface). Keep the user-interaction generation stable;
+        // strict planning identity still includes windowId, while captureFingerprint can safely
+        // treat this as the same actionable screen for the screenshot stability gate.
+        synchronized(this) { if (sourceWindow != root.windowId) sourceWindow = root.windowId }
         val result = ScreenState(packageName, nodes, complete && nodes.isNotEmpty(), packageName == launcherPackage(), !DeviceVisibility.allowed(this),
             windowId = root.windowId, navigationGeneration = sourceGeneration, readIssue = if (modal != null) "system_dialog" else if (!complete) "cluttered" else if (nodes.isEmpty()) "unlabeled" else null)
         GuideTrace.event(this, "screen_read", android.os.SystemClock.uptimeMillis() - began, ScreenReadPolicy.verdict(result).name)
@@ -650,11 +654,11 @@ class GuidingHandService : AccessibilityService() {
     @android.annotation.SuppressLint("NewApi") // Window capture is guarded by SDK >= 34 below.
     private suspend fun captureForSam(expected: ScreenState): Bitmap? {
         val before = readFresh() ?: return null
-        if (!safe(before) || before.planningFingerprint != expected.planningFingerprint || !prefs.screenConsent) return null
+        if (!safe(before) || before.captureFingerprint != expected.captureFingerprint || !prefs.screenConsent) return null
         var overlaySuspended = false
         return try {
             val fresh = readFresh() ?: return null
-            if (!safe(fresh) || fresh.planningFingerprint != expected.planningFingerprint) return null
+            if (!safe(fresh) || fresh.captureFingerprint != expected.captureFingerprint) return null
             val targetWindow = windows.firstOrNull { it.id == expected.windowId } ?: return null
             val targetBounds = Rect().also { targetWindow.getBoundsInScreen(it) }
             val displayBounds = wmBounds()
@@ -703,7 +707,7 @@ class GuidingHandService : AccessibilityService() {
                 overlay.suspendForCapture(); overlaySuspended = true
                 delay(100)
                 val stable = readFresh()
-                if (stable == null || !safe(stable) || stable.planningFingerprint != expected.planningFingerprint) return null
+                if (stable == null || !safe(stable) || stable.captureFingerprint != expected.captureFingerprint) return null
                 if (windows.any { window ->
                         window.id != expected.windowId && window.type != android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY &&
                             (window.isActive || window.isFocused) &&
@@ -718,7 +722,7 @@ class GuidingHandService : AccessibilityService() {
             // is shared byte-for-byte by Spark and SAM. This is not continuous capture.
             val firstSample = sampleFrame(first)
             val stableTree = readFresh()
-            if (stableTree == null || !safe(stableTree) || stableTree.planningFingerprint != expected.planningFingerprint) {
+            if (stableTree == null || !safe(stableTree) || stableTree.captureFingerprint != expected.captureFingerprint) {
                 first.recycle(); return null
             }
             val second = attempt(usedWindow)
@@ -731,7 +735,7 @@ class GuidingHandService : AccessibilityService() {
                 // provider result. Freeze this exact second frame instead of waiting forever for a
                 // video, advertisement, or carousel to stop.
                 if (!VisualFrameStability.canFreezeSecond(firstSample, secondSample,
-                        stableTree.planningFingerprint == expected.planningFingerprint)) {
+                        stableTree.captureFingerprint == expected.captureFingerprint)) {
                     GuideTrace.event(this@GuidingHandService, "capture_rejected", code = "visual_motion_unbound")
                     second.recycle(); return null
                 }

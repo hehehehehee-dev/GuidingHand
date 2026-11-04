@@ -27,8 +27,12 @@ data class ScreenState(
     val windowId: Int = -1, val navigationGeneration: Long = 0, val readIssue: String? = null
 ) {
     val fingerprint get() = "$packageName:$windowId:$navigationGeneration:$complete:$isLauncher:$isLocked:$readIssue:" + nodes.joinToString { "${it.id}:${it.text}:${it.region}:${it.selected}:${it.password}:${it.focused}:${it.aliases}:${it.launcherFolder}:${it.inLauncherFolder}:${it.heading}" }
-    /** Stable during decorative animation; still binds app/window, safety and actionable geometry. */
+    /** Strict state identity: window recreation remains a real state change for verification. */
     val planningFingerprint get() = "$packageName:$windowId:$navigationGeneration:$complete:$isLauncher:$isLocked:$readIssue:" +
+        nodes.filter { it.clickable || it.focused || it.password || it.heading || it.className.contains("EditText") }
+            .joinToString { "${it.id}:${it.region}:${it.clickable}:${it.selected}:${it.password}:${it.focused}:${it.className}:${it.heading}" }
+    /** Capture identity: same-package window recreation is harmless when actionable state is unchanged. */
+    val captureFingerprint get() = "$packageName:$navigationGeneration:$complete:$isLauncher:$isLocked:$readIssue:" +
         nodes.filter { it.clickable || it.focused || it.password || it.heading || it.className.contains("EditText") }
             .joinToString { "${it.id}:${it.region}:${it.clickable}:${it.selected}:${it.password}:${it.focused}:${it.className}:${it.heading}" }
     fun hasExact(value: String) = value.isNotBlank() && nodes.any { node -> node.labels.any { folded(it) == folded(value) } }

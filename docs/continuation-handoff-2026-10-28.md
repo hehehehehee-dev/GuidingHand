@@ -1116,3 +1116,15 @@ package remains untouched.
   foreground: `build/outputs/phone-smoke/phone-smoke-20261104-095745Z.json`. APK SHA256:
   `D3CAD61923D58330A89E8F24BC5E44BCED59EAED2F725A18BEBDBA4C72A02107`.
   Person-driven screen-block verification remains pending; no safety or interaction pass is claimed.
+
+## 2026-11-04 — Candidate 1.5.59/code 68 same-app window stability
+
+- Instagram could recreate an internal Accessibility window without any elder interaction. The
+  strict planning fingerprint still retains that window ID for state verification, while a separate
+  capture fingerprint ignores only same-package window recreation when package, actionable geometry,
+  safety state, and explicit interaction generation remain unchanged.
+- Added a JVM regression test proving same-package window recreation stays stable while a click or
+  navigation-generation change invalidates the planning frame. Candidate 1.5.59/code 68 is built in
+  source; read-only Candidate installation passed in `build/outputs/phone-smoke/phone-smoke-20261104-101548Z.json`.
+  APK SHA256 is `372B4DBD966BE228C6C7B8C590E0F5E6745249960B9227328C629056BC9837C5`.
+  Person-driven timing verification remains pending; no interaction pass is claimed.

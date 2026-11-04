@@ -57,6 +57,16 @@ class GuidePanelLayoutTest {
         assertEquals("a".repeat(100), pages.joinToString(""))
     }
 
+    @Test fun samePackageWindowRecreationKeepsCaptureIdentityButStrictPlanningDiffers() {
+        val node = ScreenNode("button", "Next", Region(.2f, .2f, .5f, .3f), clickable = true)
+        val first = ScreenState("com.instagram.android", listOf(node), windowId = 11, navigationGeneration = 4)
+        val recreated = first.copy(windowId = 19)
+        assertNotEquals(first.fingerprint, recreated.fingerprint)
+        assertNotEquals(first.planningFingerprint, recreated.planningFingerprint)
+        assertEquals(first.captureFingerprint, recreated.captureFingerprint)
+        assertNotEquals(first.planningFingerprint, first.copy(navigationGeneration = 5).planningFingerprint)
+    }
+
     @Test fun boundedVisualGateIgnoresTinyChangesButRejectsAnimation() {
         val first = IntArray(100) { 0xff202020.toInt() }
         val tiny = first.copyOf().also { it[0] = 0xff303030.toInt() }

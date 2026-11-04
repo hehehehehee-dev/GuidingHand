@@ -26,7 +26,7 @@ class CoreBackendModel(
     private fun safe(screen: ScreenState) = ScreenReadPolicy.verdict(screen) == ScreenReadVerdict.SAFE
     private suspend fun current(expected: ScreenState): Boolean {
         val actual = freshScreen() ?: return false
-        return safe(actual) && actual.planningFingerprint == expected.planningFingerprint && preferences.screenConsent && DeviceVisibility.allowed(context)
+        return safe(actual) && actual.captureFingerprint == expected.captureFingerprint && preferences.screenConsent && DeviceVisibility.allowed(context)
     }
     private fun endpoint(): String? = BackendEndpoint.base(preferences)?.plus("/core/step")
     private fun stale(reason: String): GuideDecision {
@@ -71,7 +71,7 @@ class CoreBackendModel(
             return GuideDecision.Unavailable("Backend", tr("Cần phiên đăng nhập máy chủ GuidingHand.", "A GuidingHand server session is required."))
         val requestEpoch = epoch
         val requestId = UUID.randomUUID().toString()
-        val hash = digest(input.screen.planningFingerprint)
+        val hash = digest(input.screen.captureFingerprint)
         val installedApps = InstalledApps.read(context)
         val defaultBrowser = InstalledApps.defaultBrowser(context, installedApps)
         val cacheKey = cacheKey(input, url, token, installedApps, defaultBrowser)
@@ -195,7 +195,7 @@ class CoreBackendModel(
                     val index = Regex("n(0|[1-9]\\d*)").matchEntire(targetId)?.groupValues?.get(1)?.toIntOrNull()
                     val node = index?.let { input.screen.nodes.getOrNull(it) } ?: return GuideDecision.Await(tr("Không tìm thấy nút trong màn hình hiện tại.", "I cannot find that button on the current screen."), "target_absent")
                     val liveScreen = freshScreen() ?: return stale("missing_live_screen")
-                    if (!safe(liveScreen) || liveScreen.planningFingerprint != input.screen.planningFingerprint)
+                    if (!safe(liveScreen) || liveScreen.captureFingerprint != input.screen.captureFingerprint)
                         return stale("screen_changed")
                     val liveNode = liveScreen.nodes.singleOrNull { current -> current.id == node.id && current.region == node.region &&
                         current.className == node.className && current.clickable == node.clickable && current.password == node.password &&

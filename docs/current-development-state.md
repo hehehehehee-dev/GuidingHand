@@ -2,13 +2,13 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.58/code 67)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.59/code 68)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.58, version code 67; long transcript review uses explicit pages, harmless same-package motion is tolerated, and screen-block messages distinguish sensitive from unreadable |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.58/code 67 |
+| Source | 1.5.59, version code 68; long transcript review uses explicit pages, harmless same-package motion is tolerated, and internal same-app window recreation no longer invalidates an unchanged tree |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.59/code 68; read-only smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-101548Z.json` |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
 | Latest deterministic verification | 136 Android unit tests (0 failures/errors), Candidate lint and assemble; 97 backend tests passed for 1.5.56 |
