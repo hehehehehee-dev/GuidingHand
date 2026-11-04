@@ -371,7 +371,13 @@ def validate_snapshot(frame):
     validate(frame)
     if frame.get('plan_token') is not None:
         raise CoreError('obsolete_plan_token')
-    raw = image_info(frame.get('image'), frame.get('image_width'), frame.get('image_height'))
+    hit = frame.get('__decoded_image__')
+    if (hit is None or hit[0] is not frame.get('image')
+            or hit[1] != (frame.get('image_width'), frame.get('image_height'))):
+        raw = image_info(frame.get('image'), frame.get('image_width'), frame.get('image_height'))
+        frame['__decoded_image__'] = (frame.get('image'), (frame.get('image_width'), frame.get('image_height')), raw)
+    else:
+        raw = hit[2]
     digest = frame.get('image_sha256')
     if not isinstance(digest, str) or not re.fullmatch(r'[a-f0-9]{64}', digest) or not hmac.compare_digest(hashlib.sha256(raw).hexdigest(), digest):
         raise CoreError('image_hash_mismatch')
@@ -428,7 +434,7 @@ class SamSegmenter:
     def segment(self, frame, node):
         validate_snapshot(frame)
         width, height = frame.get('image_width'), frame.get('image_height')
-        image_info(frame.get('image'), width, height)
+        # validate_snapshot above already decoded and validated these exact bytes.
         try:
             from meta_sam_parser import FramePrompt, PromptBox, PromptObject, build_object_prompt
         except ImportError:

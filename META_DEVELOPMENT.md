@@ -56,7 +56,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.48`, Android code `57`; verify app/build.gradle.kts before relying on this value
+- Current source version at this handoff: `1.5.51`, Android code `60`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
@@ -109,7 +109,7 @@ All active Kotlin files are under `app/src/main/java/vn/guidinghand/` unless not
 | `GuideEngine.kt` | Real state machine for goal, clarifications, task data, verification, wrong-tap recovery, stale-result rejection | Only Stop/new goal/lock/sensitive state clears task memory |
 | `GuideData.kt` | Shared data contracts, safety policy, decisions, statuses, task/evidence types | Keep decisions typed; do not replace with keyword scripts |
 | `CoreBackendModel.kt` | Sole production `GuideModel`; serializes safe screen data, captures once, calls backend, validates binding/language/SAM | Same bitmap bytes for Spark and SAM; reject stale replies |
-| `GuideOverlay.kt` | Floating Help anchor, attached card, ring/pointer, actions, rendering deduplication | Card remains attached to Help; ring is non-touchable |
+| `GuideOverlay.kt` | Floating Help anchor, attached card, companion-led transcript review, ring/pointer, actions, rendering deduplication | Card remains attached to Help; transcript review opens at the first line; ring is non-touchable |
 | `GuidePanelLayout.kt` | Card/voice placement, target fusion geometry, edge handling, transcript presentation | Edge controls are valid when fusion agrees; do not reject merely for being near an edge |
 | `VoiceActivity.kt` | Focusable mic/transcript window, recording, transcript editing and confirmation | The transcript is reviewed before task input; no duplicate `Listening…` overlay |
 | `VoiceWindowLease.kt` | Ensures only one voice window owns the overlay-suppression lease | A stale close cannot release a newer window's lease |
@@ -208,6 +208,10 @@ development path, not the product architecture.
 - Explicit Cancel discards local input and dismisses the intake to Help without a new notice card.
   A latched safety pause takes precedence. Preserve the task; starting intake again clears the visual
   dismissal flag. Typing gets the flexible row width; Cancel wraps its label with an 80dp minimum.
+- Transcript review opens at its first line rather than auto-scrolling to the end. The selected
+  companion introduces the review with the saved forms of address. Android offline TTS reads the
+  complete transcript once and asks for confirmation. This local playback is not a provider call;
+  dictated words remain verbatim, and fixed review actions stay outside the scroll lane.
 
 See `docs/elder-ui-contract-2026-10-30.md` and
 `docs/elder-ux-regression-checklist-2026-11-01.md` before changing UI behavior.
@@ -294,11 +298,12 @@ that policy. A real interaction test requires the user to tap and speak.
 ## 10. Known current status and next verification
 
 The maintained snapshot is [docs/current-development-state.md](docs/current-development-state.md).
-For source 1.5.47/code 56, 93 backend tests and 122 Android tests, lint and Candidate assemble passed.
-Candidate 1.5.47 was installed on Xiaomi; its post-install check found the phone locked. Accessibility
-was enabled/not crashed and there were no new fatal exceptions, but no overall phone pass or
-user-driven test is claimed for that observation. Cloud-connected transcription was previously
-confirmed by the user after the Firestore fix.
+For source 1.5.51/code 60, 96 backend tests and 125 Android tests, lint and Candidate assemble passed.
+Candidate 1.5.51 was installed on Xiaomi. Its read-only smoke check found the phone awake/unlocked,
+Accessibility enabled/not crashed, stable idle overlay, and no new fatal exception. Safe-group latency
+work: event coalescing 120→80ms, Settings debounce 450→250ms, per-step image-decode cache on the
+step frame, and an elapsed-seconds line on busy cards. This is not a person-driven speech or task pass.
+Cloud-connected transcription was previously confirmed by the user after the Firestore fix.
 
 Still requiring person-driven verification:
 
@@ -307,6 +312,7 @@ Still requiring person-driven verification:
 3. The compact microphone sheet remains readable and balanced at the selected card/text sizes.
 4. The guide card stays attached to Help after transcription and during movement.
 5. Vietnamese and English speech produce same-language transcript review, guidance, buttons, and TTS.
+   Confirm that a long review starts at the first line and that the companion reads it exactly once.
 6. A benign Chrome page does not trigger a false sensitive-screen hard stop.
 7. Wrong-tap recovery keeps the goal and continues from the actual new screen.
 8. Password/OTP/payment screens pause before any provider call; do not enter real sensitive data.

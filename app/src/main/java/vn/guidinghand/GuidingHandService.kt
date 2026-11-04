@@ -35,6 +35,8 @@ class GuidingHandService : AccessibilityService() {
     private var voiceGeneration = 0L
     private var recordingPurpose = SpeechPurpose.GENERAL
     private val voiceDraft = VoiceDraftSession()
+    private lateinit var reviewSpeech: SpeechOutput
+    private var reviewSpeechJob: Job? = null
     private lateinit var copiedDraft: TemporaryClipboard
     private var sourceWindow = -1
     private var sourceGeneration = 0L
@@ -43,7 +45,7 @@ class GuidingHandService : AccessibilityService() {
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (!DeviceVisibility.allowed(this@GuidingHandService)) {
-                voicePermitUntil = 0L; voiceSubmission?.cancel(); voiceDraft.clear()
+                voicePermitUntil = 0L; voiceSubmission?.cancel(); stopReviewSpeech(); voiceDraft.clear()
                 if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
                 model.cancel(); overlay.clearHeardSpeech(); overlay.hide()
                 scope.launch { engine.onScreen(ScreenState("locked", emptyList(), complete = false, isLocked = true)) }
@@ -57,6 +59,7 @@ class GuidingHandService : AccessibilityService() {
     }
     override fun onServiceConnected() {
         instance = this; prefs = FamilyPreferences(this)
+        reviewSpeech = SystemSpeechOutput(this)
         copiedDraft = temporaryClipboard(this)
         model = makeModel()
         GuideTrace.event(this, "model", code = if (model.developmentStandIn) "PHASE1_MOCK" else "META_CORE")
@@ -72,7 +75,7 @@ class GuidingHandService : AccessibilityService() {
         if (ownSetupForeground()) overlay.hide() else overlay.showBubble()
         scope.launch {
             for (ignored in updates) {
-                delay(120); while (updates.tryReceive().isSuccess) { /* coalesce UI updates */ }
+                delay(80); while (updates.tryReceive().isSuccess) { /* coalesce UI updates */ }
                 if (voiceUiActive() || voiceSubmission?.isActive == true) continue
                 if (!DeviceVisibility.allowed(this@GuidingHandService)) { overlay.hide(); continue }
                 if (ownSetupForeground()) { overlay.hide(); continue }
@@ -98,6 +101,7 @@ class GuidingHandService : AccessibilityService() {
     private fun makeModel() = GuideModelFactory.create(this, prefs, { withContext(Dispatchers.IO) { readTree() } }, { expected -> captureForSam(expected) })
     private fun newEngine() = GuideEngine(model, { state ->
         if (state.status == GuideStatus.SAFETY_PAUSED) {
+            stopReviewSpeech()
             voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
             overlay.clearHeardSpeech()
         }
@@ -122,6 +126,7 @@ class GuidingHandService : AccessibilityService() {
     }
     fun reloadModel() { engine.stop(); model.close(); model = makeModel(); engine = newEngine() }
     fun startGoal(goal: String) {
+        stopReviewSpeech()
         voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
         overlay.clearHeardSpeech()
         engine.stop(); engine = newEngine()
@@ -132,6 +137,7 @@ class GuidingHandService : AccessibilityService() {
      * The elder still performs every action in Zalo; this method only seeds task context. */
     fun startPhotoTaskForRecipient(recipient: String) {
         if (!::engine.isInitialized || !DeviceVisibility.allowed(this)) return
+        stopReviewSpeech()
         voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
         overlay.clearHeardSpeech()
         engine.stop(); engine = newEngine()
@@ -147,14 +153,14 @@ class GuidingHandService : AccessibilityService() {
     }
     fun answer(text: String) { engine.answer(text); updates.trySend(Unit) }
     fun resumeGuide() { engine.resume(); updates.trySend(Unit) }
-    fun stopGuide() { voiceGeneration++; voicePermitUntil = 0L; voiceSubmission?.cancel(); voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned(); overlay.clearHeardSpeech(); engine.stop() }
+    fun stopGuide() { voiceGeneration++; voicePermitUntil = 0L; voiceSubmission?.cancel(); stopReviewSpeech(); voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned(); overlay.clearHeardSpeech(); engine.stop() }
     private var voiceAnswersCurrent = false
     private fun openIntake() = openVoice()
     private fun voiceUiActive() = voiceWindow.suppressOverlay(VoiceActivity.activeSession)
     fun openVoice() {
         if (!DeviceVisibility.allowed(this)) return
         val windowId = voiceWindow.reserve() ?: return
-        voiceGeneration++; voiceSubmission?.cancel()
+        voiceGeneration++; voiceSubmission?.cancel(); stopReviewSpeech()
         scope.launch {
           var requested = false
           try {
@@ -298,8 +304,8 @@ class GuidingHandService : AccessibilityService() {
                             "Phiên kết nối đã hết hạn. Bác mở Cài đặt và kết nối trợ lý lại nhé.",
                             "The assistant session is not valid. Reconnect it in Settings, then try again.")
                         category == "no_transcript" -> tr(
-                            "Tôi chưa nghe thấy lời nói. Bác nói gần micro hơn rồi thử lại nhé.",
-                            "I could not hear any words. Speak closer to the microphone and try again.")
+                            "Tôi chưa nghe rõ. Bác nói lại giúp tôi nhé.",
+                            "I didn't catch that. Please say it again for me.")
                         category == "bad_request" -> tr(
                             "Bản ghi chưa đúng định dạng. Bác thử nói một câu ngắn hơn nhé.",
                             "The recording was not accepted. Try a shorter sentence.")
@@ -316,8 +322,8 @@ class GuidingHandService : AccessibilityService() {
                             "Máy chủ chưa gọi được dịch vụ nhận giọng nói. Bác kiểm tra mạng rồi thử lại nhé.",
                             "The server could not reach the speech service. Check the connection and try again.")
                         else -> tr(
-                            "Chưa kết nối được trợ lý nhận giọng nói. Bác kiểm tra mạng rồi thử lại nhé.",
-                            "The speech assistant could not be reached. Check the connection and try again.")
+                            "Tôi chưa nghe rõ. Bác nói lại giúp tôi nhé.",
+                            "I didn't catch that. Please say it again for me.")
                     }
                     overlay.showVoiceNotice(notice)
                 }
@@ -356,7 +362,33 @@ class GuidingHandService : AccessibilityService() {
                 else overlay.showVoiceNotice(tr("Tôi chưa nghe rõ. Bác bấm Nói lại nhé.", "I could not understand that. Tap Record again."))
                 return@launch
             }
-            voiceDraft.textForReview()?.let { overlay.showDraftReview(it, recordingPurpose) }
+            voiceDraft.textForReview()?.let {
+                overlay.showDraftReview(it, recordingPurpose)
+                speakDraftReview(it, recordingPurpose, session)
+            }
+        }
+    }
+    private fun stopReviewSpeech() {
+        reviewSpeechJob?.cancel(); reviewSpeechJob = null
+        if (::reviewSpeech.isInitialized) reviewSpeech.stop()
+    }
+    /** Local confirmation speech only. It never calls the backend and never rewrites dictated text. */
+    private fun speakDraftReview(text: String, purpose: SpeechPurpose, session: Long) {
+        stopReviewSpeech()
+        val spoken = if (prefs.language == "vi")
+            prefs.respectfulLanguage.reviewPrompt(text, purpose == SpeechPurpose.MESSAGE_CONTENT)
+        else if (purpose == SpeechPurpose.MESSAGE_CONTENT)
+            "I heard what you would like to write: ${text.trim()} Is that right?"
+        else "I heard you say: ${text.trim()} Is that right?"
+        reviewSpeechJob = scope.launch {
+            try {
+                reviewSpeech.speak(spoken) {
+                    session == voiceGeneration && voiceDraft.phase == VoiceDraftPhase.REVIEW &&
+                        engine.status != GuideStatus.SAFETY_PAUSED && DeviceVisibility.allowed(this@GuidingHandService)
+                }
+            } catch (_: Exception) {
+                // The visible transcript and fixed actions remain usable without an offline voice.
+            }
         }
     }
     private fun followSpokenLanguage(text: String) {
@@ -380,6 +412,7 @@ class GuidingHandService : AccessibilityService() {
       }
     }
     private fun confirmVoiceDraft() {
+        stopReviewSpeech()
         if (!DeviceVisibility.allowed(this) || !voiceDraft.confirmReview()) { voiceDraft.clear(); return }
         if (voiceDraft.purpose == SpeechPurpose.MESSAGE_CONTENT)
             voiceDraft.textForExplicitCopy()?.let { overlay.showCopyConsent(it) }
@@ -397,11 +430,13 @@ class GuidingHandService : AccessibilityService() {
         }
     }
     private fun retryVoiceDraft() {
+        stopReviewSpeech()
         val purpose = voiceDraft.purpose
         voiceDraft.begin(purpose)
         openVoice()
     }
     private fun editVoiceDraft() {
+        stopReviewSpeech()
         val text = voiceDraft.textForReview() ?: return
         if (!DeviceVisibility.allowed(this)) return
         val windowId = voiceWindow.reserve() ?: return
@@ -423,9 +458,13 @@ class GuidingHandService : AccessibilityService() {
         if (!voiceDraft.capture(text)) {
             overlay.showVoiceNotice(tr("Bác viết một câu trước nhé.", "Please enter a sentence first.")); return
         }
-        voiceDraft.textForReview()?.let { overlay.showDraftReview(it, recordingPurpose) }
+        voiceDraft.textForReview()?.let {
+            overlay.showDraftReview(it, recordingPurpose)
+            speakDraftReview(it, recordingPurpose, voiceGeneration)
+        }
     }
     private fun copyVoiceDraft() {
+        stopReviewSpeech()
         scope.launch {
             val current = withContext(Dispatchers.IO) { readTree(allowOwn = true) }
             if (!DeviceVisibility.allowed(this@GuidingHandService) || ScreenReadPolicy.verdict(current) != ScreenReadVerdict.SAFE) {
@@ -703,10 +742,11 @@ class GuidingHandService : AccessibilityService() {
         }
         return result
     }
-    override fun onInterrupt() { if (::model.isInitialized) model.cancel(); if (::overlay.isInitialized) overlay.hide() }
+    override fun onInterrupt() { stopReviewSpeech(); if (::model.isInitialized) model.cancel(); if (::overlay.isInitialized) overlay.hide() }
     override fun onDestroy() {
         if (receiverRegistered) unregisterReceiver(screenReceiver)
-        voicePermitUntil = 0L; voiceSubmission?.cancel(); voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
+        voicePermitUntil = 0L; voiceSubmission?.cancel(); stopReviewSpeech(); voiceDraft.clear(); if (::copiedDraft.isInitialized) copiedDraft.clearIfOwned()
+        if (::reviewSpeech.isInitialized) reviewSpeech.close()
         if (::model.isInitialized) model.close(); if (::overlay.isInitialized) overlay.hide()
         instance = null; scope.cancel(); super.onDestroy()
     }

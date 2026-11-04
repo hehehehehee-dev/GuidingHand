@@ -2,22 +2,25 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-03, America/Indianapolis
+## Snapshot — 2026-11-04, America/Indianapolis
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.48, version code 57; see git log for the intake-cancellation change |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.48/code 57 |
+| Source | 1.5.51, version code 60; safe-group latency: 80ms coalescing, 250ms settings debounce, per-step decode cache, elapsed-seconds busy line |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.51/code 60 |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Current cloud revision/hash has not been freshly queried for this snapshot. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 122 Android unit tests, Candidate lint and assemble; 93 backend tests passed for the 1.5.48 change |
-| Latest phone observation | Candidate installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. No interaction pass claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-022336Z.json (local generated output, may not exist in a fresh clone) |
+| Latest deterministic verification | 125 Android unit tests, Candidate lint and assemble; 96 backend tests passed for the 1.5.51 change |
+| Latest phone observation | Candidate 1.5.51 installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. Foreground was Instagram, so no safe screenshot was taken. No interaction pass claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-045751Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 ## Latest behavior
 
+- Transcript review now starts at the first line instead of jumping to the bottom. The selected
+  companion introduces the transcript with the saved roles and Android offline TTS reads the full
+  sentence once. Fixed review actions remain visible; dictated words are not rewritten.
 - Cancel in the intake returns to Help without a notice card, clears the local draft and preserves task state. Safety pause takes precedence. A new intake permits normal guidance again.
 - Typing gets flexible row width; Cancel uses its label width with an 80dp minimum and 48dp minimum touch height.
 
@@ -26,11 +29,17 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
 - Companion settings can hide the bubble text with “Chỉ hiện nhân vật / Character only”; retain accessible descriptions and a 72dp target.
 - Custom Vietnamese user/assistant forms of address auto-save and preview. Preserve dictated content and protected names. Custom labels do not imply age or gender.
 - Home has one connected sentence instead of three abrupt fragments. The left figure follows the preset address; arbitrary custom labels keep a neutral portrait.
+- An empty recording and an unknown speech failure now show one short retry line (“Tôi chưa nghe rõ. Bác nói lại giúp tôi nhé.” / “I didn't catch that. Please say it again for me.”). It passes through the saved forms of address, so Bà/Cháu settings render “Cháu chưa nghe rõ. Bà nói lại giúp cháu nhé.” Specific failures (network, server key, busy, session expiry) keep their own guidance.
+- Safe-group latency (no safety-invariant change): event coalescing 120→80ms with the drain loop kept; Settings debounce 450→250ms; the backend decodes the ≤1MB step image once per step (frame-keyed memo, same errors on any mutation, never shared across requests or logged); busy cards show a non-announced “Đã chờ X giây…” line at 20sp that resets per phase and stops when busy ends.
 - Cream guide surfaces remain opaque; Help has restrained light-catching green surfaces. The card stays attached to Help.
 
 ## Next concrete verification
 
-Have the user tap Help then Cancel: the sheet should close to “Giúp bà” (or the chosen character-only presentation), with no extra notice. Reopen intake and verify that later guidance still appears. Check the wider typing action, including large fonts. Also verify Bà/Cháu wording, Character only, card dragging, Home wrapping and custom address persistence. Record observations for this installed build separately from earlier screenshots.
+Tap Chạm để nói, stay silent or force a failure, and confirm the short retry line appears with the saved forms of address. Then have the user record a long request. Verify that the visible review begins with the first words, the
+young helper appears beside “Cháu nghe bà nói”, and local TTS reads the complete transcript exactly
+once before the user chooses an action. Then test Help → Cancel, the wider typing action, large fonts,
+Bà/Cháu wording, Character only, card dragging, Home wrapping and custom address persistence. Record
+observations for this installed build separately from earlier screenshots.
 
 Do not bypass the screen lock or Xiaomi's INJECT_EVENTS restriction. If disconnected or locked, continue useful bounded code/docs work and leave phone verification pending.
 

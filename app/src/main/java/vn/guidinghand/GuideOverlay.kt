@@ -277,10 +277,42 @@ class GuideOverlay(
     private val bubbleAnchor = GuideAnchorState()
     private var lastLog = ""
     private val uiHandler = Handler(Looper.getMainLooper())
+    private var lastBusyKey: String? = null
+    private var busyStartElapsed: Long? = null
+    private var lastBusyText: String? = null
+    private val busyElapsed = TextView(context).apply {
+        textSize = GuideDesign.BODY_SP
+        setTextColor(ink)
+        setPadding(0, dp(6), 0, 0)
+        visibility = View.GONE
+    }
+    private fun updateBusyElapsed() {
+        val start = busyStartElapsed ?: return
+        val seconds = ((android.os.SystemClock.elapsedRealtime() - start) / 1000).coerceAtLeast(0)
+        val text = busyElapsedText(seconds, prefs.language == "vi")
+        if (lastBusyText != text) {
+            lastBusyText = text
+            busyElapsed.text = text
+        }
+    }
+    private val busyTick = object : Runnable {
+        override fun run() {
+            val busy = savedState?.status in setOf(GuideStatus.READING, GuideStatus.PLANNING, GuideStatus.VERIFYING, GuideStatus.RECOVERING)
+            if (busyStartElapsed == null || !busy || !cardAttached) return
+            updateBusyElapsed()
+            uiHandler.postDelayed(this, 1000)
+        }
+    }
+    private fun stopBusyTick() {
+        lastBusyKey = null; busyStartElapsed = null; lastBusyText = null
+        uiHandler.removeCallbacks(busyTick)
+        busyElapsed.visibility = View.GONE
+    }
     private var lastRejectedFrame: String? = null
     private var pointingClipped = false
     private var bubbleIconKey: String? = null
     private val bubbleCompanion = CompanionDrawable()
+    private val cardCompanion = CompanionDrawable()
 
     private fun bubbleBounds(): GuideBox? {
         if (!bubbleAttached) return null
@@ -305,6 +337,7 @@ class GuideOverlay(
         content.addView(primaryActions, LinearLayout.LayoutParams(-1, -2))
         card.addView(header, LinearLayout.LayoutParams(-1, -2))
         card.addView(scroll, LinearLayout.LayoutParams(-1, -2))
+        card.addView(busyElapsed, LinearLayout.LayoutParams(-1, -2))
         card.addView(footer, LinearLayout.LayoutParams(-1, -2))
         // Help is the single movable handle while guidance is open. Keeping the card itself
         // non-draggable prevents the two overlay windows from being pulled apart.
@@ -430,8 +463,9 @@ class GuideOverlay(
     /** In-flight work is informative, not a recoverable error. Only Stop remains available. */
     fun showWorking(text: String) { render(GuideViewState(GuideStatus.PLANNING, text), false) }
     fun showDraftReview(text: String, purpose: SpeechPurpose) = render(GuideViewState(GuideStatus.CONFIRMING_INPUT,
-        if (purpose == SpeechPurpose.MESSAGE_CONTENT) narration("Bác muốn viết:", "You would like to write:")
-        else narration("Bác nói:", "You said:"), speechPurpose = purpose, draftText = text), false)
+        if (prefs.language == "vi") prefs.respectfulLanguage.reviewLead(purpose == SpeechPurpose.MESSAGE_CONTENT)
+        else if (purpose == SpeechPurpose.MESSAGE_CONTENT) "I heard what you would like to write:"
+        else "I heard you say:", speechPurpose = purpose, draftText = text), false)
     fun showCopyConsent(text: String) = render(GuideViewState(GuideStatus.CONFIRMING_COPY,
         narration("Sao chép tạm nội dung này? Bác vẫn tự bấm Dán và Gửi trong ứng dụng.",
             "Copy this message temporarily? You will still tap Paste and Send in the app."), draftText = text), false)
@@ -506,12 +540,14 @@ class GuideOverlay(
         if (state.status == GuideStatus.IDLE) clearHeardSpeech()
         if (suppressOverlay()) {
             savedState = state; savedCanOpen = canOpenLauncher
+            stopBusyTick()
             hide()
             return
         }
         if (state.status == GuideStatus.SAFETY_PAUSED) intakeDismissed = false
         if (intakeDismissed) {
             savedState = state; savedCanOpen = canOpenLauncher
+            stopBusyTick()
             clearCard(); clearRing(); showBubble(); return
         }
         val safeNow = safeArea()
@@ -529,14 +565,27 @@ class GuideOverlay(
         lastRenderKey = renderKey
         val previousStatus = savedState?.status
         savedState = state; savedCanOpen = canOpenLauncher
+        val busyNow = state.status in setOf(GuideStatus.READING, GuideStatus.PLANNING, GuideStatus.VERIFYING, GuideStatus.RECOVERING)
+        val busyKey = if (busyNow) state.status.name + " " + state.instructionVi else null
+        if (busyNow && busyKey != lastBusyKey) {
+            lastBusyKey = busyKey
+            busyStartElapsed = android.os.SystemClock.elapsedRealtime()
+        }
+        if (busyNow) {
+            busyElapsed.visibility = View.VISIBLE
+            updateBusyElapsed()
+            uiHandler.removeCallbacks(busyTick)
+            uiHandler.postDelayed(busyTick, 1000)
+        } else stopBusyTick()
         // Keep the same non-touchable ring mounted while the elder is looking for the target.
         // Window churn here made it appear to blink during ordinary screen events.
         val sameVisual = (state.status == GuideStatus.WAITING_TAP && region == state.step?.sam?.region) ||
             (state.status == GuideStatus.WAITING_NAVIGATION && navigationCue == state.navigationCue)
         if (!sameVisual) clearRing()
         pointingClipped = false
-        if (!DeviceVisibility.allowed(context)) { hide(); return }
+        if (!DeviceVisibility.allowed(context)) { stopBusyTick(); hide(); return }
         if (state.status == GuideStatus.IDLE) {
+            stopBusyTick()
             userCollapsed = false; autoCollapsed = false; draggedCard = null; lastRejectedFrame = null; clearCard(); showBubble(); return
         }
         if (state.status == GuideStatus.SAFETY_PAUSED && previousStatus != GuideStatus.SAFETY_PAUSED) userCollapsed = false
@@ -546,6 +595,15 @@ class GuideOverlay(
         showBubble()
         instruction.text = state.instructionVi
         compactInstruction.text = state.instructionVi
+        val companionReview = state.status in setOf(GuideStatus.CONFIRMING_INPUT, GuideStatus.CONFIRMING_COPY)
+        val speaker = if (!companionReview) null else if (prefs.mascot == GuideMascot.YOUNG_HELPER)
+            cardCompanion.apply { setBounds(0, 0, dp(52), dp(52)); show(CompanionMood.QUESTION, prefs.reduceMotion) }
+        else context.getDrawable(vn.guidinghand.R.drawable.guidinghand_icon)?.mutate()?.apply {
+            setBounds(0, 0, dp(48), dp(48))
+        }
+        instruction.setCompoundDrawablesRelative(speaker, null, null, null)
+        instruction.compoundDrawablePadding = if (speaker == null) 0 else dp(10)
+        instruction.gravity = if (speaker == null) Gravity.START else Gravity.CENTER_VERTICAL
         instruction.accessibilityLiveRegion = when (state.status) {
             GuideStatus.SAFETY_PAUSED, GuideStatus.UNAVAILABLE, GuideStatus.ASKING ->
                 View.ACCESSIBILITY_LIVE_REGION_ASSERTIVE
@@ -556,7 +614,9 @@ class GuideOverlay(
         draftContainer.visibility = if (hasDraft) View.VISIBLE else View.GONE
         draftRow.visibility = if (hasDraft) View.VISIBLE else View.GONE
         val showDraftHint = TranscriptPresentation.needsScrollHint(state.draftText)
-        draftScrollHint.text = tr("Kéo phần lời nói để đọc toàn bộ", "Scroll the transcript to read it all")
+        draftScrollHint.text = if (prefs.language == "vi")
+            "${prefs.respectfulLanguage.assistantLabel} đọc lại toàn bộ câu. Phần chữ bắt đầu từ dòng đầu."
+        else "I will read the full sentence. The text starts at the first line."
         draftScrollHint.visibility = if (showDraftHint) View.VISIBLE else View.GONE
         heardSpeech.visibility = if (heardSpeech.text.isNotBlank() && ConfirmedSpeechPresentation.showIn(state.status))
             View.VISIBLE else View.GONE
@@ -671,7 +731,7 @@ class GuideOverlay(
             showBubble()
         }
         autoCollapsed = false
-        if (userCollapsed) { clearCard(); showBubble(); recordMeasurement(null, false, state); return }
+        if (userCollapsed) { stopBusyTick(); clearCard(); showBubble(); recordMeasurement(null, false, state); return }
         layoutCard(state)
     }
 
@@ -711,11 +771,9 @@ class GuideOverlay(
         val p = params(box.width, box.height, false).apply { x = box.left; y = box.top }
         cardPosition = p
         if (!cardAttached) { wm.addView(card, p); cardAttached = true } else wm.updateViewLayout(card, p)
-        if (contentChanged) scroll.post {
-            if (state.status in setOf(GuideStatus.CONFIRMING_INPUT, GuideStatus.CONFIRMING_COPY))
-                scroll.fullScroll(View.FOCUS_DOWN)
-            else scroll.scrollTo(0, 0)
-        }
+        // Review must begin with the first words. Opening at the bottom forced the elder to
+        // discover a hidden scroll gesture before they could understand what was heard.
+        if (contentChanged) scroll.post { scroll.scrollTo(0, 0) }
         lastCardContentKey = contentKey
         recordMeasurement(box, scrolling, state)
     }
@@ -775,7 +833,7 @@ class GuideOverlay(
         }
     }
     private fun clearRing() { region = null; navigationCue = NavigationCue.NONE; if (ringAttached) { wm.removeView(ring); ringAttached = false } }
-    private fun clearCard() { if (cardAttached) { wm.removeView(card); cardAttached = false }; lastCardContentKey = null }
+    private fun clearCard() { cardCompanion.stop(); if (cardAttached) { wm.removeView(card); cardAttached = false }; lastCardContentKey = null }
     private fun removeBubble() { bubbleCompanion.stop(); if (bubbleAttached) { wm.removeView(bubble); bubbleAttached = false; GuideTrace.event(context, "bubble_detached") } }
     fun suspendForCapture() { clearRing(); clearCard(); removeBubble() }
     fun refreshPreferences() {

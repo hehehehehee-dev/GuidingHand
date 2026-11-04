@@ -441,7 +441,7 @@ class SettingsActivity : SetupActivity() {
             LaunchedEffect(backend, session, screenConsent, contact, devStandIn) {
                 if (!connectionEffectStarted) connectionEffectStarted = true
                 else {
-                    delay(450)
+                    delay(250)
                     GuidingHandService.instance?.reloadModel()
                 }
             }
