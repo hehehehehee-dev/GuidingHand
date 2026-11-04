@@ -2,18 +2,18 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.69/code 78)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.70/code 79)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated untracked output/ and user screenshot |
-| Source | 1.5.69, version code 78; Help overlay events no longer hide Help, and a latched safety pause restores its controls after a fresh safe external screen read. The pause stays latched. Wrong-tap replay and photo Send guards remain as in 1.5.68. The Precise ring (SAM) setting defaults on; node bounds are an estimated ring only for nonconsequential actions when it is off. |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.69/code 78; read-only installation smoke passed at 2026-11-04 17:39:47 UTC. WindowManager showed one visible Accessibility overlay on Xiaomi Home; content-free trace showed a Help attach with no subsequent detach during the observation. User-driven Help and safety-pause return remain unverified. |
+| Source | 1.5.70, version code 79; repeated sensitive Accessibility events no longer remove an already latched safety card. The first sensitive event still stops active guidance. Help's own events no longer hide it, and safe external reads can restore paused controls without clearing the pause. Wrong-tap replay and photo Send guards remain as in 1.5.68. The Precise ring (SAM) setting defaults on; node bounds are an estimated ring only for nonconsequential actions when it is off. |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.70/code 79 installed at 2026-11-04 17:51:46 UTC. The phone was locked during the read-only smoke, so visibility and interaction are unverified; no crash was observed. Previous 1.5.69 appeared briefly, then disappeared during repeated sensitive events. |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; the user reported deploying commit 0b065a2. The new SAM switch, next-step clarification rule, and compact Spark app list are source only until a new Cloud Run deployment. |
-| Latest deterministic verification | Candidate 1.5.69: 107 backend tests and 148 Android unit tests, lint, assemble and deterministic evaluation passed. No phone interaction pass is claimed. |
-| Latest phone observation | On 1.5.68, Help was absent on unlocked Xiaomi Home despite enabled Accessibility. Trace showed a latched safety pause and Help attach/detach pairs ~150 ms apart. After installing 1.5.69, WindowManager showed a visible Help overlay on Home with no detach in the read-only sample. No elder tap or return-from-sensitive-screen pass yet. |
-| Phone evidence | Local 2026-11-04 17:39:47 UTC phone smoke report, WindowManager dump and content-free GuideTrace (generated output may not exist in a fresh clone) |
+| Latest deterministic verification | Candidate 1.5.70: 107 backend tests and 148 Android unit tests, lint, assemble and deterministic evaluation passed. No phone interaction pass is claimed. |
+| Latest phone observation | Candidate 1.5.69 initially showed Help on Xiaomi Home, but later it attached and detached again while an external app produced repeated `SENSITIVE` screen events. The service was hiding the overlay on each event after the engine had latched the pause. Candidate 1.5.70 was installed, but the phone locked before observation; user must unlock it for a read-only check. |
+| Phone evidence | Local 2026-11-04 17:52:14 UTC phone smoke report (locked, not passed), earlier WindowManager dump and content-free GuideTrace (generated output may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 The 2026-11-04 Instagram conversation trace shows a successful 736×1600 snapshot followed by about 7.1 s in Spark and no SAM invocation for the first `cannot_read` result. This identifies Spark uncertainty, not an Android screenshot failure, for that specific screen. The new source distinguishes it from SAM ambiguity and asks one spoken clarification instead of looping on Check again. This behavior still needs a real-phone interaction check after installation and Cloud Run redeployment.

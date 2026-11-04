@@ -574,7 +574,12 @@ class GuidingHandService : AccessibilityService() {
         val hint = ScreenState(event.packageName?.toString().orEmpty(), hints)
         if (SafetyPolicy.sensitive(hint)) {
             voicePermitUntil = 0L; voiceSubmission?.cancel()
-            model.cancel(); overlay.hide(); scope.launch {
+            model.cancel()
+            // The first event replaces live guidance with the latched safety card. Repeated
+            // password/payment events must not hide that card after the engine has stopped
+            // emitting duplicate pause states; otherwise Help appears briefly, then vanishes.
+            if (engine.status != GuideStatus.SAFETY_PAUSED) overlay.hide()
+            scope.launch {
                 if (VoiceActivity.visible) engine.inspectBeforeSpeech(hint) else engine.onScreen(hint)
             }
             return
