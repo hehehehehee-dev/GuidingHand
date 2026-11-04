@@ -97,6 +97,15 @@ object VisualFrameStability {
         }
         return changed * 100 <= first.size * 5 && totalDelta <= first.size * 24L
     }
+
+    /**
+     * Animated backgrounds may move while every actionable control stays bound to the same safe
+     * screen. In that case the second on-demand frame becomes the frozen provider frame. A caller
+     * must set [screenBindingUnchanged] only after checking safety, app/window, actionable nodes,
+     * and the interaction generation.
+     */
+    fun canFreezeSecond(first: IntArray, second: IntArray, screenBindingUnchanged: Boolean): Boolean =
+        screenBindingUnchanged && first.isNotEmpty() && first.size == second.size
 }
 
 /** Content-free identity for suppressing duplicate renders without suppressing preference changes. */

@@ -44,6 +44,9 @@ class GuidePanelLayoutTest {
         assertTrue(VisualFrameStability.isStable(first, tiny))
         assertFalse(VisualFrameStability.isStable(first, moving))
         assertFalse(VisualFrameStability.isStable(first, IntArray(99)))
+        assertTrue(VisualFrameStability.canFreezeSecond(first, moving, screenBindingUnchanged = true))
+        assertFalse(VisualFrameStability.canFreezeSecond(first, moving, screenBindingUnchanged = false))
+        assertFalse(VisualFrameStability.canFreezeSecond(first, IntArray(99), screenBindingUnchanged = true))
     }
 
     @Test fun ordinaryCoachingIsCompactButQuestionsAndSafetyStayExpanded() {

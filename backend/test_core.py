@@ -429,6 +429,7 @@ class CoreTests(unittest.TestCase):
 
     def test_spark_transport_is_required_and_stateless_without_execution_tools(self):
         body = spark_body(frame()); self.assertEqual('muse-spark-1.3', body['model']); self.assertIs(False, body['store'])
+        self.assertEqual('minimal', body['reasoning_effort'])
         calls = []
         response = {'choices':[{'finish_reason':'stop','message':{'content':json.dumps(decision())}}], 'usage':{'prompt_tokens':100,'completion_tokens':100}}
         planner = SparkPlanner('fixture-key', self.budget, lambda key,endpoint,payload: calls.append(endpoint) or response)

@@ -592,7 +592,15 @@ class GuidingHandService : AccessibilityService() {
                 }
             }
         }
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) synchronized(this) { sourceGeneration++ }
+        // Bind a provider frame to the absence of a newer elder interaction. Decorative
+        // TYPE_WINDOW_CONTENT_CHANGED events do not advance this counter, so video and ads can be
+        // frozen. Clicks, selections, edits and scrolls always make an in-flight frame stale.
+        when (event.eventType) {
+            AccessibilityEvent.TYPE_VIEW_CLICKED,
+            AccessibilityEvent.TYPE_VIEW_SELECTED,
+            AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED,
+            AccessibilityEvent.TYPE_VIEW_SCROLLED -> synchronized(this) { sourceGeneration++ }
+        }
         updates.trySend(Unit)
     }
     private fun wmBounds() = getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
@@ -708,7 +716,6 @@ class GuidingHandService : AccessibilityService() {
             // Accessibility tree unchanged. The second frame is the only image uploaded and
             // is shared byte-for-byte by Spark and SAM. This is not continuous capture.
             val firstSample = sampleFrame(first)
-            delay(180)
             val stableTree = readFresh()
             if (stableTree == null || !safe(stableTree) || stableTree.planningFingerprint != expected.planningFingerprint) {
                 first.recycle(); return null
@@ -716,9 +723,18 @@ class GuidingHandService : AccessibilityService() {
             val second = attempt(usedWindow)
             first.recycle()
             if (second == null) throw SnapshotCaptureUnavailable()
-            if (!VisualFrameStability.isStable(firstSample, sampleFrame(second))) {
-                GuideTrace.event(this@GuidingHandService, "capture_rejected", code = "visual_motion")
-                second.recycle(); return null
+            val secondSample = sampleFrame(second)
+            if (!VisualFrameStability.isStable(firstSample, secondSample)) {
+                // The safe tree and interaction generation were checked immediately before the
+                // second capture. CoreBackendModel checks them again before upload and after the
+                // provider result. Freeze this exact second frame instead of waiting forever for a
+                // video, advertisement, or carousel to stop.
+                if (!VisualFrameStability.canFreezeSecond(firstSample, secondSample,
+                        stableTree.planningFingerprint == expected.planningFingerprint)) {
+                    GuideTrace.event(this@GuidingHandService, "capture_rejected", code = "visual_motion_unbound")
+                    second.recycle(); return null
+                }
+                GuideTrace.event(this@GuidingHandService, "capture_motion_frozen", code = "safe_tree_no_interaction")
             }
             second
         } finally {

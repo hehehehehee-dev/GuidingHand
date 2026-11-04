@@ -95,6 +95,7 @@ class GatewayTests(unittest.TestCase):
     def test_provider_request_is_standard_stateless_and_has_no_execution_tools(self):
         body = provider_body(frame())
         self.assertEqual('muse-spark-1.3', body['model'])
+        self.assertEqual('minimal', body['reasoning_effort'])
         self.assertIs(False, body['store'])
         self.assertNotIn('tools', body)
         self.assertNotIn('previous_response_id', body)

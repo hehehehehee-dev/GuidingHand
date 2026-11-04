@@ -2,21 +2,29 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (Candidate 1.5.53/code 62)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.54/code 63)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.53, version code 62; bug-fix sprint: single voice confirmation, transcribe time-expectation copy, VI keyboard locale, one silent capture retry (+300ms), heard-speech prefix, 15s verify-timeout ask, delegation prompt, USB loopback honored only with dev-bridge flag |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.53/code 62 |
+| Source | 1.5.54, version code 63; Spark 1.3 uses minimal reasoning and bounded animated screens freeze the second safe frame when the actionable tree and interaction generation remain unchanged |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.54/code 63 |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
-| Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Current cloud revision/hash has not been freshly queried for this snapshot. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 134 Android unit tests (0 failures/errors from test-result XML), Candidate lint and assemble; 97 backend tests passed for the 1.5.53 change |
-| Latest phone observation | Candidate 1.5.53 installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. Foreground was the launcher, so a safe screenshot was taken. USB re-paired for measurement. No interaction pass claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-063000Z.json (local generated output, may not exist in a fresh clone) |
+| Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
+| Latest deterministic verification | 134 Android unit tests (0 failures/errors from test-result XML), Candidate lint and assemble; 97 backend tests passed for 1.5.54 |
+| Latest phone observation | Candidate 1.5.54 installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. Foreground was the launcher. No interaction pass claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-071256Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 ## Latest behavior
+
+- Muse Spark 1.3 requests use `reasoning_effort=minimal`. Provider quality and latency on this build
+  remain unmeasured until the backend is deployed or an explicitly authorized live check runs.
+- The bounded two-frame capture no longer rejects a screen only because video, an advertisement, or
+  a carousel changes pixels. When the screen remains safe and the app, window, actionable tree, and
+  interaction generation are unchanged, the second frame is frozen and shared byte-for-byte with
+  Spark and SAM. A new click, selection, edit, scroll, window/tree change, or unsafe state still makes
+  the capture stale. See `docs/animated-screen-capture-2026-11-04.md`.
 
 - Transcript review now starts at the first line instead of jumping to the bottom. The selected
   companion introduces the transcript with the saved roles and Android offline TTS reads the full

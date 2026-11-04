@@ -56,11 +56,11 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.53`, Android code `62`; verify app/build.gradle.kts before relying on this value
+- Current source version at this handoff: `1.5.54`, Android code `63`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
-- Provider planner: `muse-spark-1.3`
+- Provider planner: `muse-spark-1.3` with `reasoning_effort=minimal`
 - Region source: SAM 3.1 through `meta-sam-parser`
 - Speech input: `muse-voice-transcribe-1.0`
 - Speech output: Android system TTS at `0.85`
@@ -203,8 +203,11 @@ development path, not the product architecture.
 - Ring: black outer border plus bright-yellow inner border, each at least `6dp`, with at least `12dp`
   target padding. It is `FLAG_NOT_TOUCHABLE` and never replaces the elder's tap.
 - Never use color alone, red for wrong taps, or a red/green or blue distinction as the only cue.
-- Background animation can trigger screen churn. Wait for the bounded visual-stability check and plan
-  from a frozen on-demand snapshot; do not add arbitrary fixed sleeps.
+- Background animation must not create an endless wait. Take at most two bounded frames back-to-back
+  with no fixed settling delay. If the safe app/window/actionable tree and interaction generation are
+  unchanged, freeze the second frame even when decorative pixels move. A click, selection, text edit,
+  scroll, window change, unsafe state, or actionable-tree change invalidates it. Spark and SAM still
+  share that exact frozen image.
 - The voice window is compact, appears beside Help on its first visible frame, and suppresses every
   accessibility overlay while its lease is active. There must be no secondary blinking `Listening…`
   pill and no first-frame jump to the bottom.

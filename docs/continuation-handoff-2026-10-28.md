@@ -1034,3 +1034,23 @@ package remains untouched.
 - Verification: 97 backend tests; 134 Android unit tests (0 failures/errors from test-result XML); Android lint and Candidate assemble passed; deterministic evaluation regenerated; `git diff --check` clean. Installed side-by-side via the read-only smoke script; smoke passed (awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay) with safe screenshot: `build/outputs/phone-smoke/phone-smoke-20261104-063000Z.json`. USB re-paired for measurement.
 - README reviewed; no public-facing fact changed (product-level description does not document these flows at copy granularity). Demo script added: `docs/demo-script-3-diem-bat-buoc.md`.
 - Still requires person-driven evidence: single-tap confirm, 15s timeout ask, delegation naming, ring/card/overlap visuals from the 3 user videos (no code fix claimed for visual items without video), and the 20-step USB latency run (median/p95 per stage).
+
+## 2026-11-04 — Candidate 1.5.54/code 63 minimal reasoning and animated-screen freeze
+
+- Muse Spark 1.3 requests in the production core and temporary development gateway now use
+  `reasoning_effort=minimal` instead of `low`. Muse remains the sole planner. No provider call was
+  made, so speed and quality changes remain `TBD`; Cloud Run is not deployed by a source commit.
+- The bounded capture gate now freezes its second safety-checked frame when pixels move but the app,
+  window, actionable Accessibility tree, and interaction generation remain bound to the expected
+  screen. Click, selection, text edit, scroll, window/tree change, lock, or sensitive state invalidates
+  the frame. Spark and SAM still receive identical bytes, and live-node checks still reject stale AI
+  results. Contract: `docs/animated-screen-capture-2026-11-04.md`.
+- Verification: 97 backend tests; 134 Android unit tests with zero failures/errors; Candidate lint and
+  assemble passed; deterministic evaluation regenerated; `git diff --check` clean. Candidate 1.5.54
+  was installed side-by-side on Xiaomi and its read-only smoke passed (awake/unlocked, Accessibility
+  enabled and not crashed, no new fatal exception, stable idle overlay):
+  `build/outputs/phone-smoke/phone-smoke-20261104-071256Z.json`. APK SHA256:
+  `F7F58A1000DE3A03591443A643B4D3654DEDEEC33300C3F67F7E0A87F94E0116`. Cloud is not deployed.
+  Real animated-screen behavior and latency are TBD.
+- README and META_DEVELOPMENT were updated for the public/current architecture. Unrelated untracked
+  `output/` and the existing transcript-review contract were preserved.

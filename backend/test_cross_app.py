@@ -42,6 +42,7 @@ class CrossAppTests(unittest.TestCase):
     def test_router_is_text_only_and_cache_rebinds_request_without_another_paid_call(self):
         valid = {'status': 'route', 'app_id': 'a2', 'action': 'launch', 'query': '', 'question_code': 'none'}
         body = route_body(validate_route(route_frame()))
+        self.assertEqual('minimal', body['reasoning_effort'])
         self.assertTrue(all(isinstance(message['content'], str) for message in body['messages']))
         with tempfile.TemporaryDirectory() as directory:
             calls = []

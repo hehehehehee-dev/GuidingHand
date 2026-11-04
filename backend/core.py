@@ -307,7 +307,7 @@ def spark_body(frame):
     facts['installed_apps'] = frame.get('installed_apps', [])
     facts['default_browser'] = frame.get('default_browser')
     facts['allow_task_update'] = frame.get('allow_task_update', False)
-    return {'model': 'muse-spark-1.3', 'store': False, 'max_tokens': 2048, 'reasoning_effort': 'low',
+    return {'model': 'muse-spark-1.3', 'store': False, 'max_tokens': 2048, 'reasoning_effort': 'minimal',
         'messages': [{'role': 'developer', 'content': prompt}, {'role': 'user', 'content': [
             {'type': 'text', 'text': json.dumps(facts, ensure_ascii=False)},
             {'type': 'image_url', 'image_url': {'url': frame['image']}}]}],
