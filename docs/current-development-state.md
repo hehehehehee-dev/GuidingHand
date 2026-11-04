@@ -6,14 +6,14 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
 
 | Area | Last established fact |
 | --- | --- |
-| Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
+| Branch | main at 0c25ba3, pushed to origin/main; preserve unrelated untracked output/ and user screenshot |
 | Source | 1.5.66, version code 75; general-app photo Send guidance requires the verified recipient title and a checked media tile plus preview, even if Spark left the photo description slot blank. Text sends still require the elder's confirmed composer content. Native-rejected steps are evicted from the exact-screen plan cache. A new Precise ring (SAM) setting (default on) sends allow_sam=false; the backend then returns vetted node bounds as an estimated ring, never for consequential actions. |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.65/code 74; read-only installation smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-125256Z.json`; the new photo Send guidance awaits a user-driven check |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.66/code 75; read-only installation smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-144824Z.json`; SAM choice, Help placement and photo Send guidance await a user-driven check |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; the user reported deploying commit 0b065a2. The new SAM switch, next-step clarification rule, and compact Spark app list are source only until a new Cloud Run deployment. |
 | Latest deterministic verification | 107 backend tests and 145 Candidate Android unit tests passed; `testDebugUnitTest lintDebug assembleDebug -PcandidateBuild=true` passed after the Help-placement integration. These are deterministic checks, not a phone interaction pass. |
 | Latest phone observation | On installed 1.5.65, real taps reached VERIFYING without a new crash, but no strict delivery evidence was recorded. A read-only UI dump still showed the selected photo and Send; the Help window bounds overlapped Send. Source now avoids visible final-action controls with both Help and card. This placement change has not been installed or person-tested. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-125256Z.json and local content-free GuideTrace/AndroidRuntime logs (generated output may not exist in a fresh clone) |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-144824Z.json and local content-free GuideTrace/AndroidRuntime logs (generated output may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 The 2026-11-04 Instagram conversation trace shows a successful 736×1600 snapshot followed by about 7.1 s in Spark and no SAM invocation for the first `cannot_read` result. This identifies Spark uncertainty, not an Android screenshot failure, for that specific screen. The new source distinguishes it from SAM ambiguity and asks one spoken clarification instead of looping on Check again. This behavior still needs a real-phone interaction check after installation and Cloud Run redeployment.

@@ -1276,3 +1276,17 @@ package remains untouched.
   `testDebugUnitTest lintDebug assembleDebug -PcandidateBuild=true` after the final
   Help-placement call and layout test. No Cloud redeploy, APK install, or new phone latency
   claim yet. README reviewed: no new measured public claim.
+
+## 2026-11-04 — Candidate 1.5.66 installed; Cloud redeploy pending
+
+- Commit `0c25ba3` was pushed to `origin/main` after 107 backend tests and 145 Candidate Android
+  unit tests, lint, assemble and staged diff check passed. The source includes Muse's optional SAM
+  path and the bounded latency/placement changes above.
+- Installed only `vn.guidinghand.candidate` 1.5.66/code 75 on the Xiaomi with
+  `tools/phone-smoke-test.ps1 -InstallCandidate`. Read-only report:
+  `build/outputs/phone-smoke/phone-smoke-20261104-144824Z.json`, passed; awake/unlocked,
+  Accessibility enabled, zero new fatal exceptions, stable overlay during an idle 8-second sample.
+  This is not a Help, speech, ring, Send, or latency interaction pass.
+- Cloud Run still needs `git pull --ff-only` and a `gcloud run deploy --source backend` in Cloud
+  Shell. Existing Cloud secrets and app-session token must remain server-side. Do not claim the
+  optional SAM path works end to end until deployed and person-tested.
