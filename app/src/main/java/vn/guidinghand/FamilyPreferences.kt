@@ -22,6 +22,20 @@ enum class GuideMascot(val key: String) {
 }
 
 /** Family slots and a user session for our backend. No Meta/provider credential belongs here. */
+/**
+ * Endpoint selection. Cloud is the default everywhere. An explicit USB pairing
+ * (exact loopback URL plus the dev bridge flag) is honored on every flavor;
+ * without the flag, a candidate build ignores a stale loopback address instead
+ * of failing against a dead cable. [BackendEndpoint] still enforces its own
+ * exact-loopback, DEBUG-only, no-userinfo allowlist before any call is made.
+ */
+internal fun resolveBackendUrl(stored: String?, isCandidate: Boolean, devUsbBridge: Boolean, cloudDefault: String): String {
+    val cleaned = stored?.trim()?.trimEnd('/').orEmpty()
+    if (cleaned.isEmpty()) return cloudDefault
+    val isLocal = cleaned.startsWith("http://127.0.0.1") || cleaned.startsWith("http://localhost")
+    if (isLocal && isCandidate && !devUsbBridge) return cloudDefault
+    return cleaned
+}
 class FamilyPreferences(context: Context) {
     private companion object {
         // Public Cloud Run service URL; the session token remains user/backend secret.
@@ -71,15 +85,12 @@ class FamilyPreferences(context: Context) {
             val rawStored = prefs.getString("coreBackendUrl", null)?.trim()?.trimEnd('/')
             // Migrate the earlier project-number URL. Cloud Run's stable service URL is
             // the generated -uc.a.run.app host; keep the session token untouched.
-            val stored = rawStored?.replace(
+            val migrated = rawStored?.replace(
                 "https://guidinghand-backend-1132305541.us-central1.run.app",
                 DEFAULT_BACKEND_URL
-            )?.also { if (it != rawStored) prefs.edit().putString("coreBackendUrl", it).apply() }
-            val isCandidate = BuildConfig.APPLICATION_ID.endsWith(".candidate")
-            val isLocalDevEndpoint = stored?.startsWith("http://127.0.0.1") == true ||
-                stored?.startsWith("http://localhost") == true
-            return stored?.takeIf { it.isNotEmpty() && !(isCandidate && isLocalDevEndpoint) }
-                ?: DEFAULT_BACKEND_URL
+            )
+            if (migrated != null && migrated != rawStored) prefs.edit().putString("coreBackendUrl", migrated).apply()
+            return resolveBackendUrl(migrated, BuildConfig.APPLICATION_ID.endsWith(".candidate"), devUsbBridge, DEFAULT_BACKEND_URL)
         }
         set(value) { prefs.edit().putString("coreBackendUrl", value.trim().trimEnd('/')).apply() }
     var backendSession: String

@@ -56,7 +56,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.51`, Android code `60`; verify app/build.gradle.kts before relying on this value
+- Current source version at this handoff: `1.5.53`, Android code `62`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
@@ -66,6 +66,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Speech output: Android system TTS at `0.85`
 - Total authorized Meta budget ceiling: USD 150 including prior usage; never reset its persisted ledger
 - Local USB development ports: original `8766`, Candidate `8768`
+- A Candidate build honors a stored `http://127.0.0.1` loopback URL only when the explicit dev-USB-bridge flag is set; without it, a stale loopback falls back to the cloud default instead of failing against a dead cable.
 
 Historical files under `phase1/` are reference material, not the active Android implementation.
 Some dated handoffs record older branches, versions, and phone observations. The active source under
@@ -141,6 +142,8 @@ Build-source selection:
 `GuideStatus` includes `IDLE`, `READING`, `PLANNING`, `CLARIFYING`, `CONFIRMING_INPUT`,
 `CONFIRMING_COPY`, `WAITING_TAP`, `WAITING_NAVIGATION`, `VERIFYING`, `RECOVERING`,
 `SAFETY_PAUSED`, `ASKING`, `UNAVAILABLE`, `UNSUPPORTED`, and `DONE`.
+
+A tap that leaves `VERIFYING` unchanged past `VERIFY_TIMEOUT_MS` (15s) concludes with an explicit `ASK` naming the retry instead of waiting silently. The clock is injected (`nowElapsed`, default `monotimeMs`) so plain JVM unit tests stay hermetic.
 
 `GuideDecision` is the only model-facing decision surface: `Step`, `Clarify`, `Unsupported`,
 `Unavailable`, `Sensitive`, `Await`, `Navigate`, `DoneProposal`, or `StateChanged`. Do not add an

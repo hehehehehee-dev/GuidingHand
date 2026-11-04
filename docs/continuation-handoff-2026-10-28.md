@@ -1016,3 +1016,21 @@ package remains untouched.
 - Candidate identity: `vn.guidinghand.candidate`, version `1.5.51-candidate`, code `60`. APK SHA256: `7342f066707a9a5df4aac539d862a36b6e20d15dc7bf98814f47cb902188a8dc`.
 - Verification: 96 backend tests (3 new decode-cache tests); 125 Android unit tests (3 new `BusyElapsedTest`, 0 failures/errors from test-result XML); Android lint and Candidate assemble passed; deterministic evaluation regenerated; `git diff --check` clean. Installed side-by-side with `adb install -r` via the read-only smoke script; smoke passed (awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay). Foreground was Instagram, so no safe screenshot was taken: `build/outputs/phone-smoke/phone-smoke-20261104-045751Z.json`.
 - Still requires person-driven evidence: run one guided step and confirm the elapsed line counts up and disappears when guidance arrives, without extra TalkBack announcements. No latency, ring-accuracy, or usability pass is claimed.
+
+## 2026-11-04 — Candidate 1.5.52/code 61 USB loopback endpoint
+
+- `FamilyPreferences.resolveBackendUrl` honors a stored `http://127.0.0.1` loopback URL on every flavor only together with the explicit dev-USB-bridge flag. Without the flag, a Candidate build ignores a stale loopback pairing (left by an earlier cloud session) and uses the cloud default instead of failing with a 401 “phiên hết hạn”. Cloud default behavior is unchanged.
+- Coverage: `BackendUrlResolveTest` (6 tests: empty/stale-loopback/cloud/exact-loopback cases). No safety, state-machine, provider, or model-contract change.
+- Verification: backend suite and Android suite green at the time; Candidate installed side-by-side and USB re-paired (`url=http://127.0.0.1:8768`, `bridge=true`). No interaction pass claimed.
+
+## 2026-11-04 — Candidate 1.5.53/code 62 video-bug-fix sprint (Batch A+B)
+
+- Verification timeout: `VERIFY_TIMEOUT_MS=15s` + `shouldConcludeVerify`; `GuideEngine.onTap`/`onScreen` conclude a stuck VERIFYING with an explicit ask naming the retry. Clock injected via `nowElapsed` (default `monotimeMs`, unit-test safe); pure logic covered by `VerifyTimeoutTest` (3 tests). The first attempt called `SystemClock` directly and broke 12 engine tests (not-mocked); fixed without touching test expectations.
+- Single confirmation: `submitEditedVoiceText` now calls `confirmVoiceDraft` directly — the in-activity tap is the confirmation; the overlay second ask is removed. Safety preserved: exact reviewed text only, no auto-send.
+- Transcribe busy copy sets a time expectation (“typically a few seconds”); review field gets `imeHintLocales` so the keyboard opens in Vietnamese; review header prefixes dictation with the saved address in quotes without rewriting words (`RespectfulLanguage.reviewLead/reviewPrompt` + tests).
+- One silent capture retry after 300ms before the safe-screenshot notice. Spark prompt gains one explicit-delegation sentence (backend `test_prompt_delegation.py`); no other model-contract change.
+- Single confirmation, timeout ask, and delegation answers were shown to the user as acceptance criteria before implementation (single confirm, no silent >15s wait, one named app on delegation).
+- Candidate identity: `vn.guidinghand.candidate`, version `1.5.53-candidate`, code `62`. APK SHA256: `02A904BD90665FD99A63C4BAF88764774CCC787BCF2B1D9DF5C992C526E10022`.
+- Verification: 97 backend tests; 134 Android unit tests (0 failures/errors from test-result XML); Android lint and Candidate assemble passed; deterministic evaluation regenerated; `git diff --check` clean. Installed side-by-side via the read-only smoke script; smoke passed (awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay) with safe screenshot: `build/outputs/phone-smoke/phone-smoke-20261104-063000Z.json`. USB re-paired for measurement.
+- README reviewed; no public-facing fact changed (product-level description does not document these flows at copy granularity). Demo script added: `docs/demo-script-3-diem-bat-buoc.md`.
+- Still requires person-driven evidence: single-tap confirm, 15s timeout ask, delegation naming, ring/card/overlap visuals from the 3 user videos (no code fix claimed for visual items without video), and the 20-step USB latency run (median/p95 per stage).

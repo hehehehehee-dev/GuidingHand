@@ -2,18 +2,18 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis
+## Snapshot — 2026-11-04, America/Indianapolis (Candidate 1.5.53/code 62)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.51, version code 60; safe-group latency: 80ms coalescing, 250ms settings debounce, per-step decode cache, elapsed-seconds busy line |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.51/code 60 |
+| Source | 1.5.53, version code 62; bug-fix sprint: single voice confirmation, transcribe time-expectation copy, VI keyboard locale, one silent capture retry (+300ms), heard-speech prefix, 15s verify-timeout ask, delegation prompt, USB loopback honored only with dev-bridge flag |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.53/code 62 |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
 | Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Current cloud revision/hash has not been freshly queried for this snapshot. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 125 Android unit tests, Candidate lint and assemble; 96 backend tests passed for the 1.5.51 change |
-| Latest phone observation | Candidate 1.5.51 installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. Foreground was Instagram, so no safe screenshot was taken. No interaction pass claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-045751Z.json (local generated output, may not exist in a fresh clone) |
+| Latest deterministic verification | 134 Android unit tests (0 failures/errors from test-result XML), Candidate lint and assemble; 97 backend tests passed for the 1.5.53 change |
+| Latest phone observation | Candidate 1.5.53 installed; read-only smoke passed: awake/unlocked, Accessibility enabled and not crashed, no new fatal exception, stable idle overlay. Foreground was the launcher, so a safe screenshot was taken. USB re-paired for measurement. No interaction pass claimed. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-063000Z.json (local generated output, may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 ## Latest behavior
@@ -32,12 +32,17 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
 - An empty recording and an unknown speech failure now show one short retry line (“Tôi chưa nghe rõ. Bác nói lại giúp tôi nhé.” / “I didn't catch that. Please say it again for me.”). It passes through the saved forms of address, so Bà/Cháu settings render “Cháu chưa nghe rõ. Bà nói lại giúp cháu nhé.” Specific failures (network, server key, busy, session expiry) keep their own guidance.
 - Safe-group latency (no safety-invariant change): event coalescing 120→80ms with the drain loop kept; Settings debounce 450→250ms; the backend decodes the ≤1MB step image once per step (frame-keyed memo, same errors on any mutation, never shared across requests or logged); busy cards show a non-announced “Đã chờ X giây…” line at 20sp that resets per phase and stops when busy ends.
 - Cream guide surfaces remain opaque; Help has restrained light-catching green surfaces. The card stays attached to Help.
+- Single voice confirmation: the in-activity tap on the review action confirms the exact text; the overlay no longer asks a second time. The transcribe busy line sets a time expectation and the review field opens a Vietnamese keyboard (`imeHintLocales`).
+- One silent capture retry after 300ms precedes the safe-screenshot notice, so a transient failure does not cost a full settle cycle. The review header prefixes dictated words with the saved address (“Bác vừa nói: …”) without rewriting them.
+- VERIFYING past 15s without a screen change ends with an explicit ask naming the retry. The Spark prompt now handles explicit delegation: when the elder accepts any app, it chooses exactly one suitable installed option and states it, still correctable.
+- Demo script covering the 3 mandatory scenarios (wrong-tap recovery, hard stop, pre-send check) lives at `docs/demo-script-3-diem-bat-buoc.md`; all three are existing mechanisms, undemonstrated on video so far.
 
 ## Next concrete verification
 
 Tap Chạm để nói, stay silent or force a failure, and confirm the short retry line appears with the saved forms of address. Then have the user record a long request. Verify that the visible review begins with the first words, the
 young helper appears beside “Cháu nghe bà nói”, and local TTS reads the complete transcript exactly
-once before the user chooses an action. Then test Help → Cancel, the wider typing action, large fonts,
+once before the user chooses an action.
+For 1.5.53 also confirm: one tap confirms (no second overlay ask); a 15s-stuck verification asks again instead of looping silently; an “any app is fine” answer yields one named app. Then run the user-driven 20-step USB latency measurement and record median/p95 per stage. Then test Help → Cancel, the wider typing action, large fonts,
 Bà/Cháu wording, Character only, card dragging, Home wrapping and custom address persistence. Record
 observations for this installed build separately from earlier screenshots.
 

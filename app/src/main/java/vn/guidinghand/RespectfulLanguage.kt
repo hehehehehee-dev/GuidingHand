@@ -42,6 +42,13 @@ data class RespectfulLanguage(
         else "$self hướng dẫn từng bước, để ${address.replaceFirstChar { it.lowercase() }} tự tin dùng điện thoại."
     val goalQuestion get() = if (address.isEmpty()) "Cần hỗ trợ việc gì ạ?" else "$address muốn được hỗ trợ việc gì ạ?"
     val waitingExample get() = if (address.isEmpty()) "$self sẽ chờ, không cần vội ạ." else "$address cứ thong thả, ${self.lowercase()} sẽ chờ."
+    fun reviewLead(messageContent: Boolean = false): String {
+        val person = if (address.isBlank()) "bạn" else address.replaceFirstChar { it.lowercase() }
+        return if (messageContent) "$self nghe $person muốn viết:" else "$self nghe $person nói:"
+    }
+    /** Surround dictated words with respectful narration without rewriting the dictated words. */
+    fun reviewPrompt(value: String, messageContent: Boolean = false): String =
+        "${reviewLead(messageContent)} ${value.trim()} Đúng không ạ?"
     fun message(value: String, protectedLabels: List<String> = emptyList()): String {
         if (value.isBlank()) return value
         // Preserve names, filenames and literal app labels, even if they resemble a pronoun.

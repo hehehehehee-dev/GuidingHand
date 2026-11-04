@@ -268,7 +268,7 @@ class GuidingHandService : AccessibilityService() {
                 }
                 val current = fresh ?: error("cannot_read")
                 check(engine.inspectBeforeSpeech(current))
-                overlay.showWorking(tr("Đang chuyển lời nói thành chữ…", "Turning speech into text…"))
+                overlay.showWorking(tr("Đang chuyển lời nói thành chữ, thường chỉ vài giây…", "Turning speech into text, usually a few seconds..."))
                 val speechKeywords = buildList {
                     addAll(listOf("GuidingHand", "Zalo", "Instagram", "YouTube", "Messenger", "Facebook", "WhatsApp", "TikTok"))
                     prefs.contact.trim().takeIf { it.isNotBlank() }?.let(::add)
@@ -458,10 +458,9 @@ class GuidingHandService : AccessibilityService() {
         if (!voiceDraft.capture(text)) {
             overlay.showVoiceNotice(tr("Bác viết một câu trước nhé.", "Please enter a sentence first.")); return
         }
-        voiceDraft.textForReview()?.let {
-            overlay.showDraftReview(it, recordingPurpose)
-            speakDraftReview(it, recordingPurpose, voiceGeneration)
-        }
+        // The in-activity tap already confirmed this exact text: proceed
+        // instead of asking a second time on the overlay card.
+        confirmVoiceDraft()
     }
     private fun copyVoiceDraft() {
         stopReviewSpeech()
@@ -489,7 +488,7 @@ class GuidingHandService : AccessibilityService() {
         }
         if (DeviceVisibility.allowed(this)) {
             if (cancelled) Unit
-            else if (voiceSubmission?.isActive == true) overlay.showWorking(tr("Đang chuyển lời nói thành chữ…", "Turning speech into text…"))
+            else if (voiceSubmission?.isActive == true) overlay.showWorking(tr("Đang chuyển lời nói thành chữ, thường chỉ vài giây…", "Turning speech into text, usually a few seconds..."))
             else if (message != null) overlay.showVoiceNotice(if (prefs.language == "vi") prefs.respectfulLanguage.message(message) else message)
             else overlay.render(viewState, engine.launcherStep != null)
         }

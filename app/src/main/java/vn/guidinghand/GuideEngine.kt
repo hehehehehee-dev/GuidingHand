@@ -3,11 +3,28 @@ package vn.guidinghand
 import kotlinx.coroutines.CancellationException
 
 /** One task session; only Stop/new goal clears verified progress. Models never perform UI actions. */
+internal const val VERIFY_TIMEOUT_MS = 15_000L
+
+/**
+ * Monotonic clock that stays unit-test safe. Production reads the Android
+ * monotonic clock; plain JVM tests fall back to wall time (only used to show
+ * the timeout never fires within a fast test, never as evidence).
+ */
+internal fun monotimeMs(): Long =
+    try { android.os.SystemClock.elapsedRealtime() } catch (_: RuntimeException) { System.currentTimeMillis() }
+
+/** True once a tap has waited past the deadline with no meaningful screen change. */
+internal fun shouldConcludeVerify(verifyStartElapsed: Long?, nowElapsed: Long): Boolean {
+    if (verifyStartElapsed == null) return false
+    return nowElapsed - verifyStartElapsed > VERIFY_TIMEOUT_MS
+}
+
 class GuideEngine(
     private val model: GuideModel, private val present: (GuideViewState) -> Unit,
     private val family: FamilyContext = FamilyContext(), private val allowDevStandIn: Boolean = false,
     private var language: RespectfulLanguage = RespectfulLanguage(), private var locale: String = "vi",
-    private val onTransition: (GuideTransition) -> Unit = {}
+    private val onTransition: (GuideTransition) -> Unit = {},
+    private val nowElapsed: () -> Long = { monotimeMs() }
 ) {
     var status = GuideStatus.IDLE; private set
     var task: PhotoTask? = null; private set
@@ -38,6 +55,7 @@ class GuideEngine(
     private var lastPlanned: String? = null
     private var clicked = false
     private var tapObserved = false
+    private var verifyStartElapsed: Long? = null
     private var awaitingAnswer = false
     private var generation = 0L
     private var staleResponses = 0
@@ -203,6 +221,7 @@ class GuideEngine(
         tapObserved = node != null
         clicked = node != null && node.id == step.target.id && node.region == step.target.region
         if (clicked) {
+            verifyStartElapsed = nowElapsed()
             if (task?.isPhotoTask == true && step.stage == PhotoStage.ATTACH) {
                 val active = task; val before = baseline
                 if (active != null && before != null && PhotoVerification.conversation(before, active) &&
@@ -320,6 +339,11 @@ class GuideEngine(
             }
         }
         if (awaitingAnswer) return
+        if (status == GuideStatus.VERIFYING && shouldConcludeVerify(verifyStartElapsed, nowElapsed())) {
+            verifyStartElapsed = null
+            ask("Chau chua thay man hinh doi sau khi bac bam. Bac bam lai vao cho cu giup chau nhe, hoac bam Kiem tra lai.", "verify_timeout")
+            return
+        }
         if (status == GuideStatus.WAITING_NAVIGATION) {
             if (baseline?.fingerprint == screen.fingerprint) return
             observations += GuideObservation("user-navigation", false, true)

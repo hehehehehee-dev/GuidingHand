@@ -234,7 +234,7 @@ class GuideOverlay(
     }
     private val heardSpeechMemory = EphemeralDisplayText()
     fun setHeardSpeech(value: String) {
-        heardSpeechMemory.replace(narration("Bác nói:", "You said:") + " " + value)
+        heardSpeechMemory.replace(narration("B\u00e1c v\u1eeba n\u00f3i:", "You just said:") + " \u201c" + value.trim() + "\u201d")
         heardSpeech.text = heardSpeechMemory.value().orEmpty()
         heardSpeech.visibility = View.VISIBLE
         savedState?.let { render(it, savedCanOpen) }

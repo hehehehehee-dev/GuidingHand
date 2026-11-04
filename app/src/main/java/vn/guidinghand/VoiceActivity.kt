@@ -122,6 +122,7 @@ class VoiceActivity : ComponentActivity() {
             isVerticalScrollBarEnabled = true; overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
             setHorizontallyScrolling(false); filters = arrayOf(InputFilter.LengthFilter(500)); visibility = View.GONE
             background = outlinedBackground(); setPadding(dp(14), dp(10), dp(14), dp(10))
+            imeHintLocales = android.os.LocaleList(java.util.Locale(prefs.language))
             contentDescription = tr("Nội dung nhận từ giọng nói. Kéo lên hoặc xuống để đọc và sửa.",
                 "Transcribed speech. Scroll up or down to review and edit.")
         }

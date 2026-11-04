@@ -89,12 +89,18 @@ class CoreBackendModel(
         return try {
             if (!current(input.screen) || requestEpoch != epoch) return stale("before_capture")
             val started = android.os.SystemClock.elapsedRealtime()
+            // One silent retry: a transient capture failure should not cost a full
+            // settle cycle before the elder can tap Check again.
             val bitmap = try { captureForSam(input.screen) }
             catch (_: SnapshotCaptureUnavailable) {
+                delay(300)
+                try { captureForSam(input.screen) }
+                catch (_: SnapshotCaptureUnavailable) {
                 return GuideDecision.Await(tr(
                     "Chưa chụp được màn hình an toàn. Bác giữ nguyên màn hình rồi chọn Kiểm tra lại nhé.",
                     "I could not take a safe screen snapshot. Keep this screen open and tap Check again."
                 ), "snapshot_unavailable")
+                }
             } ?: return stale("snapshot_unstable")
             val bytes: ByteArray
             try {

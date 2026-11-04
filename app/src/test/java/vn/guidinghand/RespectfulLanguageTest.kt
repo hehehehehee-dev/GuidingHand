@@ -11,6 +11,11 @@ class RespectfulLanguageTest {
         assertEquals("Bà cần cháu giúp gì ạ?", wording.helpQuestion)
         assertEquals("Bà cần cháu giúp việc gì ạ?", wording.message("Bác cần tôi giúp việc gì?"))
         assertEquals("Cháu hướng dẫn từng bước, để bà tự tin dùng điện thoại.", wording.homeMessage)
+        assertEquals("Cháu nghe bà nói:", wording.reviewLead())
+        assertEquals("Cháu nghe bà nói: Giúp tôi tìm Bác nói. Đúng không ạ?",
+            wording.reviewPrompt("Giúp tôi tìm Bác nói."))
+        assertEquals("Cháu nghe bà muốn viết: Cháu nhớ bà. Đúng không ạ?",
+            wording.reviewPrompt("Cháu nhớ bà.", messageContent = true))
         val custom = wording.copy(user = UserAddress.CUSTOM, customUser = "Ông Sáu")
         assertEquals("Giúp ông Sáu", custom.helpLabel)
         assertEquals("Trợ giúp", wording.copy(user = UserAddress.NONE).helpLabel)
