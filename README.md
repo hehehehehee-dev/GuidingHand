@@ -2,6 +2,10 @@
 
 **A little guidance. Your own independence.**
 
+Demo video: [GuidingHand roleplay demo](https://www.youtube.com/watch?v=qkLMDAfmR_0)
+
+Roleplay demo. I play my grandmother in this demo. Tester is the developer. Test account, test contact, test photo. Demo is on Instagram because the US test phone only opens Instagram. The guidance loop is shared across messaging apps. Zalo is the target app for Vietnamese users later. This submission has not been tested on Zalo. My grandmother in Vietnam has not tested this app. Recipient Quang Minh is my own main account, sender is my own secondary account.
+
 GuidingHand helps older adults use their Android phones one step at a time. Tap the floating **Help** bubble over the app already in use, say what you want to do, and receive a short spoken instruction with a ring around the next control. You perform the action; GuidingHand observes what changed and guides the next step.
 
 Built with **Muse Spark**, **SAM 3.1**, and **Muse Voice Transcribe**, through GuidingHand's own HTTPS backend.
@@ -51,7 +55,7 @@ The interface uses warm cream and dark green, light-catching edges, and shallow 
 - Apps open through the person's own navigation by default. An explicit **Open for me / Mở giúp tôi** button may open an installed app at a verified launcher step only.
 - Password, payment, and OTP screens trigger a hard pause and clear the ring. **Call family** opens the dialer only after the person chooses it; the person decides whether to call.
 - An unreadable or uncertain screen prompts clarification or a retry instead of a guessed target. A safer-looking frame does not automatically dismiss a latched safety pause.
-- For the Zalo photo flow, the recipient must match the conversation title. Completion requires new outgoing-photo evidence in that conversation; closing the library or moving old messages is insufficient.
+- For the submitted Instagram demo flow, and for the Zalo target flow later, the recipient must match the conversation title. Completion requires new outgoing-photo evidence in that conversation; closing the library or moving old messages is insufficient.
 
 ## Architecture
 
@@ -130,7 +134,7 @@ The project backend is deployed on Cloud Run. Cloud-connected speech transcripti
 | Measured per-button ring accuracy | TBD |
 | Measured per-step latency | TBD |
 | Usability evaluation with older adults | TBD |
-| Public demo video | TBD |
+| Public demo video | [GuidingHand roleplay demo](https://www.youtube.com/watch?v=qkLMDAfmR_0) |
 
 Use the [phone smoke check](docs/phone-smoke-test.md) and [send-photo protocol](docs/send-photo-phone-test.md) to record actual outcomes. The repository also includes a [deterministic evaluation harness](backend/generate_evaluation_report.py) and [Meta trace viewer](backend/generate_meta_trace_viewer.py).
 
