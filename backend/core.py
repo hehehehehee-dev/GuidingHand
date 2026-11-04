@@ -64,7 +64,7 @@ def blocked_result(frame, code):
     elif code == 'budget_limit':
         category, description = 'usage_limit', message(frame, 'Đã đạt giới hạn sử dụng của phiên này. Việc đang làm vẫn được giữ lại.', 'This session has reached its usage limit. Your task has been kept.')
     else:
-        category, description = 'cannot_read', message(frame, 'Chưa đọc rõ màn hình hoặc xác định đúng vùng cần bấm. Tôi dừng lại để hỏi, không đoán.', 'I cannot read this screen or identify the next target clearly. Please tell me more before continuing.')
+        category, description = 'cannot_read', message(frame, 'Chưa đọc rõ màn hình hoặc xác định đúng vùng cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.', 'I cannot read this screen or identify the next target clearly. Please wait a moment, then choose Check again.')
     return {'status': 'blocked', 'reason': code, 'reason_category': category, 'message_vi': description}
 
 

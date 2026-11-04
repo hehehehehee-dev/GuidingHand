@@ -26,6 +26,8 @@ class RespectfulLanguageTest {
             language.message("Tôi chưa nghe rõ. Bác nói lại giúp tôi nhé."))
         assertEquals("Bà giữ nguyên màn hình, cháu sẽ kiểm tra lại.",
             language.message("Bác giữ nguyên màn hình, tôi sẽ kiểm tra lại."))
+        assertEquals("Bà đợi cháu một chút rồi chọn Kiểm tra lại nhé.",
+            language.message("Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé."))
         val text = language.message("Tôi sẽ chờ. Bác muốn gửi ảnh nào?")
         assertEquals(text, language.message(text))
         for (assistant in AssistantAddress.entries) {

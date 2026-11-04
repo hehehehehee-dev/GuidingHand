@@ -1142,3 +1142,18 @@ package remains untouched.
   Candidate read-only smoke: `build/outputs/phone-smoke/phone-smoke-20261104-102755Z.json`,
   APK SHA256 `482BB64E2207DDDA328B40461D4F41ACCA68D7A8611CFD861FE9EC27791B8258`.
   Person-driven Instagram capture validation is pending.
+
+## 2026-11-04 — Candidate 1.5.61/code 70 address and unreadable recovery
+
+- Extended the saved Vietnamese address renderer to object forms such as “đợi tôi/cháu”; removed
+  the mechanical “dừng lại để hỏi, không đoán” copy from native and backend fallbacks.
+- When a known photo task has already verified the recipient conversation and entered the picker,
+  an unreadable frame can show a general instruction to choose an image and check again. No ring,
+  send suggestion, or delivery claim is made from an unreadable frame. Other unreadable screens
+  get a short retry instruction. Sensitive/locked screens still hard stop before any model call.
+- The Candidate client also replaces old cloud `cannot_read` wording locally, so this copy fix does
+  not depend on an immediate Cloud Run deployment. Backend source copy still needs redeployment to
+  affect other clients. Android Candidate unit/lint/assemble and 97 backend tests passed. Installed
+  read-only smoke: `build/outputs/phone-smoke/phone-smoke-20261104-104441Z.json`; APK SHA256
+  `558F4B7DFA08A46AA29A524BBED7190A4FFBFDD7AAF55CE69AE3D84F5D15F033`.
+  No person-driven screen, speech, or ring pass is claimed.

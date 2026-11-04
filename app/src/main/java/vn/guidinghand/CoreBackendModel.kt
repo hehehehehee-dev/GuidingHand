@@ -178,6 +178,10 @@ class CoreBackendModel(
                     result.optJSONArray("options")?.let { array -> (0 until minOf(array.length(), 4)).map { array.getString(it).take(100) } }.orEmpty())
                 "blocked" -> if (result.optString("reason_category") == "sensitive") GuideDecision.Sensitive(result.optString("message_vi"))
                     else {
+                        if (result.optString("reason_category") == "cannot_read") return GuideDecision.Await(tr(
+                            "Chưa xác định rõ nút cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.",
+                            "I cannot identify the button clearly. Please wait a moment, then choose Check again."
+                        ), "cannot_read")
                         val code = result.optString("reason").takeIf { it in setOf(
                             "task_changed", "missing_task_details", "ungrounded_target", "invalid_general_stage",
                             "invalid_navigation_cue",
@@ -211,8 +215,8 @@ class CoreBackendModel(
                         kotlin.math.ceil(it.right * bounds.width()).toInt(), kotlin.math.ceil(it.bottom * bounds.height()).toInt()) }
                     val fusion = GuideRingGeometry.fuseTarget(targetPixels, uiPixels,
                         GuideBox(0, 0, bounds.width(), bounds.height()), context.resources.displayMetrics.density)
-                        ?: return GuideDecision.Await(tr("SAM và nút trên màn hình chưa khớp đủ rõ. Mình dừng lại để hỏi, không đoán.",
-                            "SAM and the on-screen control do not agree clearly enough. I will pause rather than guess."), "target_fusion_mismatch")
+                        ?: return GuideDecision.Await(tr("Chưa xác định rõ nút cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.",
+                            "I cannot identify the button clearly. Please wait a moment, then choose Check again."), "target_fusion_mismatch")
                     GuideTrace.event(context, "target_fusion", code = fusion.mode, requestId = requestId,
                         value = fusion.overlapPermille.toLong())
                     // A strongly matched edge control uses its exact clickable bounds while SAM

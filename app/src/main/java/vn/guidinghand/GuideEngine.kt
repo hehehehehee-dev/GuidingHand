@@ -112,7 +112,7 @@ class GuideEngine(
         "Tôi chưa hiểu rõ việc cần làm tiếp. Bác nói lại giúp tôi nhé." to "I am not sure what you want to do next. Please tell me again.",
         "Chưa có chỉ dẫn rõ ràng. Vui lòng nói rõ việc cần giúp." to "I do not have a clear step yet. Please tell me what you need help with.",
         "Chưa đủ bằng chứng xác minh ảnh đã gửi. Kiểm tra lại giúp mình nhé." to "I cannot yet verify a new photo was sent. Please check the conversation.",
-        "Chưa xác minh được vùng cần bấm. Mình dừng lại để hỏi, không đoán." to "I cannot verify the button yet. I will pause and ask rather than guess.",
+        "Chưa xác minh được vùng cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé." to "I cannot verify the button yet. Please wait a moment, then choose Check again.",
         "Chưa phát được giọng hướng dẫn. Mình dừng lại, không đổi sang giọng khác." to "The offline guide voice is unavailable. Guidance is paused.",
         "Chưa phát được giọng hướng dẫn. Nhờ người thân kiểm tra giọng đọc ngoại tuyến đã cài nhé." to "The offline guide voice is unavailable. Please check the installed voice before continuing."
     )
@@ -208,10 +208,18 @@ class GuideEngine(
         // A missing/incomplete frame must never turn a previously latched safety pause into ASKING.
         if (status == GuideStatus.SAFETY_PAUSED) return false
         if (verdict == ScreenReadVerdict.CANNOT_READ) {
-            generation++; model.cancel(); ask("Chưa đọc rõ màn hình. Kiểm tra lại rồi chọn Tiếp tục nhé.", "cannot_read")
+            generation++; model.cancel(); ask(generalUnreadableGuidance(screen), "cannot_read")
             return false
         }
         return true
+    }
+    private fun generalUnreadableGuidance(screen: ScreenState): String {
+        val active = task
+        if (active?.isPhotoTask == true && recipientContext && attachmentInProgress &&
+            screen.packageName in setOf(active.appPackage, "com.google.android.providers.media.module",
+                "com.android.providers.media.module", "com.google.android.documentsui", "com.android.documentsui"))
+            return "Nếu đang xem thư viện ảnh, Bác chọn ảnh muốn gửi rồi chọn Kiểm tra lại nhé. Tôi sẽ kiểm tra trước khi gửi."
+        return "Tôi chưa đọc rõ màn hình này. Bác đợi một chút rồi chọn Kiểm tra lại nhé."
     }
     fun inspectBeforeSpeech(screen: ScreenState): Boolean = gate(screen)
     fun onTap(node: ScreenNode?) {
@@ -341,7 +349,7 @@ class GuideEngine(
         if (awaitingAnswer) return
         if (status == GuideStatus.VERIFYING && shouldConcludeVerify(verifyStartElapsed, nowElapsed())) {
             verifyStartElapsed = null
-            ask("Chau chua thay man hinh doi sau khi bac bam. Bac bam lai vao cho cu giup chau nhe, hoac bam Kiem tra lai.", "verify_timeout")
+            ask("Tôi chưa thấy màn hình đổi sau khi Bác bấm. Bác thử lại thao tác đó hoặc chọn Kiểm tra lại nhé.", "verify_timeout")
             return
         }
         if (status == GuideStatus.WAITING_NAVIGATION) {
@@ -401,7 +409,12 @@ class GuideEngine(
                 pauseForSensitive()
                 // No model or TTS request after a provider-side sensitive verdict.
             }
-            is GuideDecision.Await -> { ask(decision.messageVi, decision.reasonCode); sayMessage(decision.messageVi, screen) }
+            is GuideDecision.Await -> {
+                val guidance = if (decision.reasonCode in setOf("snapshot_unavailable", "cannot_read") &&
+                    ScreenReadPolicy.verdict(screen) !in setOf(ScreenReadVerdict.SENSITIVE, ScreenReadVerdict.LOCKED))
+                    generalUnreadableGuidance(screen) else decision.messageVi
+                ask(guidance, decision.reasonCode); sayMessage(guidance, screen)
+            }
             is GuideDecision.Navigate -> {
                 val resolved = decision.task ?: task
                 if (resolved != null && !bindTask(resolved)) {
@@ -420,7 +433,7 @@ class GuideEngine(
                 val resolved = decision.task ?: task
                 if (resolved == null || !bindTask(resolved)) { askAboutTask(resolved); return }
                 if (resolved.isPhotoTask) observeContext(screen, resolved)
-                if (!validateStep(decision.step, screen, resolved)) { ask("Chưa xác minh được vùng cần bấm. Mình dừng lại để hỏi, không đoán.", stepRejection); return }
+                if (!validateStep(decision.step, screen, resolved)) { ask("Chưa xác minh được vùng cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.", stepRejection); return }
                 current = decision.step; baseline = screen
                 emit(GuideStatus.WAITING_TAP, decision.step.instructionVi, decision.step)
                 if (generation == request && latest?.planningFingerprint == screen.planningFingerprint && gate(screen)) {
