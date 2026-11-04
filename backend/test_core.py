@@ -413,6 +413,29 @@ class CoreTests(unittest.TestCase):
         value['allow_task_update'] = False
         self.assertEqual('task_changed', self.core.step(value)['reason'])
 
+    def test_general_instagram_message_stage_is_normalized_before_sam(self):
+        value = frame(); value['screen']['package_name'] = 'com.instagram.android'
+        value['screen']['nodes'][0].update(id='composer', text='Message')
+        self.planner.result = {**decision(), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.instagram.android', 'recipient': 'Minh', 'photo': '',
+            'content': 'Hello', 'target_node_id': 'composer', 'step_id': 'recipient',
+            'instruction_vi': 'Bác bấm ô Message ở cuối màn hình nhé.'}
+        result = self.core.step(value)
+        self.assertEqual('step', result['status'])
+        self.assertEqual('action', result['step_id'])
+        self.assertEqual(1, self.sam.calls)
+
+    def test_general_manual_stage_is_recover_without_photo_evidence(self):
+        value = frame(); value['screen']['package_name'] = 'com.instagram.android'
+        self.planner.result = {**decision('await'), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.instagram.android', 'recipient': 'Minh', 'photo': '',
+            'target_node_id': None, 'step_id': 'recipient',
+            'instruction_vi': 'Bác mở phần Tin nhắn nhé.'}
+        result = self.core.step(value)
+        self.assertEqual('await', result['status'])
+        self.assertEqual(0, self.sam.calls)
+        self.assertNotIn('region', result)
+
     def test_unlisted_target_or_invented_verification_cannot_create_step(self):
         self.planner.result['target_node_id'] = 'invented'
         self.assertEqual('ungrounded_target', self.core.step(frame())['reason'])

@@ -18,6 +18,8 @@ Maintain this as a concise snapshot, not a second chronological changelog. Updat
 
 The 2026-11-04 Instagram conversation trace shows a successful 736×1600 snapshot followed by about 7.1 s in Spark and no SAM invocation for the first `cannot_read` result. This identifies Spark uncertainty, not an Android screenshot failure, for that specific screen. The new source distinguishes it from SAM ambiguity and asks one spoken clarification instead of looping on Check again. This behavior still needs a real-phone interaction check after installation and Cloud Run redeployment.
 
+After the user redeployed that backend and retried on the real Instagram conversation, Candidate 1.5.63 again captured a valid 736×1600 frame (116,235 JPEG bytes); Spark took 6,716 ms and SAM was not invoked. The backend returned `invalid_general_stage`, which the old client displayed as a generic retry card. The latest backend source normalizes a photo-style stage name from Spark to ACTION or RECOVER for an ordinary app task based on the current package; this does not create photo-delivery evidence. This fix has deterministic coverage but is not yet deployed or user-verified.
+
 ## Latest behavior
 
 - An authenticated debug action can leave the temporary USB bridge and restore the default Cloud Run
