@@ -4,6 +4,10 @@ Read this file before editing the repository. It is a map of the current code, n
 When this file conflicts with source code, tests, or a newer dated handoff, verify the code and update
 this file in the same change.
 
+Start with [AGENTS.md](AGENTS.md) and [the current development state](docs/current-development-state.md).
+Documentation maintenance is a required completion step, not optional cleanup. Follow the README,
+component-map, current-state and dated-handoff update rules in AGENTS.md before handing work back.
+
 ## 1. Product in one paragraph
 
 GuidingHand is an Android accessibility coach for older adults. The elder can tap the floating
@@ -52,7 +56,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Active integration branch: `main`
 - Android namespace and original package: `vn.guidinghand`
 - Side-by-side debug Candidate package: `vn.guidinghand.candidate`
-- Current source version at this handoff: `1.5.42`, Android code `51`
+- Current source version at this handoff: `1.5.47`, Android code `56`; verify app/build.gradle.kts before relying on this value
 - Candidate build label: `GuidingHand Candidate`
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
@@ -71,12 +75,14 @@ Some dated handoffs record older branches, versions, and phone observations. The
 
 ```mermaid
 flowchart LR
-    Elder["Elder taps Help and speaks"] --> Voice["VoiceActivity: record and review transcript"]
-    Voice --> STT["Own backend: Muse Voice Transcribe"]
-    STT --> Engine["GuideEngine keeps goal, dialogue and verified progress"]
-    Engine --> Read["GuidingHandService reads Accessibility tree"]
+    Elder["Elder taps Help and speaks"] --> Voice["VoiceActivity: record, then close mic window"]
+    Voice --> Read["GuidingHandService reads Accessibility tree"]
+    STT --> Review["User reviews transcript"]
+    Review --> Engine["GuideEngine keeps goal, dialogue and verified progress"]
     Read --> Gate{"Native safety and freshness gate"}
-    Gate -->|safe| Shot["One on-demand screenshot + UI nodes + hash"]
+    Gate -->|"Safe; pending recording"| STT["Own backend: Muse Voice Transcribe"]
+    Gate -->|"Safe; continuing task"| Engine
+    Engine --> Shot["One on-demand screenshot + UI nodes + hash"]
     Shot --> Spark["Muse Spark plans one step or one question"]
     Spark -->|same image bytes| SAM["SAM 3.1 segments chosen target"]
     SAM --> Fuse["Native Spark + SAM + live-node fusion"]
@@ -85,6 +91,7 @@ flowchart LR
     UI --> ElderTap["Elder taps or navigates"]
     ElderTap --> Read
     Gate -->|cannot read or unsure| Ask["Stop and ask; never guess"]
+    Ask --> Voice
     Gate -->|password / OTP / payment| Pause["Latched hard stop; clear ring"]
 ```
 
@@ -110,7 +117,9 @@ All active Kotlin files are under `app/src/main/java/vn/guidinghand/` unless not
 | `SystemSpeechOutput.kt` | Local Android TTS output | Rate is `0.85`; Muse Transcribe is never used as TTS |
 | `GuideDesign.kt` | Accessible dimensions, colors and contrast constants | Preserve documented minimum text/target sizes and >= 7:1 instruction contrast |
 | `FamilyPreferences.kt` | Language, address, tone, vision profile, card size, mascot, consent and backend settings | Settings auto-save; no redundant Save button |
-| `RespectfulLanguage.kt` | Localized respectful wording | Assistant does not impersonate family |
+| `RespectfulLanguage.kt` | Preset/custom respectful narration, help label and microphone question | Keep user and assistant roles distinct; do not rewrite action labels, dictated content or names |
+| `CompanionDrawable.kt` / `FamilyPortrait.kt` | Finite companion gestures and address-based Home illustration | Respect reduced motion; custom names do not imply age/gender |
+| `GuideSurfaces.kt` | Shared opaque surfaces with decorative highlights | Never compromise text contrast or change the owner's padding/anchor |
 | `SpokenLanguagePolicy.kt` / `OutputLanguagePolicy.kt` | Detects clear spoken language changes and rejects mixed/wrong provider output | Vietnamese mode is Vietnamese; English mode is English except names/app labels |
 | `InstalledApps.kt` | Reads installed launcher apps and default browser | Coordinates are always from the current live screen |
 | `ExactScreenDecisionCache.kt` | RAM-only exact-screen step cache | Exact state only, 30-second TTL, cleared on safety/session boundaries |
@@ -149,7 +158,8 @@ All backend files are under `backend/`.
 | --- | --- |
 | `core.py` | Input validation, safety recheck, Spark prompt/parse, immutable snapshot binding, SAM call/parse, WSGI app |
 | `speech_input.py` | Audio validation and Muse Voice Transcribe adapter |
-| `gateway.py` | Temporary loopback development server, app-session authentication, budget ledger and legacy development routes |
+| `gateway.py` | Local development server plus shared budget implementations, including production Firestore accounting |
+| `test_firestore_sdk.py` | Real pinned Firestore SDK behavior with mocked network calls; reservation/settlement regressions |
 | `pair_phone.py` | Temporary USB pairing and `adb reverse`; never transfers the Meta key to Android |
 | `Dockerfile` | Production-shaped Gunicorn container; expects HTTPS termination in front |
 | `test_core.py` | Core safety, snapshot, Spark/SAM and response-contract tests |
@@ -175,7 +185,7 @@ development path, not the product architecture.
 - `backend/.env.example` contains names and safe defaults only.
 - `MODEL_API_KEY` exists only in the backend environment.
 - `GUIDINGHAND_APP_SESSION_TOKEN` authenticates the app to our backend; it is not a Meta key.
-- Budget state lives under `backend/.state/` locally or `GUIDINGHAND_STATE_DIR` in deployment.
+- Budget state lives under `backend/.state/` locally; deployed Cloud Run uses a persistent Firestore ledger. See docs/cloud-deployment.md.
 - Never delete/reset that state to regain budget. The total ceiling must stay at or below USD 150.
 - Tests use fixtures and must not make billed provider calls unless a human explicitly requests a
   bounded live check and the result is recorded separately.
@@ -203,7 +213,7 @@ See `docs/elder-ui-contract-2026-10-30.md` and
 
 ### Before editing
 
-1. Read this file, `README.md`, and the most recent section at the bottom of
+1. Read AGENTS.md, this file, docs/current-development-state.md, `README.md`, and the most recent section at the bottom of
    `docs/continuation-handoff-2026-10-28.md`.
 2. Run `git status --short --branch`. Preserve all user changes and do not reset or discard them.
 3. Inspect the actual implementation and its tests. Do not infer components from product prose.
@@ -275,13 +285,17 @@ that policy. A real interaction test requires the user to tap and speak.
 - Record deterministic, synthetic, provider-live, read-only-phone, and user-driven evidence as distinct
   evidence types.
 - Update this document when component boundaries, safety rules, commands, or model roles change.
+- Complete the documentation checklist in AGENTS.md in the same commit as the relevant change.
+  Record whether README changed or was reviewed without a public-facing change.
 
 ## 10. Known current status and next verification
 
-On 2026-11-03, the current checkout passed 87 backend tests, 118 Android unit tests, Android lint,
-and Candidate assemble. The Candidate had also been installed side-by-side and had passed an earlier
-read-only Xiaomi smoke check; that phone evidence belongs to the installed build and is not a new
-user-interaction pass for this documentation change.
+The maintained snapshot is [docs/current-development-state.md](docs/current-development-state.md).
+For source 1.5.47/code 56, 93 backend tests and 122 Android tests, lint and Candidate assemble passed.
+Candidate 1.5.47 was installed on Xiaomi; its post-install check found the phone locked. Accessibility
+was enabled/not crashed and there were no new fatal exceptions, but no overall phone pass or
+user-driven test is claimed for that observation. Cloud-connected transcription was previously
+confirmed by the user after the Firestore fix.
 
 Still requiring person-driven verification:
 
@@ -298,9 +312,12 @@ Still requiring person-driven verification:
 ## 11. Recommended first prompt for a Meta coding session
 
 ```text
-Open E:/Hackathon/GuidingHand and read META_DEVELOPMENT.md completely before acting. Then read the
+Open E:/Hackathon/GuidingHand. Read AGENTS.md, META_DEVELOPMENT.md and
+docs/current-development-state.md before acting. Then read the
 actual files relevant to my request and their tests. Preserve every non-negotiable safety invariant,
 keep provider keys server-side, distinguish deterministic evidence from real-phone evidence, and do
 not claim a pass you did not observe. Show me the intended acceptance criteria before making a
-non-trivial UX, state-machine, safety, or model-contract change.
+non-trivial UX, state-machine, safety, or model-contract change. Review/update README and affected
+documentation in the same change, update the current-state snapshot, and append the dated handoff
+with actual checks, installed/deployed status, blockers and the next action.
 ```

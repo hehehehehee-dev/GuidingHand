@@ -135,6 +135,7 @@ Use the [phone smoke check](docs/phone-smoke-test.md) and [send-photo protocol](
 ## Project map
 
 - [Development and coding-agent handoff](META_DEVELOPMENT.md)
+- [Agent instructions](AGENTS.md) · [Current development state and next checks](docs/current-development-state.md)
 - [GuideEngine](app/src/main/java/vn/guidinghand/GuideEngine.kt) · [Accessibility service](app/src/main/java/vn/guidinghand/GuidingHandService.kt) · [Overlay](app/src/main/java/vn/guidinghand/GuideOverlay.kt)
 - [Backend orchestration](backend/core.py) · [Speech input](backend/speech_input.py) · [Cloud deployment](docs/cloud-deployment.md)
 - [Design rationale](docs/warm-surface-design-2026-11-03.md) · [Companion interactions](docs/companion-interaction-2026-11-03.md) · [Development history](docs/development-history.md)

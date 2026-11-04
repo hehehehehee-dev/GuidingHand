@@ -977,3 +977,9 @@ package remains untouched.
 - Added the automatically saved “Chỉ hiện nhân vật / Character only” option under Companion. Icon-only Help keeps the 72dp touch minimum, drag/click behavior and state-dependent screen-reader description. Render identity includes this preference so toggling it updates the existing anchored card/bubble.
 - Replaced the three abrupt Home fragments with one connected sentence at 24sp/32sp line height. Added tests for help label, microphone question, Home sentence and custom-name casing.
 - Verification: 122 Android tests, lint and Candidate assembly passed; 93 backend tests passed. Installed Candidate 1.5.47/code 56 on Xiaomi. Accessibility remains enabled/not crashed with no new fatal exception. The phone was asleep/locked during post-install observation, so the smoke report is not an overall phone pass and visual review is pending. Evidence: build/outputs/phone-smoke/phone-smoke-20261104-020108Z.json. No lock bypass or target-app input was used.
+
+## 2026-11-03 — Persistent development and documentation instructions
+
+- Added root AGENTS.md as the entry point for agents and docs/current-development-state.md as the maintained continuation snapshot. Agents must review README after relevant changes, update affected docs/component maps, record installed/deployed state separately from source, and append evidence/blockers/next steps.
+- META_DEVELOPMENT.md now links these instructions, reflects 1.5.47/code 56 and current checks, maps new UI/Firestore components, and shows safety before transcription in its diagram. README updated only to expose the agent instructions/current-state links.
+- Documentation-only change: validated local links and git diff --check. No new Android build, phone installation, provider call or cloud deployment. Prior code-test results remain attached to the recorded feature build.
