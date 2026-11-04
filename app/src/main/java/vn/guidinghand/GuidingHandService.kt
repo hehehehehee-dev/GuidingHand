@@ -40,6 +40,7 @@ class GuidingHandService : AccessibilityService() {
     private lateinit var copiedDraft: TemporaryClipboard
     private var sourceWindow = -1
     private var sourceGeneration = 0L
+    private val secondCaptureBackoff = SecondCaptureBackoff()
     /** The setup screens already contain full-size controls; the floating Help control must not cover them. */
     private fun ownSetupForeground(): Boolean = SetupActivity.foreground?.get() != null
     private val screenReceiver = object : BroadcastReceiver() {
@@ -89,6 +90,7 @@ class GuidingHandService : AccessibilityService() {
                 }
                 if (fresh.packageName == packageName) continue // Own setup/answer UI is never model input.
                 screen = fresh
+                overlay.updateScreenAvoidance(fresh)
                 val began = android.os.SystemClock.elapsedRealtime()
                 engine.onScreen(fresh)
                 GuideTrace.event(this@GuidingHandService, "screen_step", android.os.SystemClock.elapsedRealtime() - began, engine.status.name)
@@ -664,7 +666,7 @@ class GuidingHandService : AccessibilityService() {
             val displayBounds = wmBounds()
             val preferWindow = android.os.Build.VERSION.SDK_INT >= 34
             var secureWindow = false
-            suspend fun attempt(useWindow: Boolean): Bitmap? = suspendCancellableCoroutine { continuation ->
+            suspend fun attempt(useWindow: Boolean, secondProbe: Boolean = false): Bitmap? = suspendCancellableCoroutine { continuation ->
                 val callback = object : TakeScreenshotCallback {
                     override fun onSuccess(result: ScreenshotResult) {
                         val buffer = result.hardwareBuffer
@@ -683,6 +685,7 @@ class GuidingHandService : AccessibilityService() {
                             }
                         } else null
                         buffer.close()
+                        if (bitmap != null && secondProbe && useWindow) secondCaptureBackoff.succeeded(expected.windowId)
                         if (bitmap != null) GuideTrace.event(
                             this@GuidingHandService,
                             if (useWindow) "capture_window" else "capture_display",
@@ -691,6 +694,8 @@ class GuidingHandService : AccessibilityService() {
                         if (continuation.isActive) continuation.resume(bitmap) else bitmap?.recycle()
                     }
                     override fun onFailure(errorCode: Int) {
+                        if (secondProbe && useWindow && errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR)
+                            secondCaptureBackoff.internalError(expected.windowId, android.os.SystemClock.elapsedRealtime())
                         GuideTrace.event(this@GuidingHandService, if (useWindow) "capture_failed_window" else "capture_failed_display", code = "android_$errorCode")
                         if (useWindow && android.os.Build.VERSION.SDK_INT >= 34 &&
                             errorCode == ERROR_TAKE_SCREENSHOT_SECURE_WINDOW) secureWindow = true
@@ -729,7 +734,9 @@ class GuidingHandService : AccessibilityService() {
             if (stableTree == null || !safe(stableTree) || stableTree.captureFingerprint != expected.captureFingerprint) {
                 first.recycle(); return null
             }
-            val second = attempt(usedWindow)
+            val skipSecond = usedWindow && secondCaptureBackoff.shouldSkip(expected.windowId,
+                android.os.SystemClock.elapsedRealtime())
+            val second = if (skipSecond) null else attempt(usedWindow, secondProbe = true)
             if (second == null) {
                 // Some devices throttle consecutive accessibility screenshots. The first frame
                 // is already a successful on-demand capture. Recheck the safety and interaction
@@ -737,7 +744,8 @@ class GuidingHandService : AccessibilityService() {
                 val stillCurrent = readFresh()
                 if (stillCurrent != null && safe(stillCurrent) &&
                     stillCurrent.captureFingerprint == expected.captureFingerprint) {
-                    GuideTrace.event(this@GuidingHandService, "capture_single_frame", code = "second_unavailable")
+                    GuideTrace.event(this@GuidingHandService, "capture_single_frame",
+                        code = if (skipSecond) "second_backoff" else "second_unavailable")
                     return first
                 }
                 first.recycle()

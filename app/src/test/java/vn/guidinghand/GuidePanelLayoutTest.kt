@@ -274,6 +274,16 @@ class GuidePanelLayoutTest {
             safe, current.width, current.height, 72, null, 8, preferred = current
         )?.bounds)
     }
+    @Test fun helpMovesAwayFromVisibleSendEvenWhenRingPointsAtPhoto() {
+        val safe = GuideBox(16, 80, 1264, 2640)
+        val photo = GuideBox(424, 1397, 842, 1815)
+        val send = GuideBox(943, 2454, 1235, 2597)
+        val oldHelp = GuideBox(995, 2431, 1229, 2665)
+        val placement = GuidePanelLayout.place(safe, 234, 234, 72, photo, 8,
+            preferred = oldHelp, extraExclusions = listOf(send))!!
+        assertFalse(placement.bounds.intersects(send.inflate(8)))
+        assertFalse(placement.bounds.intersects(photo.inflate(8)))
+    }
     @Test fun oversizedPanelScrollsAboveHelpInsteadOfDroppingToBottom() {
         val safe = GuideBox(12, 30, 348, 760)
         val anchor = GuideBox(250, 560, 336, 632)

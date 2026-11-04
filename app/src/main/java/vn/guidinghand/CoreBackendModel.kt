@@ -36,7 +36,7 @@ class CoreBackendModel(
     private fun digest(value: String) = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
         .joinToString("") { "%02x".format(it.toInt() and 255) }
     private fun cacheKey(input: GuideInput, base: String, token: String, installedApps: List<InstalledApps.App>, defaultBrowser: InstalledApps.App?): String = digest(listOf(
-        input.screen.fingerprint, input.goal, input.answers, input.task, input.verifiedStepIds.sorted(), input.observations,
+        input.screen.fingerprint, input.goal, input.answers, input.task, input.verifiedStepIds.sorted(), input.observations, preferences.samEnabled,
         input.family, input.dialogue, input.allowTaskUpdate, input.userUpdates, preferences.language, base,
         digest(token), installedApps.map { "${it.packageName}:${it.label}" }.sorted(), defaultBrowser
     ).joinToString("\u001f"))
@@ -86,6 +86,7 @@ class CoreBackendModel(
             .put("region", node.region?.let { JSONArray(listOf(it.left, it.top, it.right, it.bottom)) } ?: JSONObject.NULL) }
         val body = JSONObject().put("request_id", requestId).put("fingerprint", hash).put("consent", true).put("unlocked", true)
             .put("language", preferences.language)
+            .put("allow_sam", preferences.samEnabled)
             .put("allow_task_update", input.allowTaskUpdate)
             .put("installed_apps", JSONArray(installedApps.map { JSONObject().put("label", it.label).put("package", it.packageName) }))
             .put("default_browser", defaultBrowser?.let { JSONObject().put("label", it.label).put("package", it.packageName) } ?: JSONObject.NULL)
@@ -208,7 +209,8 @@ class CoreBackendModel(
                     }
                 "required_core_unavailable" -> GuideDecision.Unavailable(result.optString("component"), result.optString("message_vi"))
                 "step" -> {
-                    if (result.optString("region_source") != "sam-3.1") return GuideDecision.Await(tr("Chưa có vùng SAM đã xác minh.", "A verified SAM region is not available yet."), "sam_missing")
+                    val nodeSourced = result.optString("region_source") == "accessibility-node"
+                    if (result.optString("region_source") != "sam-3.1" && !nodeSourced) return GuideDecision.Await(tr("Chưa có vùng SAM đã xác minh.", "A verified SAM region is not available yet."), "sam_missing")
                     val targetId = result.getString("target_node_id")
                     val index = Regex("n(0|[1-9]\\d*)").matchEntire(targetId)?.groupValues?.get(1)?.toIntOrNull()
                     val node = index?.let { input.screen.nodes.getOrNull(it) } ?: return GuideDecision.Await(tr("Không tìm thấy nút trong màn hình hiện tại.", "I cannot find that button on the current screen."), "target_absent")
@@ -227,8 +229,17 @@ class CoreBackendModel(
                     val uiRegion = liveNode.region
                     val uiPixels = uiRegion?.let { GuideBox(kotlin.math.floor(it.left * bounds.width()).toInt(), kotlin.math.floor(it.top * bounds.height()).toInt(),
                         kotlin.math.ceil(it.right * bounds.width()).toInt(), kotlin.math.ceil(it.bottom * bounds.height()).toInt()) }
-                    val fusion = GuideRingGeometry.fuseTarget(targetPixels, uiPixels,
-                        GuideBox(0, 0, bounds.width(), bounds.height()), context.resources.displayMetrics.density)
+                    val display = GuideBox(0, 0, bounds.width(), bounds.height())
+                    val fusion = if (nodeSourced) {
+                        // SAM is off by user choice: the verified live node bounds are the
+                        // estimated ring. Backend already refused consequential actions here.
+                        val control = uiPixels ?: return GuideDecision.Await(tr("Chưa xác định rõ nút cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.",
+                            "I cannot identify the button clearly. Please wait a moment, then choose Check again."), "target_fusion_mismatch")
+                        if (!display.contains(control)) return GuideDecision.Await(tr("Chưa xác định rõ nút cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.",
+                            "I cannot identify the button clearly. Please wait a moment, then choose Check again."), "target_fusion_mismatch")
+                        GuideTargetFusion(control, "accessibility_node", 1000, false)
+                    } else GuideRingGeometry.fuseTarget(targetPixels, uiPixels,
+                        display, context.resources.displayMetrics.density)
                         ?: return GuideDecision.Await(tr("Chưa xác định rõ nút cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.",
                             "I cannot identify the button clearly. Please wait a moment, then choose Check again."), "target_fusion_mismatch")
                     GuideTrace.event(context, "target_fusion", code = fusion.mode, requestId = requestId,
@@ -236,12 +247,13 @@ class CoreBackendModel(
                     // A strongly matched edge control uses its exact clickable bounds while SAM
                     // remains the visual source recorded in rawRegion.
                     val bounded = fusion.target != targetPixels
+                    val source = if (nodeSourced) "accessibility-node" else if (bounded) "sam-3.1-ui-bounded" else "sam-3.1"
                     val visibleRegion = if (bounded) uiRegion!! else region
                     val stage = PhotoStage.valueOf(result.getString("step_id").uppercase())
                     val task = returnedTask
                     GuideDecision.Step(GuidanceStep(stage.name.lowercase(), stage, result.getString("instruction_vi").take(240), liveNode,
                         SamRegion(visibleRegion, input.screen.planningFingerprint,
-                            if (bounded) "sam-3.1-ui-bounded" else "sam-3.1", if (bounded) region else null), VoiceOutput()), task)
+                            source, if (bounded) region else null), VoiceOutput()), task)
                 }
                 else -> GuideDecision.Await(tr("Chưa chắc chắn bước tiếp theo. Cần hỏi lại.", "I am not sure about the next step. Please clarify."))
             }
@@ -287,6 +299,9 @@ class CoreBackendModel(
     override fun cancel() {
         epoch++; connection?.disconnect(); connection = null
         speech.stop()
+    }
+    override fun rejectStep(decision: GuideDecision.Step) {
+        exactScreenCache.removeValue(decision)
     }
     override fun clearSessionMemory() { exactScreenCache.clear() }
     override fun close() { cancel(); clearSessionMemory(); speech.close() }

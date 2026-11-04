@@ -82,13 +82,13 @@ flowchart LR
 | Component | Responsibility |
 | --- | --- |
 | **Muse Spark** (`muse-spark-1.3`, minimal reasoning) | Understand the goal and dialogue, ask for missing details, and plan one next instruction from screen data. |
-| **SAM 3.1** | Segment the selected target using the **same screenshot bytes** Spark saw. A production ring requires a valid SAM region. |
+| **SAM 3.1** | Segment the selected target using the **same screenshot bytes** Spark saw. A production ring requires a valid SAM region by default. Settings can switch to a faster node-estimated ring, which is never used for send, call or payment steps. |
 | **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | Convert the user's recording to text. This is speech input. |
 | **Android system TTS** | Speak guidance using an installed offline voice for the active language at **0.85** speed. |
 | **GuideEngine and AccessibilityService** | Maintain task state, read the app, gate sensitive content, verify screen changes, and recover after wrong taps. |
 | **GuidingHand backend** | Authenticate app requests, orchestrate Meta calls, and enforce a persistent spend ledger. The deployed setup uses **Google Cloud Run and Firestore**. |
 
-Screenshots are captured on demand after a safety check, not continuously every frame. Spark and SAM share one image; results bound to an outdated screen are discarded while the task is retained. If a video or advertisement moves while the safe actionable screen and interaction state remain unchanged, GuidingHand freezes the newest bounded frame instead of waiting for every pixel to stop. An exact-screen cache can reuse a previously validated step only while the full screen and task context match.
+Screenshots are captured on demand after a safety check, not continuously every frame. Spark and SAM share one image; results bound to an outdated screen are discarded while the task is retained. When the user disables SAM in Settings, the backend skips SAM and reuses the vetted node bounds as an estimated ring instead. If a video or advertisement moves while the safe actionable screen and interaction state remain unchanged, GuidingHand freezes the newest bounded frame instead of waiting for every pixel to stop. An exact-screen cache can reuse a previously validated step only while the full screen and task context match.
 
 `MockModel` is an explicitly selected development stand-in behind the same model interface. It is not the production planner or a parallel per-step shortcut. The USB gateway is a temporary development transport; normal cloud use requires Internet access rather than a USB cable.
 
@@ -116,7 +116,7 @@ Requirements: **Android 11 or newer**, microphone and Accessibility permissions,
 3. In Settings, confirm the HTTPS server, enter its app-session token, choose language and communication preferences, and enable the required permissions and consent.
 4. Open an app, tap Help, and speak. A Ready status checks backend protocol access; it does not prove a particular task will succeed.
 
-The current source build is **1.5.63** (Android version code **72**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
+The current source build is **1.5.66** (Android version code **75**). Source version and installed-phone version can differ. The configured project backend is not an unrestricted public service or a bundled grant of Meta credit.
 
 ## Validation and demo
 

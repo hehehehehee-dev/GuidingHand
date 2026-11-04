@@ -2,25 +2,28 @@
 
 Maintain this as a concise snapshot, not a second chronological changelog. Update affected fields after meaningful work; dated details belong in the continuation handoff.
 
-## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.63/code 72)
+## Snapshot — 2026-11-04, America/Indianapolis (source Candidate 1.5.66/code 75)
 
 | Area | Last established fact |
 | --- | --- |
 | Branch | main; preserve unrelated work (an untracked output/ directory existed at handoff) |
-| Source | 1.5.63, version code 72; a safe, successfully captured screen is no longer mislabeled as unreadable when Spark is uncertain. Sparse accessibility targets can receive one grounded spoken navigation step without an invented SAM ring; consequential actions remain gated. |
-| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.63/code 72; read-only installation smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-115558Z.json`; no user-driven guidance pass yet |
+| Source | 1.5.66, version code 75; general-app photo Send guidance requires the verified recipient title and a checked media tile plus preview, even if Spark left the photo description slot blank. Text sends still require the elder's confirmed composer content. Native-rejected steps are evicted from the exact-screen plan cache. A new Precise ring (SAM) setting (default on) sends allow_sam=false; the backend then returns vetted node bounds as an estimated ring, never for consequential actions. |
+| Installed Xiaomi Candidate | vn.guidinghand.candidate, 1.5.65/code 74; read-only installation smoke passed in `build/outputs/phone-smoke/phone-smoke-20261104-125256Z.json`; the new photo Send guidance awaits a user-driven check |
 | Original phone app | vn.guidinghand remains separate; do not replace/uninstall it |
-| Backend | Cloud Run with Firestore; cloud transcription confirmed by the user after the Firestore fix cd9febf. Minimal reasoning is changed in source but not deployed to Cloud Run. A local commit/push does not deploy Cloud Run. |
-| Latest deterministic verification | 138 Android unit tests (0 failures/errors), Candidate lint and assemble passed for 1.5.63; 101 backend tests passed. These are deterministic checks, not a phone interaction pass. |
-| Latest phone observation | Candidate 1.5.63 installed while Xiaomi Home was foreground; read-only smoke found Accessibility enabled and no new fatal exception during 8 seconds. No interaction pass is claimed. |
-| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-115558Z.json (local generated output, may not exist in a fresh clone) |
+| Backend | Cloud Run with Firestore; the user reported deploying commit 0b065a2. The new SAM switch, next-step clarification rule, and compact Spark app list are source only until a new Cloud Run deployment. |
+| Latest deterministic verification | 107 backend tests and 145 Candidate Android unit tests passed; `testDebugUnitTest lintDebug assembleDebug -PcandidateBuild=true` passed after the Help-placement integration. These are deterministic checks, not a phone interaction pass. |
+| Latest phone observation | On installed 1.5.65, real taps reached VERIFYING without a new crash, but no strict delivery evidence was recorded. A read-only UI dump still showed the selected photo and Send; the Help window bounds overlapped Send. Source now avoids visible final-action controls with both Help and card. This placement change has not been installed or person-tested. |
+| Phone evidence | build/outputs/phone-smoke/phone-smoke-20261104-125256Z.json and local content-free GuideTrace/AndroidRuntime logs (generated output may not exist in a fresh clone) |
 | Public demo, measured ring accuracy/latency, older-adult usability | TBD; do not turn developer feedback into measured claims |
 
 The 2026-11-04 Instagram conversation trace shows a successful 736×1600 snapshot followed by about 7.1 s in Spark and no SAM invocation for the first `cannot_read` result. This identifies Spark uncertainty, not an Android screenshot failure, for that specific screen. The new source distinguishes it from SAM ambiguity and asks one spoken clarification instead of looping on Check again. This behavior still needs a real-phone interaction check after installation and Cloud Run redeployment.
 
-After the user redeployed that backend and retried on the real Instagram conversation, Candidate 1.5.63 again captured a valid 736×1600 frame (116,235 JPEG bytes); Spark took 6,716 ms and SAM was not invoked. The backend returned `invalid_general_stage`, which the old client displayed as a generic retry card. The latest backend source normalizes a photo-style stage name from Spark to ACTION or RECOVER for an ordinary app task based on the current package; this does not create photo-delivery evidence. This fix has deterministic coverage but is not yet deployed or user-verified.
+After the user redeployed that backend and retried, the real-phone trace advanced through photo selection. Two later 736×1600 captures returned Spark/SAM targets; the native general-app text-content guard rejected a media Send step as `message_content`, and an exact-screen cache hit repeated it. A user screenshot shows a single white-duck photo selected, “Quang Minh” in the conversation title, and Send at the lower right. A read-only node dump confirmed that Instagram represented the selected image as a checked `CheckBox`, with a separate preview `ImageView`; Candidate 1.5.64 still rejected this because Spark did not fill the photo slot. Candidate 1.5.65 checks the actual native media selection and recipient title without requiring typed text or a model photo description. It does not prove delivery or automate Send. The user-driven post-install result is pending.
 
 ## Latest behavior
+
+- Settings has a Precise ring (SAM) switch, default on. When off, the app sends `allow_sam=false` and the exact-screen cache is keyed per setting; the backend skips SAM and returns the vetted node bounds as `region_source=accessibility-node`. Consequential steps (send, call, payment, delete, confirm) still require SAM or stop.
+- With a fixed task and no new spoken update, Spark receives only the bound app from the validated installed-app list. A newly spoken task update still receives the full list. A failed optional second screenshot is backed off for 30 seconds on the same window; the first frame is safety-checked before use. Help/card placement excludes visible Send/Next-type controls as well as the ring.
 
 - An authenticated debug action can leave the temporary USB bridge and restore the default Cloud Run
   URL while preserving language, accessibility preferences, consent, family setup, and the saved

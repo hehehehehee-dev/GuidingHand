@@ -414,6 +414,7 @@ class SettingsActivity : SetupActivity() {
             var customAssistant by remember { mutableStateOf(prefs.respectfulLanguage.customAssistant) }
             var visionProfile by remember { mutableStateOf(prefs.visionProfile) }
             var showPointer by remember { mutableStateOf(prefs.showPointer) }
+            var samEnabled by remember { mutableStateOf(prefs.samEnabled) }
             var reduceMotion by remember { mutableStateOf(prefs.reduceMotion) }
             var cardSize by remember { mutableStateOf(prefs.cardSize) }
             var mascot by remember { mutableStateOf(prefs.mascot) }
@@ -431,11 +432,11 @@ class SettingsActivity : SetupActivity() {
             // Ordinary preferences persist as soon as they change. This removes the easy-to-miss
             // Save step while keeping the user's current task and explicit safety choices intact.
             LaunchedEffect(language, phone, contact, user, assistant, tone, customUser, customAssistant, visionProfile,
-                showPointer, reduceMotion, cardSize, mascot, characterOnly, backend, session, screenConsent,
+                showPointer, samEnabled, reduceMotion, cardSize, mascot, characterOnly, backend, session, screenConsent,
                 voiceConsent, devStandIn) {
                 prefs.language = language; prefs.phone = phone; prefs.contact = contact
                 prefs.respectfulLanguage = preview; prefs.visionProfile = visionProfile
-                prefs.showPointer = showPointer; prefs.reduceMotion = reduceMotion
+                prefs.showPointer = showPointer; prefs.samEnabled = samEnabled; prefs.reduceMotion = reduceMotion
                 prefs.cardSize = cardSize; prefs.mascot = mascot
                 prefs.characterOnlyBubble = characterOnly
                 prefs.backendUrl = backend; prefs.backendSession = session
@@ -529,6 +530,10 @@ class SettingsActivity : SetupActivity() {
                             tr("Thêm bàn tay hoặc nhân vật bên cạnh vòng đôi. Tắt nếu bác thấy rối mắt.",
                                 "Adds the hand or helper beside the double ring. Turn it off if it feels distracting."),
                             showPointer) { showPointer = it; saved = false }
+                        ToggleSetting(tr("Vòng chỉ chính xác (SAM)", "Precise ring (SAM)"),
+                            tr("Bật để khoanh đúng nút bằng SAM. Tắt thì nhanh hơn nhưng vòng chỉ ước lượng từ nút màn hình, không dùng cho bước gửi, gọi hay thanh toán.",
+                                "On marks the button precisely with SAM. Off is faster but the ring is estimated from the screen node, never for send, call or payment steps."),
+                            samEnabled) { samEnabled = it; saved = false }
                         ToggleSetting(tr("Giảm chuyển động", "Reduce motion"),
                             tr("Tắt hiệu ứng gợn và chuyển động không cần thiết.", "Removes non-essential ripple and motion effects."),
                             reduceMotion) { reduceMotion = it; saved = false }

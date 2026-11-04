@@ -229,11 +229,13 @@ object GuidePanelLayout {
 
     /** A missing result means collapse safely rather than obscure the pointed region or clip controls. */
     fun place(safe: GuideBox, desiredWidth: Int, desiredHeight: Int, minimumHeight: Int,
-              target: GuideBox?, gap: Int, preferred: GuideBox? = null, anchor: GuideBox? = null): GuidePlacement? {
+              target: GuideBox?, gap: Int, preferred: GuideBox? = null, anchor: GuideBox? = null,
+              extraExclusions: List<GuideBox> = emptyList()): GuidePlacement? {
         require(desiredWidth > 0 && desiredHeight > 0 && minimumHeight > 0 && gap >= 0)
         if (safe.width <= 0 || safe.height < minimumHeight) return null
         val width = minOf(desiredWidth, safe.width)
-        val exclusions = listOfNotNull(target?.inflate(gap), anchor?.inflate(gap))
+        val exclusions = listOfNotNull(target?.inflate(gap), anchor?.inflate(gap)) +
+            extraExclusions.map { it.inflate(gap) }
         fun valid(box: GuideBox) = safe.contains(box) && exclusions.none { it.intersects(box) }
         if (anchor != null) {
             // Prefer above Help. This keeps an expanding transcript away from the bottom
@@ -301,14 +303,23 @@ object GuidePanelLayout {
         val lane = candidates.firstOrNull { it.height >= desiredHeight } ?: candidates.maxByOrNull { it.height } ?: return null
         val height = minOf(desiredHeight, lane.height)
         val box = GuideBox(lane.right - width, lane.bottom - height, lane.right, lane.bottom)
-        if (!valid(box)) return null
-        return GuidePlacement(box, height < desiredHeight)
+        if (valid(box)) return GuidePlacement(box, height < desiredHeight)
+        // A remembered Help position can sit on an app's Send button even while the
+        // current ring points elsewhere. Try the other corners before hiding Help.
+        val corners = listOf(
+            GuideBox(safe.left, safe.bottom - height, safe.left + width, safe.bottom),
+            GuideBox(safe.right - width, safe.top, safe.right, safe.top + height),
+            GuideBox(safe.left, safe.top, safe.left + width, safe.top + height)
+        )
+        return corners.firstOrNull(::valid)?.let { GuidePlacement(it, height < desiredHeight) }
     }
 
     /** Open guidance is one anchored assistant: Help moves, and the card follows beside it. */
     fun placeAttachedToHelp(safe: GuideBox, desiredWidth: Int, desiredHeight: Int, minimumHeight: Int,
-                            target: GuideBox?, gap: Int, help: GuideBox): GuidePlacement? {
-        val placement = place(safe, desiredWidth, desiredHeight, minimumHeight, target, gap, anchor = help)
+                            target: GuideBox?, gap: Int, help: GuideBox,
+                            extraExclusions: List<GuideBox> = emptyList()): GuidePlacement? {
+        val placement = place(safe, desiredWidth, desiredHeight, minimumHeight, target, gap,
+            anchor = help, extraExclusions = extraExclusions)
             ?: return null
         val card = placement.bounds
         val attached = card.top == help.bottom + gap || card.bottom == help.top - gap ||

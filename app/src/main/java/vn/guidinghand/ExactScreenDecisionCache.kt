@@ -23,6 +23,10 @@ internal class ExactScreenDecisionCache<T>(
         entries[key] = Entry(value, clock() + ttlMillis)
     }
 
+    @Synchronized fun removeValue(value: T) {
+        entries.entries.removeAll { it.value.value === value }
+    }
+
     @Synchronized fun clear() = entries.clear()
     @Synchronized fun size() = entries.size
 }

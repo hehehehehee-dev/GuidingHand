@@ -207,6 +207,13 @@ class CoreGuideEngineTest {
             assertEquals(GuideStatus.ASKING, engine.status); assertNull(views.last().step); assertEquals(0, model.spoken)
         }
     }
+    @Test fun userDisabledSamNodeRingIsAcceptedAsEstimatedGuidance() = runBlocking {
+        val region = SamRegion(bounds, home.planningFingerprint, "accessibility-node")
+        val model = Model { GuideDecision.Step(step(home, icon, PhotoStage.LAUNCHER).copy(sam = region), task) }
+        val engine = GuideEngine(model, {})
+        engine.startGoal("Gửi ảnh cho An"); engine.onScreen(home)
+        assertEquals(GuideStatus.WAITING_TAP, engine.status); assertEquals(1, model.spoken)
+    }
     @Test fun androidOfflineSpeechDoesNotRequireMuseVoiceAudio() = runBlocking {
         val model = Model { GuideDecision.Step(step(home, icon, PhotoStage.LAUNCHER).copy(
             voice = VoiceOutput()), task) }
@@ -452,6 +459,79 @@ class CoreGuideEngineTest {
         val accepted = GuideEngine(Model { GuideDecision.Step(step(ready, generalSend, PhotoStage.ACTION), messageTask) }, {})
         accepted.startGoal("Nhắn An", messageTask); accepted.onScreen(ready)
         assertEquals(GuideStatus.WAITING_TAP, accepted.status)
+    }
+    @Test fun aNativeRejectedStepIsRemovedBeforeTheRetryCardIsShown() = runBlocking {
+        val messageTask = PhotoTask("An", "", "guide_app", "com.instagram.android", "A confirmed message")
+        val title = recipient.copy(text = "An")
+        val emptyComposer = composer.copy(text = "Message", className = "android.widget.EditText")
+        val generalSend = send.copy(text = "Send")
+        val screen = ScreenState(messageTask.appPackage, listOf(title, emptyComposer, generalSend))
+        val decision = GuideDecision.Step(step(screen, generalSend, PhotoStage.ACTION), messageTask)
+        var rejected: GuideDecision.Step? = null
+        val model = object : GuideModel {
+            override suspend fun next(input: GuideInput) = decision
+            override suspend fun repeat(step: GuidanceStep) = Unit
+            override fun rejectStep(decision: GuideDecision.Step) { rejected = decision }
+            override fun cancel() = Unit
+        }
+        val engine = GuideEngine(model, {})
+        engine.startGoal("Message An", messageTask)
+        engine.onScreen(screen)
+        assertEquals(GuideStatus.ASKING, engine.status)
+        assertSame(decision, rejected)
+    }
+    @Test fun generalPhotoSendNeedsTheRecipientTitleAndVisibleSelectedMediaNotTextComposer() = runBlocking {
+        val photoTask = PhotoTask("An", "white duck", "guide_app", "com.instagram.android")
+        val title = recipient.copy(text = "An")
+        val tile = ScreenNode("photo-tile", "", Region(.35f, .40f, .62f, .62f), false,
+            className = "android.widget.ImageView")
+        val badge = ScreenNode("selection-badge", "1", Region(.56f, .42f, .61f, .47f), false)
+        val preview = ScreenNode("selected-preview", "", Region(.03f, .86f, .10f, .92f), false,
+            className = "android.widget.ImageView")
+        val generalSend = send.copy(text = "Send")
+        val ready = ScreenState(photoTask.appPackage, listOf(title, tile, badge, preview, generalSend))
+        assertTrue(PhotoVerification.selectedMedia(ready))
+        val accepted = GuideEngine(Model { GuideDecision.Step(step(ready, generalSend, PhotoStage.ACTION), photoTask) }, {})
+        accepted.startGoal("Send the white duck photo to An", photoTask); accepted.onScreen(ready)
+        assertEquals(GuideStatus.WAITING_TAP, accepted.status)
+
+        val countOnly = ready.copy(nodes = listOf(title, badge.copy(text = "1 selected"), generalSend))
+        assertFalse(PhotoVerification.selectedMedia(countOnly))
+        val noSelection = ready.copy(nodes = listOf(title, tile, preview, generalSend))
+        assertFalse(PhotoVerification.selectedMedia(noSelection))
+        val wrongRecipient = ready.copy(nodes = listOf(title.copy(text = "Binh"), tile, badge, preview, generalSend))
+        for (unsafe in listOf(countOnly, noSelection, wrongRecipient)) {
+            val views = mutableListOf<GuideViewState>()
+            val rejected = GuideEngine(Model { GuideDecision.Step(step(unsafe, generalSend, PhotoStage.ACTION), photoTask) }, views::add)
+            rejected.startGoal("Send the white duck photo to An", photoTask); rejected.onScreen(unsafe)
+            assertEquals(GuideStatus.ASKING, rejected.status)
+            assertEquals(if (unsafe === wrongRecipient) "recipient_title" else "media_selection", views.last().reasonCode)
+        }
+    }
+    @Test fun aCheckedPhotoTileAndBottomPreviewAuthorizeGuidanceEvenWhenTheModelLeavesPhotoSlotBlank() = runBlocking {
+        val photoTask = PhotoTask("An", "", "guide_app", "com.instagram.android")
+        val title = recipient.copy(text = "An")
+        val selectedTile = ScreenNode("media-tile", "", Region(.33f, .51f, .66f, .66f), true,
+            selected = true, className = "android.widget.CheckBox")
+        val bottomPreview = ScreenNode("media-preview", "Selected photo", Region(.02f, .89f, .10f, .96f), true,
+            className = "android.widget.ImageView")
+        val generalSend = send.copy(text = "Send")
+        val ready = ScreenState(photoTask.appPackage, listOf(title, selectedTile, bottomPreview, generalSend))
+        assertTrue(PhotoVerification.selectedMedia(ready))
+        val accepted = GuideEngine(Model { GuideDecision.Step(step(ready, generalSend, PhotoStage.ACTION), photoTask) }, {})
+        accepted.startGoal("Send the selected photo to An", photoTask); accepted.onScreen(ready)
+        assertEquals(GuideStatus.WAITING_TAP, accepted.status)
+
+        val notSelected = ready.copy(nodes = listOf(title, selectedTile.copy(selected = false), bottomPreview, generalSend))
+        val noPreview = ready.copy(nodes = listOf(title, selectedTile, generalSend))
+        val wrongRecipient = ready.copy(nodes = listOf(title.copy(text = "Binh"), selectedTile, bottomPreview, generalSend))
+        assertFalse(PhotoVerification.selectedMedia(notSelected))
+        assertFalse(PhotoVerification.selectedMedia(noPreview))
+        for (unsafe in listOf(notSelected, noPreview, wrongRecipient)) {
+            val rejected = GuideEngine(Model { GuideDecision.Step(step(unsafe, generalSend, PhotoStage.ACTION), photoTask) }, {})
+            rejected.startGoal("Send the selected photo to An", photoTask); rejected.onScreen(unsafe)
+            assertEquals(GuideStatus.ASKING, rejected.status)
+        }
     }
     @Test fun recipientMentionInMessageBodyCannotProveTheConversation() {
         val body = ScreenNode("com.zing.zalo:id/message_text@3", "An", Region(.1f, .4f, .6f, .5f), false)

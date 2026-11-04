@@ -165,6 +165,8 @@ interface GuideModel {
     suspend fun repeat(step: GuidanceStep)
     suspend fun speakMessage(text: String, screen: ScreenState) {}
     fun cancel()
+    /** Forget a model step that failed native validation; a retry must not replay it. */
+    fun rejectStep(decision: GuideDecision.Step) {}
     /** Clear RAM-only task/model memory on Stop, a new goal, lock, or a sensitive screen. */
     fun clearSessionMemory() {}
     fun close() = cancel()
@@ -201,6 +203,35 @@ object PhotoVerification {
         (screen.packageName in setOf("com.google.android.providers.media.module", "com.android.providers.media.module", "com.google.android.documentsui", "com.android.documentsui") &&
             screen.has("Photos", "Ảnh", "Images"))
     fun selectedPhoto(screen: ScreenState, task: PhotoTask) = screen.nodes.any { node -> node.selected && node.labels.any { folded(it) == folded(task.photo) } }
+    /** A visible selected gallery tile is media evidence; a count or an old chat image alone is not. */
+    fun selectedMedia(screen: ScreenState): Boolean {
+        val images = screen.nodes.filter { node ->
+            val box = node.region
+            node.className.endsWith("ImageView") && box != null && box.top in .2f.. .85f &&
+                box.right - box.left >= .12f && box.bottom - box.top >= .08f
+        }
+        val bottomPreview = screen.nodes.any { node ->
+            val box = node.region
+            node.className.endsWith("ImageView") && box != null &&
+                box.top >= .8f && box.right - box.left >= .035f && box.bottom - box.top >= .035f
+        }
+        // Instagram exposes a checked gallery tile as CheckBox, not as a selected ImageView.
+        // Its large bounds and separate bottom preview distinguish it from a small toggle.
+        if (bottomPreview && screen.nodes.any { node ->
+            val box = node.region
+            node.selected && node.className.endsWith("CheckBox") && box != null &&
+                box.top in .2f.. .85f && box.right - box.left >= .12f && box.bottom - box.top >= .08f
+        }) return true
+        return screen.nodes.any { node ->
+            val box = node.region ?: return@any false
+            val numberedBadge = node.labels.any { Regex("[1-9][0-9]?").matches(it.trim()) }
+            if (!node.selected && !(numberedBadge && bottomPreview)) return@any false
+            images.any { image ->
+                val imageBox = image.region ?: return@any false
+                image === node || imageBox.containsCenter(box)
+            }
+        }
+    }
     /** A thumbnail is often labelled by date, not by the person's spoken description.
      * Bind the actual elder-tapped thumbnail to a newly selected instance, never to a generic count. */
     fun selectedTarget(before: ScreenState, after: ScreenState, target: ScreenNode): Boolean {

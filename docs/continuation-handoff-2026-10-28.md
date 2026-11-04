@@ -1180,3 +1180,99 @@ package remains untouched.
   `build/outputs/phone-smoke/phone-smoke-20261104-105147Z.json`; APK SHA256
   `C0F487D911C9C2572DC6457939A78BE81ABE4EE0BACE7FF9714E4E4E6BD1BED7`.
   User-driven secure-window wording and recovery remain unverified.
+
+## 2026-11-04 — Instagram selected-photo send blocker, Candidate 1.5.64/code 73
+
+- After the user deployed backend commit `0b065a2`, a real Instagram photo-selection run reached
+  Spark and SAM. The following Send step was rejected by the Android `message_content` guard,
+  which required typed text even though the elder was sharing a photo. Check again replayed the
+  same cached native-rejected step. The user's screenshot showed one selected white-duck photo,
+  “Quang Minh” as the current conversation title, and Send at lower right. The user did not send.
+- Android source now distinguishes selected-media evidence from composer text. For a general
+  photo task, the current conversation title and a selected image tile (selected state or a
+  numbered selection badge plus a bottom preview) are required before guiding Send. Text tasks
+  still require the confirmed composer content. A native-rejected step is evicted from the
+  RAM-only exact-screen cache, and rejection copy names the missing evidence. No target-app
+  operation was automated and no delivery success is inferred.
+- Candidate 1.5.64/code 73 was built and installed; 141 Android tests, lint, assemble and 103
+  backend tests passed. Read-only phone smoke passed at
+  `build/outputs/phone-smoke/phone-smoke-20261104-123933Z.json`, with Accessibility enabled and
+  no new fatal exception in 8 seconds. The user reports that a ring still did not appear, but
+  the post-install GuideTrace currently has only model initialization and bubble attachment,
+  so no new attempt can yet be attributed to the installed build. A read-only Accessibility
+  node inspection of the selected-photo screen is the next diagnostic; do not ask the user to
+  send. An additional source-only diagnostic separates `media_selection` from `message_content`
+  rejection but has not yet been built/installed. The attached user photo remains untracked and
+  must not be committed.
+
+## 2026-11-04 — Candidate 1.5.65/code 74 selected-media evidence and overlay crash
+
+- The 1.5.64 person-driven retry still stopped at `message_content`. A bounded read-only
+  Accessibility dump on the exact Instagram preview showed a large checked `CheckBox` for the
+  chosen photo, a separate bottom `ImageView` preview, and a clickable Send button. Spark's
+  task photo slot was empty, so requiring that slot was also incorrect. The current native
+  guard accepts that screen structure as selected-media evidence while still requiring the
+  recipient title. Text sends still require the elder's confirmed composer content. Missing
+  photo selection and missing message text now have separate trace reasons.
+- Check again surfaced a real `BadTokenException` at `GuideOverlay.showBubble` while Android
+  added an Accessibility overlay window. All overlay `addView` calls now catch token revocation,
+  leave the mount state false, and allow a later event to retry without crashing. No permission
+  bypass or target-app automation was added.
+- Candidate 1.5.65/code 74: 142 Android tests, lint, assemble and 103 backend tests passed.
+  Installed with `-PcandidateBuild=true`; read-only smoke passed at
+  `build/outputs/phone-smoke/phone-smoke-20261104-125256Z.json`. This confirms install,
+  Accessibility enabled and no new fatal exception during the 8-second observation, not a
+  person-driven Send ring pass. The user has been asked to stop before Send and report whether
+  the ring appears. Original `vn.guidinghand` and Cloud Run were not modified.
+
+## 2026-11-04 - User SAM on/off switch (source 1.5.66/code 75, gates pending)
+
+- The user asked for a SAM on/off choice and chose: SAM off draws an estimated ring from the
+  Accessibility node (not voice-only). Defaults applied: SAM on; full app+backend+test change now.
+- Behavior: Settings (Vision and motion) has "Vong chi chinh xac (SAM) / Precise ring (SAM)", default
+  on, auto-saved like other preferences. Off sends `allow_sam=false` in `/core/step`; the backend
+  skips the SAM call (no SAM cost/latency) and returns the Spark-selected node bounds as
+  `region_source=accessibility-node` for action/recover/launcher steps only. Consequential
+  instructions or targets (send/call/payment/delete/confirm) return `await` with reason
+  `sam_required` instead of a ring. The native fusion path accepts `accessibility-node`, verifies
+  the live node is unchanged and on-screen, records `SamRegion.source="accessibility-node"` with
+  trace mode `accessibility_node`, and `GuideEngine.validateStep` accepts that provenance. The
+  exact-screen cache key includes the SAM setting so on/off results never mix.
+- Files: `backend/core.py` (validate/binding/capabilities/skip branch), `backend/test_core.py`
+  (+3 tests), `FamilyPreferences.kt` (`samEnabled`), `CoreBackendModel.kt` (flag send, cache key,
+  node fusion branch), `MainActivity.kt` (Settings toggle), `GuideEngine.kt` (provenance),
+  `CoreGuideEngineTest.kt` (+1 test), `app/build.gradle.kts` (1.5.66/code 75), plus this handoff,
+  `META_DEVELOPMENT.md`, `README.md`, `docs/current-development-state.md`.
+- Safety finding (not a refusal): an estimated node ring is less precise than SAM; the design
+  contains this by excluding consequential actions and by disclosing the estimation in the setting
+  copy. A distinct visual style for estimated rings in the overlay is a possible follow-up.
+- Checks: full read-back of every edited region; `samEnabled`/`allow_sam` wiring verified by search;
+  existing `accessibilityBoundsCannotBePresentedAsSamOutput` still rejects source "accessibility".
+  NOT run: `python -m unittest`, `./gradlew` gates, `git diff --check` -- the sandbox has no Python
+  or JDK (only node), and git refuses the worktree (`dubious ownership`, sandbox user differs).
+  No APK built, nothing installed, Cloud Run not redeployed (backend change needs a redeploy).
+- README reviewed and updated (SAM row, screenshot paragraph, version to 1.5.66/code 75). No public
+  demo or measured claims changed; ring accuracy/latency/usability remain TBD.
+- Next: run the META gates on a machine with Python 3.12 + JDK/Android SDK, build/install Candidate
+  1.5.66 with `-PcandidateBuild=true`, redeploy Cloud Run, then one person-driven check each for
+  SAM-on ring, SAM-off estimated ring, and the sam_required ask on a send step.
+
+## 2026-11-04 — Latency audit and Send-button placement, source 1.5.66/code 75
+
+- In the most recent eight content-free phone timing samples, medians were approximately
+  Spark 6.5 s, SAM 1.4 s, capture/encode 1.3 s, backend roundtrip 8.3 s. This is a small
+  observational sample, not a new-build speed claim. A separate five-sample Transcribe median
+  was approximately 3.8 s.
+- On installed 1.5.65, the user's tap reached VERIFYING without a new fatal exception. No strict
+  photo-delivery evidence was recorded. A read-only window inspection found Help overlapping
+  Instagram's Send control while the selected photo and Send were still visible. The source
+  now keeps Help and its attached card away from visible final-action controls, even if the
+  ring points at another element.
+- For a bound task with no new elder utterance, the backend sends Spark only the relevant app
+  from the already validated installed-app list. A task update retains the full list. A failed
+  optional second window screenshot is backed off for 30 seconds on the same window; the
+  first frame still requires fresh safety and screen checks.
+- Backend tests passed (107). Candidate Android unit tests (145), lint and assemble passed with
+  `testDebugUnitTest lintDebug assembleDebug -PcandidateBuild=true` after the final
+  Help-placement call and layout test. No Cloud redeploy, APK install, or new phone latency
+  claim yet. README reviewed: no new measured public claim.

@@ -287,6 +287,7 @@ class GuideOverlay(
     private var draftPageIndex = 0
     private var draggedCard: GuideBox? = null
     private var draggedBubble: GuideBox? = null
+    private var criticalActionBoxes: List<GuideBox> = emptyList()
     private val bubbleAnchor = GuideAnchorState()
     private var lastLog = ""
     private val uiHandler = Handler(Looper.getMainLooper())
@@ -408,6 +409,22 @@ class GuideOverlay(
         layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
     }
 
+    private var lastOverlayTokenFailure = 0L
+    private fun addWindow(view: View, params: WindowManager.LayoutParams): Boolean = try {
+        wm.addView(view, params)
+        true
+    } catch (_: WindowManager.BadTokenException) {
+        // Xiaomi can revoke an Accessibility overlay token while a screen is being reread.
+        // A later service event can attach it again; the invalid token must not kill the app.
+        lastRenderKey = null
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastOverlayTokenFailure > 5_000L) {
+            GuideTrace.event(context, "overlay_token_unavailable")
+            lastOverlayTokenFailure = now
+        }
+        false
+    }
+
     private fun safeArea(): GuideBox {
         val metrics = wm.currentWindowMetrics
         val bars = metrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
@@ -472,6 +489,25 @@ class GuideOverlay(
         }
     }
 
+    /** Keep Help and its card clear of visible final-action buttons, even before the
+     * planner chooses one as the current ring target. Only local geometry is retained. */
+    fun updateScreenAvoidance(screen: ScreenState) {
+        val bounds = wm.currentWindowMetrics.bounds
+        val labels = setOf("send", "gui", "next", "tiep", "done", "xong", "share", "chia se", "post", "dang")
+        val next = screen.nodes.asSequence().filter { it.clickable && !it.password && it.region != null &&
+            it.labels.any { label -> folded(label) in labels } }.mapNotNull { node ->
+            node.region?.let { region -> GuideBox(
+                floor(region.left * bounds.width()).toInt(), floor(region.top * bounds.height()).toInt(),
+                ceil(region.right * bounds.width()).toInt(), ceil(region.bottom * bounds.height()).toInt()) }
+        }.filter { it.area > 0 }.distinct().toList()
+        if (next == criticalActionBoxes) return
+        criticalActionBoxes = next
+        if (bubbleAttached) {
+            showBubble()
+            if (cardAttached) savedState?.let { layoutCard(it) }
+        }
+    }
+
     fun showVoiceNotice(text: String) { render(GuideViewState(GuideStatus.ASKING,
         if (prefs.language == "vi") prefs.respectfulLanguage.message(text) else text), false) }
     fun beginIntake() { intakeDismissed = false }
@@ -532,7 +568,7 @@ class GuideOverlay(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         val placement = GuidePanelLayout.place(safeArea(), bubble.measuredWidth.coerceAtLeast(dp(72)),
             bubble.measuredHeight.coerceAtLeast(dp(72)), dp(72), pointedBox(), dp(8),
-            draggedBubble ?: bubbleAnchor.preferred(bubbleBounds()))
+            draggedBubble ?: bubbleAnchor.preferred(bubbleBounds()), extraExclusions = criticalActionBoxes)
         if (placement == null) {
             // Never leave the old Help position covering a newly selected target.
             removeBubble()
@@ -541,7 +577,10 @@ class GuideOverlay(
         val box = placement.bounds
         bubbleAnchor.remember(box)
         val p = params(box.width, box.height, false).apply { x = box.left; y = box.top }
-        if (!bubbleAttached) { wm.addView(bubble, p); bubbleAttached = true; GuideTrace.event(context, "bubble_attached") }
+        if (!bubbleAttached) {
+            if (!addWindow(bubble, p)) return
+            bubbleAttached = true; GuideTrace.event(context, "bubble_attached")
+        }
         else {
             val current = bubble.layoutParams as WindowManager.LayoutParams
             if (current.x != p.x || current.y != p.y || current.width != p.width || current.height != p.height) wm.updateViewLayout(bubble, p)
@@ -748,7 +787,7 @@ class GuideOverlay(
             val display = GuideBox(0, 0, bounds.width(), bounds.height())
             if (ringBounds != null && display.contains(targetPixels)) {
                 pointingClipped = !display.contains(ringBounds)
-                if (!ringAttached) { wm.addView(ring, params(-1, -1, true)); ringAttached = true }
+                if (!ringAttached) ringAttached = addWindow(ring, params(-1, -1, true))
                 ring.invalidate()
                 // The target is known only now. Re-anchor Help before placing the card.
                 showBubble()
@@ -772,7 +811,7 @@ class GuideOverlay(
             }
         }
         if (state.status == GuideStatus.WAITING_NAVIGATION && navigationCue == NavigationCue.HOME_SWIPE_UP) {
-            if (!ringAttached) { wm.addView(ring, params(-1, -1, true)); ringAttached = true }
+            if (!ringAttached) ringAttached = addWindow(ring, params(-1, -1, true))
             ring.invalidate()
             // Re-anchor Help and its card around the gesture cue without touching the app below.
             showBubble()
@@ -803,7 +842,8 @@ class GuideOverlay(
             clearCard(); autoCollapsed = true; recordMeasurement(null, false, state); return
         }
         val placement = GuidePanelLayout.placeAttachedToHelp(
-            safe, width, desiredHeight, minimumHeight, pointedBox(), 0, anchor
+            safe, width, desiredHeight, minimumHeight, pointedBox(), 0, anchor,
+            extraExclusions = criticalActionBoxes
         )
         if (placement == null) {
             clearCard(); autoCollapsed = true; showBubble(); recordMeasurement(null, false, state); return
@@ -818,7 +858,7 @@ class GuideOverlay(
             View.MeasureSpec.makeMeasureSpec(box.height, View.MeasureSpec.EXACTLY))
         val p = params(box.width, box.height, false).apply { x = box.left; y = box.top }
         cardPosition = p
-        if (!cardAttached) { wm.addView(card, p); cardAttached = true } else wm.updateViewLayout(card, p)
+        if (!cardAttached) cardAttached = addWindow(card, p) else wm.updateViewLayout(card, p)
         // Review must begin with the first words. Opening at the bottom forced the elder to
         // discover a hidden scroll gesture before they could understand what was heard.
         if (contentChanged) scroll.post { scroll.scrollTo(0, 0) }
@@ -858,7 +898,8 @@ class GuideOverlay(
                         val left = (originX + dx.toInt()).coerceIn(safe.left, maxOf(safe.left, safe.right - window.width))
                         val top = (originY + dy.toInt()).coerceIn(safe.top, maxOf(safe.top, safe.bottom - window.height))
                         val candidate = GuideBox(left, top, left + window.width, top + window.height)
-                        if (GuidePanelLayout.acceptsDrag(candidate, pointedBox(), dp(8))) {
+                        if (GuidePanelLayout.acceptsDrag(candidate, pointedBox(), dp(8)) &&
+                            criticalActionBoxes.none { it.inflate(dp(8)).intersects(candidate) }) {
                             p.x = left; p.y = top; wm.updateViewLayout(window, p)
                             if (window === card) {
                                 draggedCard = candidate

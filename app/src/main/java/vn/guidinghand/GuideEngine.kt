@@ -113,6 +113,10 @@ class GuideEngine(
         "Chưa có chỉ dẫn rõ ràng. Vui lòng nói rõ việc cần giúp." to "I do not have a clear step yet. Please tell me what you need help with.",
         "Chưa đủ bằng chứng xác minh ảnh đã gửi. Kiểm tra lại giúp mình nhé." to "I cannot yet verify a new photo was sent. Please check the conversation.",
         "Chưa xác minh được vùng cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé." to "I cannot verify the button yet. Please wait a moment, then choose Check again.",
+        "Cháu thấy nút Gửi nhưng chưa xác nhận được ảnh đã chọn. Bà kiểm tra dấu chọn trên ảnh rồi chọn Kiểm tra lại nhé." to "I can see Send, but cannot confirm that a photo is selected. Check the mark on the photo, then choose Check again.",
+        "Cháu chưa thấy nội dung tin nhắn đã nhập. Bà kiểm tra tin nhắn rồi chọn Kiểm tra lại nhé." to "I cannot see the message text yet. Check your message, then choose Check again.",
+        "Cháu chưa thấy ảnh được chọn hay nội dung tin nhắn. Bà kiểm tra lại rồi chọn Kiểm tra lại nhé." to "I cannot see a selected photo or message text yet. Check them, then choose Check again.",
+        "Cháu chưa xác nhận được tên người nhận ở đầu cuộc trò chuyện. Bà kiểm tra lại trước khi gửi nhé." to "I cannot confirm the recipient at the top of this conversation. Check the name before sending.",
         "Chưa phát được giọng hướng dẫn. Mình dừng lại, không đổi sang giọng khác." to "The offline guide voice is unavailable. Guidance is paused.",
         "Chưa phát được giọng hướng dẫn. Nhờ người thân kiểm tra giọng đọc ngoại tuyến đã cài nhé." to "The offline guide voice is unavailable. Please check the installed voice before continuing."
     )
@@ -301,7 +305,11 @@ class GuideEngine(
         val photoRules = !task.isPhotoTask || (actual.labels.none { outsideTask.containsMatchIn(folded(it)) } && (!sending || step.stage == PhotoStage.SEND))
         val generalStage = task.isPhotoTask || step.stage in setOf(PhotoStage.LAUNCHER, PhotoStage.RECOVER, PhotoStage.ACTION)
         val generalRecipient = task.isPhotoTask || !sending || (task.recipient.isNotBlank() && PhotoVerification.recipientTitle(screen, task))
-        val generalContent = task.isPhotoTask || !sending || PhotoVerification.composerContains(screen, task)
+        val generalText = task.isPhotoTask || !sending ||
+            (task.content.isBlank() || PhotoVerification.composerContains(screen, task))
+        val mediaSelected = PhotoVerification.selectedMedia(screen)
+        val generalMedia = task.isPhotoTask || !sending || task.photo.isBlank() || mediaSelected
+        val generalPayload = task.isPhotoTask || !sending || task.content.isNotBlank() || mediaSelected
         val boundedSam = step.sam.source == "sam-3.1-ui-bounded" && !model.developmentStandIn &&
             step.sam.rawRegion != null && step.sam.region == region && run {
                 val raw = step.sam.rawRegion
@@ -312,19 +320,20 @@ class GuideEngine(
                 val uiArea = (region.right - region.left) * (region.bottom - region.top)
                 overlap * 2 >= minOf(rawArea, uiArea)
             }
-        val samProvenance = step.sam.source == "sam-3.1" || boundedSam ||
+        val samProvenance = step.sam.source == "sam-3.1" || boundedSam || step.sam.source == "accessibility-node" ||
             (allowDevStandIn && model.developmentStandIn && step.sam.source == "phase1-mock")
         stepRejection = when {
             !actual.clickable || actual.password -> "target_not_actionable"
             !photoRules -> "photo_action_guard"
             !generalStage -> "general_stage"
             !generalRecipient -> "recipient_title"
-            !generalContent -> "message_content"
+            !generalMedia -> "media_selection"
+            !generalText || !generalPayload -> "message_content"
             !region.containsCenter(step.sam.region) -> "sam_node_mismatch"
             !allowedStage(step, screen, task) -> "stage_context"
             else -> "invalid_step"
         }
-        return actual.clickable && !actual.password && photoRules && generalStage && generalRecipient && generalContent && step.instructionVi.isNotBlank() && step.instructionVi.length <= 200 &&
+        return actual.clickable && !actual.password && photoRules && generalStage && generalRecipient && generalText && generalMedia && generalPayload && step.instructionVi.isNotBlank() && step.instructionVi.length <= 200 &&
             !step.instructionVi.contains('\n') && samProvenance && step.sam.frameFingerprint == screen.planningFingerprint &&
             region.containsCenter(step.sam.region) && step.voice.provider == "Android system TTS" &&
             step.voice.rate == .85f && allowedStage(step, screen, task)
@@ -435,7 +444,19 @@ class GuideEngine(
                 val resolved = decision.task ?: task
                 if (resolved == null || !bindTask(resolved)) { askAboutTask(resolved); return }
                 if (resolved.isPhotoTask) observeContext(screen, resolved)
-                if (!validateStep(decision.step, screen, resolved)) { ask("Chưa xác minh được vùng cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé.", stepRejection); return }
+                if (!validateStep(decision.step, screen, resolved)) {
+                    model.rejectStep(decision)
+                    val message = when (stepRejection) {
+                        "recipient_title" -> "Cháu chưa xác nhận được tên người nhận ở đầu cuộc trò chuyện. Bà kiểm tra lại trước khi gửi nhé."
+                        "media_selection" -> "Cháu thấy nút Gửi nhưng chưa xác nhận được ảnh đã chọn. Bà kiểm tra dấu chọn trên ảnh rồi chọn Kiểm tra lại nhé."
+                        "message_content" -> if (resolved.content.isBlank())
+                            "Cháu chưa thấy ảnh được chọn hay nội dung tin nhắn. Bà kiểm tra lại rồi chọn Kiểm tra lại nhé."
+                        else "Cháu chưa thấy nội dung tin nhắn đã nhập. Bà kiểm tra tin nhắn rồi chọn Kiểm tra lại nhé."
+                        else -> "Chưa xác minh được vùng cần bấm. Bác đợi tôi một chút rồi chọn Kiểm tra lại nhé."
+                    }
+                    ask(message, stepRejection)
+                    return
+                }
                 current = decision.step; baseline = screen
                 emit(GuideStatus.WAITING_TAP, decision.step.instructionVi, decision.step)
                 if (generation == request && latest?.planningFingerprint == screen.planningFingerprint && gate(screen)) {

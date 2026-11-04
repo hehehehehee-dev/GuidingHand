@@ -4,6 +4,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ExactScreenDecisionCacheTest {
+    @Test fun aNativeRejectedDecisionIsNotReplayedFromTheExactScreenCache() {
+        val cache = ExactScreenDecisionCache<Any>(clock = { 100L })
+        val rejected = Any()
+        val other = Any()
+        cache.put("same-screen", rejected)
+        cache.put("other-screen", other)
+        assertSame(rejected, cache.get("same-screen"))
+        cache.removeValue(rejected)
+        assertNull(cache.get("same-screen"))
+        assertSame(other, cache.get("other-screen"))
+    }
+
     @Test fun exactEntriesExpireRemainBoundedAndClearOnSensitiveOrNewGoalBoundary() {
         var now = 100L
         val cache = ExactScreenDecisionCache<String>(ttlMillis = 50, capacity = 2) { now }

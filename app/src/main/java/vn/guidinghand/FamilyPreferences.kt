@@ -109,6 +109,9 @@ class FamilyPreferences(context: Context) {
     var showPointer: Boolean
         get() = prefs.getBoolean("showGuidePointer", true)
         set(value) { prefs.edit().putBoolean("showGuidePointer", value).apply() }
+    var samEnabled: Boolean
+        get() = prefs.getBoolean("samEnabled", true)
+        set(value) { prefs.edit().putBoolean("samEnabled", value).apply() }
     var reduceMotion: Boolean
         get() = prefs.getBoolean("reduceGuideMotion", true)
         set(value) { prefs.edit().putBoolean("reduceGuideMotion", value).apply() }

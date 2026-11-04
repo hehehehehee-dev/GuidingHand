@@ -65,6 +65,20 @@ class Sam:
 
 
 class CoreTests(unittest.TestCase):
+    def test_bound_task_sends_only_relevant_installed_app_to_spark(self):
+        value = frame()
+        value['screen']['package_name'] = 'com.instagram.android'
+        value['task'] = {'kind': 'guide_app', 'recipient': 'Minh', 'photo': '',
+                         'content': '', 'app_package': 'com.instagram.android', 'verified_steps': []}
+        value['installed_apps'] = [
+            {'label': 'Instagram', 'package': 'com.instagram.android'},
+            {'label': 'Chrome', 'package': 'com.android.chrome'}]
+        facts = json.loads(spark_body(value)['messages'][1]['content'][0]['text'])
+        self.assertEqual(['com.instagram.android'], [a['package'] for a in facts['installed_apps']])
+        value['allow_task_update'] = True
+        facts = json.loads(spark_body(value)['messages'][1]['content'][0]['text'])
+        self.assertEqual(2, len(facts['installed_apps']))
+
     def test_structured_safety_does_not_block_articles_or_email_fields(self):
         for label, class_name in [('How to create a password', 'android.widget.TextView'),
                                   ('Email address', 'android.widget.EditText')]:
@@ -372,6 +386,38 @@ class CoreTests(unittest.TestCase):
         result = self.core.step(value)
         self.assertEqual(('blocked', 'sam_no_unique_region'), (result['status'], result['reason']))
         self.assertNotIn('region', result)
+
+    def test_sam_disabled_returns_node_ring_without_sam_call(self):
+        self.planner.result = {**decision(), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.instagram.android', 'step_id': 'action',
+            'target_node_id': 'composer', 'instruction_vi': 'Bà bấm ô Tin nhắn ở cuối màn hình nhé.'}
+        value = frame(); value['allow_sam'] = False
+        value['screen']['package_name'] = 'com.instagram.android'
+        value['screen']['nodes'][0].update(id='composer', text='Tin nhắn')
+        result = self.core.step(value)
+        self.assertEqual('step', result['status'])
+        self.assertEqual('accessibility-node', result['region_source'])
+        self.assertEqual([.1, .1, .31, .31], result['region'])
+        self.assertEqual('composer', result['target_node_id'])
+        self.assertEqual(0, self.sam.calls)
+        self.assertIsNone(result['timings_ms']['sam'])
+
+    def test_sam_disabled_consequential_step_asks_to_enable_sam(self):
+        self.planner.result = {**decision(), 'intent': 'guide_app', 'task_kind': 'guide_app',
+            'app_package': 'com.instagram.android', 'step_id': 'action',
+            'target_node_id': 'send', 'instruction_vi': 'Bà bấm Gửi nhé.'}
+        value = frame(); value['allow_sam'] = False
+        value['screen']['package_name'] = 'com.instagram.android'
+        value['screen']['nodes'][0].update(id='send', text='Send')
+        result = self.core.step(value)
+        self.assertEqual(('await', 'sam_required'), (result['status'], result['reason']))
+        self.assertNotIn('region', result)
+        self.assertEqual(0, self.sam.calls)
+
+    def test_non_boolean_sam_flag_is_rejected(self):
+        value = frame(); value['allow_sam'] = 'yes'
+        self.assertEqual('invalid_sam_flag', self.core.step(value)['reason'])
+        self.assertEqual(0, self.sam.calls)
 
     def test_spark_cannot_read_is_distinct_from_capture_and_sam_failure(self):
         self.planner.result = {**decision('blocked'), 'block_reason': 'cannot_read'}

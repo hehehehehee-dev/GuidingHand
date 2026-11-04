@@ -36,8 +36,12 @@ Do not optimize away any rule in this section.
    in the debug source set as an explicit development stand-in; release never selects it.
 6. **One step at a time.** Present one short instruction, one target, then wait for a real screen change.
    A wrong tap keeps the goal and replans from the resulting state; it never restarts from Home.
-7. **No invented target.** A production ring requires a Spark-selected live Accessibility node, a SAM
-   3.1 region from the same frame, and native target fusion. Failure of any source means no ring.
+7. **No invented target.** A production ring requires a Spark-selected live Accessibility node,
+   native target fusion, and a region from the same frame: a SAM 3.1 region by default, or the
+   node bounds themselves only when the user explicitly disables SAM in Settings (`samEnabled`
+   `= false`, sent as `allow_sam = false`). A node-bounds ring is an estimate and is never used
+   for consequential actions (send, call, payment, delete, confirm). Failure of any required
+   source means no ring.
 8. **Speech roles are fixed.** `muse-voice-transcribe-1.0` is input only. Speech output is Android
    system TTS, offline where available, at rate `0.85`.
 9. **Keys stay server-side.** Never place `MODEL_API_KEY`, an app-session token, or any provider key in
@@ -61,7 +65,7 @@ the elder chooses **Call family**; it must never use `ACTION_CALL` or place the 
 - Android: Kotlin, Jetpack Compose, min SDK 30, target/compile SDK 36, Java 17
 - Backend: Python 3.12, WSGI/Gunicorn, standard-library HTTP orchestration
 - Provider planner: `muse-spark-1.3` with `reasoning_effort=minimal`
-- Region source: SAM 3.1 through `meta-sam-parser`
+- Region source: SAM 3.1 through `meta-sam-parser` by default; `accessibility-node` bounds when the user disables SAM
 - Speech input: `muse-voice-transcribe-1.0`
 - Speech output: Android system TTS at `0.85`
 - Total authorized Meta budget ceiling: USD 150 including prior usage; never reset its persisted ledger
@@ -107,6 +111,7 @@ All active Kotlin files are under `app/src/main/java/vn/guidinghand/` unless not
 | Component | Responsibility | Important invariant |
 | --- | --- | --- |
 | `GuidingHandService.kt` | `AccessibilityService`; reads windows, owns the session, mic lease, capture, overlay, and event coalescing | Never dispatch target-app gestures or input |
+| `SecondCaptureBackoff.kt` | Briefly suppresses a repeated optional second window screenshot after Android's internal capture error | The first frame still needs a fresh safe-screen check; retry after 30 seconds or a window change |
 | `GuideEngine.kt` | Real state machine for goal, clarifications, task data, verification, wrong-tap recovery, stale-result rejection | Only Stop/new goal/lock/sensitive state clears task memory |
 | `GuideData.kt` | Shared data contracts, safety policy, decisions, statuses, task/evidence types | Keep decisions typed; do not replace with keyword scripts |
 | `CoreBackendModel.kt` | Sole production `GuideModel`; serializes safe screen data, captures once, calls backend, validates binding/language/SAM | Same bitmap bytes for Spark and SAM; reject stale replies |
@@ -177,7 +182,7 @@ Public backend contract:
 - `GET /health`: unauthenticated liveness only; reveals no model/key/budget details.
 - `GET /core/capabilities`: authenticated capability contract.
 - `POST /core/transcribe`: authenticated Muse Voice Transcribe input.
-- `POST /core/step`: authenticated Spark -> SAM core step.
+- `POST /core/step`: authenticated Spark -> SAM core step; accepts `allow_sam` (default true).
 
 Production accepts HTTPS only. The temporary `gateway.py` server binds to loopback and is a USB
 development path, not the product architecture.
